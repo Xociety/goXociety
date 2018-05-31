@@ -24,7 +24,7 @@ CREATE TABLE xuser(
     user_id BIGSERIAL    PRIMARY KEY NOT NULL,
     username        CHAR(50) UNIQUE NOT NULL,
     email           CHAR(50), -- unique and format check
-    salted_password VARCHAR(100) NOT NULL,
+    password VARCHAR(100) NOT NULL,
     name            TEXT    NOT NULL,
     phone           CHAR(50) NOT NULL, -- add country calling code
     gender          INT, -- 0: not known, 1: male, 2:female
@@ -39,7 +39,7 @@ CREATE TABLE xuser(
     updatetime      integer
 );
 INSERT INTO xuser 
-(username, email, salted_password, name, phone, gender, bio, credit, language, country, timezone, last_ip, createtime, updatetime) 
+(username, email, password, name, phone, gender, bio, credit, language, country, timezone, last_ip, createtime, updatetime) 
 VALUES ('jeff', 'jeff@gmail.com', 'salted', 'jeff', '+886-911111111', 1, 'hi', 0, 13, 207, 28800, '123.194.188.0', 1527496777, 1527496777);
 -- username, phone + country code, email (lower case) logic check
 /*
@@ -59,6 +59,10 @@ CREATE TABLE media (
     user_id BIGSERIAL references xuser(user_id),
     content VARCHAR(300), -- include @tagid, #hashtag
     blob_id VARCHAR(100),
+    -- origin
+    -- small
+    -- type
+    -- url
     point point,
     country SERIAL references country(country_id),
     category INT,
@@ -72,7 +76,7 @@ VALUES
 (1, 'hello world', 'sha256 hashed id #happy @jeff', point('121.5643,25.0336'), 207, 0, 1527498044, 1527498044);
 ------------------------
 CREATE TABLE hashtag(
-   id BIGSERIAL PRIMARY KEY,
+   hashtag_id BIGSERIAL PRIMARY KEY,
    name TEXT UNIQUE NOT NULL
 );
 -- define hashtag length
@@ -82,7 +86,7 @@ VALUES ('happy');
 ------------------------
 CREATE TABLE media_hashtag(
    media_id INT NOT NULL references media(media_id),
-   hashtag_id INT NOT NULL references hashtag(id)
+   hashtag_id INT NOT NULL references hashtag(hashtag_id)
  );
 INSERT INTO media_hashtag 
 (media_id, hashtag_id) 
@@ -112,7 +116,7 @@ INSERT INTO media_likes
 VALUES (1, 1, 1, 1527498711);
 ------------------------
 CREATE TABLE comments (
-    comment_id SERIAL PRIMARY KEY NOT NULL,
+    comment_id BIGSERIAL PRIMARY KEY NOT NULL,
     media_id SERIAL references media(media_id),
     user_id SERIAL references xuser(user_id),
     comment VARCHAR(300),
@@ -125,7 +129,7 @@ VALUES (1, 1, 'yo', 1527498711, 1527498711);
 -- maximum taged user number: 5
 ------------------------
 CREATE TABLE comment_likes (
-    comment_id SERIAL references comments(comment_id),
+    comment_id BIGSERIAL references comments(comment_id),
     user_id SERIAL references xuser(user_id),
     type int, -- 1: like, 2: dislike
     createtime integer
@@ -144,7 +148,7 @@ JOIN comment_likes on comments.comment_id = comment_likes.comment_id
 ------------------------
 CREATE TABLE comments_deep (
     comment_deep_id BIGSERIAL NOT NULL,
-    comment_id SERIAL references comments(comment_id),
+    comment_id BIGSERIAL references comments(comment_id),
     user_id SERIAL references xuser(user_id),
     comment VARCHAR(300),
     createtime integer,
@@ -153,7 +157,7 @@ CREATE TABLE comments_deep (
 -- maximum taged user number: 5
 ------------------------
 CREATE TABLE comments_deep_likes (
-    comment_deep_id SERIAL references comments_deep(comment_deep_id),
+    comment_deep_id BIGSERIAL references comments_deep(comment_deep_id),
     user_id SERIAL references xuser(user_id),
     type int, -- 1: like, 2: dislike
     createtime integer
@@ -168,8 +172,8 @@ CREATE TABLE follow (
 -- following limit 7500 on Instagram, we might limit following 50000 people
 ------------------------
 CREATE TABLE block (
-    user_id SERIAL references xuser(user_id),
-    blocked_user_id SERIAL references xuser(user_id),
+    user_id BIGSERIAL references xuser(user_id),
+    blocked_user_id BIGSERIAL references xuser(user_id),
     createtime integer
 );
 ------------------------
