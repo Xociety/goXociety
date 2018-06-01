@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -153,27 +154,41 @@ var xuserGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "XUser",
 		Fields: graphql.Fields{
-			"userid": &graphql.Field{
-				Type: graphql.String,
-			},
+			"user_id":     &graphql.Field{Type: graphql.String},
+			"username":    &graphql.Field{Type: graphql.String},
+			"email":       &graphql.Field{Type: graphql.String},
+			"password":    &graphql.Field{Type: graphql.String},
+			"name":        &graphql.Field{Type: graphql.String},
+			"phone":       &graphql.Field{Type: graphql.String},
+			"gender":      &graphql.Field{Type: graphql.Int},
+			"bio":         &graphql.Field{Type: graphql.String},
+			"credit":      &graphql.Field{Type: graphql.Int},
+			"language_id": &graphql.Field{Type: graphql.Int},
+			"country_id":  &graphql.Field{Type: graphql.Int},
+			"timezone":    &graphql.Field{Type: graphql.Int},
+			"last_ip":     &graphql.Field{Type: graphql.String},
+			"createtime":  &graphql.Field{Type: graphql.Int},
+			"updatetime":  &graphql.Field{Type: graphql.Int},
 		},
 	},
 )
-
-var uploadGraphqlType = graphql.NewObject(
+var postGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "upload",
+		Name: "Posts",
 		Fields: graphql.Fields{
-			"status": &graphql.Field{
-				Type: graphql.String,
-			},
+			"post_id":     &graphql.Field{Type: graphql.String},
+			"user_id":     &graphql.Field{Type: graphql.String},
+			"content":     &graphql.Field{Type: graphql.String},
+			"blob_id":     &graphql.Field{Type: graphql.String},
+			"country_id":  &graphql.Field{Type: graphql.Int},
+			"category_id": &graphql.Field{Type: graphql.Int},
+			"public":      &graphql.Field{Type: graphql.Boolean},
+			"createtime":  &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			"updatetime":  &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 		},
 	},
 )
-
-type uploadStatus struct {
-	Status string
-}
+var postsGraphqlType = graphql.NewList(postGraphqlType)
 
 var usersGraphqlType = graphql.NewList(userGraphqlType)
 var graphqlIdsArrayType = graphql.NewList(graphql.String)
@@ -201,36 +216,6 @@ var graphqlQueryType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Query",
 		Fields: graphql.Fields{
-			"login": &graphql.Field{
-				Type: xuserGraphqlType,
-				Args: graphql.FieldConfigArgument{
-					"email": &graphql.ArgumentConfig{
-						Type:        graphql.String,
-						Description: "email",
-					},
-					"password": &graphql.ArgumentConfig{
-						Type:        graphql.String,
-						Description: "password",
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					_email, isOK := p.Args["email"].(string)
-					if !isOK {
-						return nil, nil
-					}
-					_password, isOK := p.Args["password"].(string)
-					if !isOK {
-						return nil, nil
-					}
-					userID := login(_email, _password)
-					// return nil, nil
-					xuser := xuser{}
-					xuser.UserID = userID
-					return xuser, nil
-				},
-				Description: "login",
-			},
-			// "media":
 			"user": &graphql.Field{
 				Type: userGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -251,11 +236,6 @@ var graphqlQueryType = graphql.NewObject(
 			"allUsers": &graphql.Field{
 				Type: usersGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					// log.Println(p.Context.Value("currentUser"))
-					// log.Println(p.Context.Value("file"))
-					// outterCtx := context.WithValue(context.Background(), "yo", "man")
-					// p.Context = outterCtx
-					// log.Println("content A", p.Context.Value("yo"))
 					var users []user
 					for _, v := range graphqlSampleData {
 						u := user{ID: v.ID, Name: v.Name}
@@ -288,6 +268,87 @@ var graphqlQueryType = graphql.NewObject(
 					return users, nil
 				},
 				Description: "get certain user by ids",
+			},
+			//
+			"login": &graphql.Field{
+				Type: xuserGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"email": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "email",
+					},
+					"password": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "password",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					email, isOK := p.Args["email"].(string)
+					if !isOK {
+						return nil, nil
+					}
+					password, isOK := p.Args["password"].(string)
+					if !isOK {
+						return nil, nil
+					}
+					user := login(email, password)
+					return user, nil
+				},
+				Description: "login",
+			},
+			"xuser_by_user_id": &graphql.Field{
+				Type: xuserGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"user_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "user_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					userID, isOK := p.Args["user_id"].(string)
+					if !isOK {
+						return nil, nil
+					}
+					user := getXuserByID(userID)
+					return user, nil
+				},
+				Description: "get xuser",
+			},
+			"xuser_by_username": &graphql.Field{
+				Type: xuserGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"username": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "username",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					username, isOK := p.Args["username"].(string)
+					if !isOK {
+						return nil, nil
+					}
+					user := getXuserByUsername(username)
+					return user, nil
+				},
+				Description: "get xuser",
+			},
+			"posts": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, nil
+					}
+					posts := getPost(categoryID)
+					return posts, nil
+				},
+				Description: "posts",
 			},
 			/*"result": &graphql.Field{
 				Type: resultGraphqlType,
@@ -323,24 +384,38 @@ var graphqlMutationType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Mutation",
 		Fields: graphql.Fields{
-			"upload": &graphql.Field{
-				Type: uploadGraphqlType,
+			"post_now": &graphql.Field{
+				Type: postGraphqlType,
 				Args: graphql.FieldConfigArgument{
-					"test": &graphql.ArgumentConfig{
+					"content": &graphql.ArgumentConfig{
 						Type:        graphql.String,
-						Description: "test",
+						Description: "content",
+					},
+					"file_origin": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "form-data key\"file_origin\"",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					_test, isOK := p.Args["test"].(string)
+					content, isOK := p.Args["content"].(string)
 					if !isOK {
 						return nil, nil
 					}
-					log.Println(_test)
-					status := uploadStatus{Status: _test}
-					return status, nil
+					fileOrigin, isOK := p.Context.Value(contextKeyFileOrigin).([]byte)
+					if !isOK {
+						return nil, errors.New("file err")
+					}
+					log.Println(content, len(fileOrigin))
+					post := postDB{}
+					postID := postNow(post)
+					return postID, nil
 				},
-				Description: "upload",
+				Description: "post",
+				DeprecationReason: `please use form-data to upload file, form-data key:
+					query: mutation{post(content:"45"){post_id}}
+					file_origin: file, 
+					. not finished yet
+				`,
 			},
 		},
 	},

@@ -10,11 +10,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func genXuserFaker(fake *faker.Faker, r *rand.Rand) xuser {
+func genXuserFaker(fake *faker.Faker, r *rand.Rand) xuserDB {
 	// println(fake.Name())  //> "Adriana Crona"
 	// println(fake.Email()) //> charity.brown@fritschbotsford.biz
-	u := xuser{
-		UserName:   fake.UserName(),
+	u := xuserDB{
+		Username:   fake.UserName(),
 		Email:      fake.Email(),
 		Password:   fake.Name(),
 		Name:       fake.Name(),
@@ -22,8 +22,8 @@ func genXuserFaker(fake *faker.Faker, r *rand.Rand) xuser {
 		Gender:     r.Intn(3),
 		Bio:        fake.Sentence(r.Intn(10), true),
 		Credit:     0,
-		Language:   13,
-		Country:    207,
+		LanguageID: 13,
+		CountryID:  207,
 		Timezone:   28800,
 		LastIP:     fake.IPv4Address().String(),
 		Updatetime: 1527496777,
@@ -32,7 +32,7 @@ func genXuserFaker(fake *faker.Faker, r *rand.Rand) xuser {
 	fmt.Println(u)
 	return u
 }
-func insertDB(c *conn, u xuser) error {
+func insertDB(c *conn, u xuserDB) error {
 	// var id
 	//https://www.calhoun.io/inserting-records-into-a-postgresql-database-with-gos-database-sql-package/
 	// result, err := c.db.Exec(`INSERT INTO xuser
