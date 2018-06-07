@@ -2,19 +2,16 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/chienfuchen32/handler"
+	"github.com/chienfuchen32/goXHandler"
 )
 
 var (
-	contextKeyFileOrigin       = contextKey("file origin")
-	contextKeyFileOriginHeader = contextKey("file origin header")
-	contextKeyFileSmall        = contextKey("file small")
+	contextKeyFile = contextKey("file")
 )
 
 type contextKey string
@@ -24,17 +21,12 @@ func (c contextKey) String() string {
 }
 
 func startServer() {
-	_ = importJSONDataFromGraphqlFile("./data/data.json", &graphqlSampleData)
 	h := func(inner http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if readerOrigin, fileHeader, err := r.FormFile("file_origin"); err == nil {
-				fileOrigin, err := ioutil.ReadAll(readerOrigin)
-				if err != nil {
-					log.Println("fileOrigin err", err)
-				}
-				log.Println("file", fileHeader.Filename, fileHeader.Header, fileHeader.Size, len(fileOrigin))
-				fileOriginCtx := context.WithValue(context.Background(), contextKeyFileOrigin, fileOrigin)
-				inner.ServeHTTP(w, r.WithContext(fileOriginCtx))
+			// header user token
+			if file, _, err := r.FormFile("file"); err == nil {
+				fileCtx := context.WithValue(context.Background(), contextKeyFile, file)
+				inner.ServeHTTP(w, r.WithContext(fileCtx))
 			} else {
 				inner.ServeHTTP(w, r)
 			}
@@ -42,14 +34,14 @@ func startServer() {
 	}(handler.New(&handler.Config{
 		Schema:   &graphqlSchema,
 		Pretty:   true,
-		GraphiQL: true,
+		GraphiQL: graphiql,
 	}))
 	http.Handle(graphqlRoute, h)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "index.html")
 	})
 	server := &http.Server{
-		Addr:           ":" + strconv.Itoa(serverPort),
+		Addr:           "127.0.0.1:" + strconv.Itoa(serverPort),
 		ReadTimeout:    5 * time.Minute,
 		WriteTimeout:   5 * time.Minute,
 		MaxHeaderBytes: 1 << 20,

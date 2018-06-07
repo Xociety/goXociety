@@ -1,16 +1,1 @@
 <h1>Xociety</h1>
-<p>file upload</p>
-<input id="file" type="file"/>
-<button onclick="send()">send</button>
-<script>
-    function send() {
-        var formData = new FormData();
-        formData.append("query", 'mutation{post(content:"45"){content}}');
-        var content = '<a id="a"><b id="b">hey!</b></a>';
-        var blob = new Blob([content], { type: "text/xml"});
-        formData.append("file_origin", blob);
-        var request = new XMLHttpRequest();
-        request.open("POST", "graphql");
-        request.send(formData);
-    }
-</script>

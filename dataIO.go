@@ -5,82 +5,6 @@ import (
 	"log"
 )
 
-type country struct {
-	CountryID int
-	Name      string
-	Code      string
-}
-
-type language struct {
-	LanguageID      int
-	DisplayLanguage string
-	Value           string
-}
-
-type xuserDB struct {
-	UserID     int64  `json:"user_id,omitempty"`
-	Username   string `json:"username,omitempty"`
-	Email      string `json:"email,omitempty"`
-	Password   string `json:"password,omitempty"`
-	Name       string `json:"name,omitempty"`
-	Phone      string `json:"phone,omitempty"`
-	Gender     int    `json:"gender,omitempty"`
-	Bio        string `json:"bio,omitempty"`
-	Credit     int    `json:"credit,omitempty"`
-	LanguageID int    `json:"language_id,omitempty"`
-	CountryID  int    `json:"country_id,omitempty"`
-	Timezone   int    `json:"timezone,omitempty"`
-	LastIP     string `json:"last_ip,omitempty"`
-	Updatetime int    `json:"updatetime,omitempty"`
-	Createtime int    `json:"createtime,omitempty"`
-}
-
-type postDB struct {
-	PostID  int64  `json:"post_id,omitempty"`
-	UserID  string `json:"user_id,omitempty"`
-	Content string `json:"content,omitempty"`
-	BlobID  string `json:"blob_id,omitempty"`
-	// Point
-	CountryID  string `json:"country_id,omitempty"`
-	CategoryID string `json:"category_id,omitempty"`
-	Public     bool   `json:"public,omitempty"`
-	Createtime int    `json:"createtime,omitempty"`
-	Updatetime int    `json:"updatetime,omitempty"`
-}
-
-type hashtagDB struct {
-	HashtagID int64
-	Name      string
-}
-
-type postHashtagDB struct {
-	PostID    int64
-	HashtagID int64
-}
-
-type postLikesDB struct {
-	PostID     int64
-	UserID     int64
-	Type       int
-	Createtime int
-}
-
-type commentsDB struct {
-	CommentID  int64
-	PostID     int64
-	UserID     int64
-	Comment    string
-	Createtime int
-	Updatetime int
-}
-
-type commentLikesDB struct {
-	CommentID  int64
-	UserID     int64
-	Type       int
-	Createtime int
-}
-
 type conn struct {
 	db   *sql.DB
 	name string
@@ -96,6 +20,7 @@ func connectDB(dbinfo string, name string) conn {
 	return c
 }
 
+// query
 func login(email, password string) (user xuserDB) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -206,12 +131,24 @@ func getXuserByUsername(username string) (user xuserDB) {
 	return user
 }
 
+// mutation
 func postNow(post postDB) (postID string) {
-	// c := connectDB(postgresConStr, "PgSQL")
-	// defer c.db.Close()
-	// var userid int
-	// err := c.db.QueryRow(`INSERT INTO users(name, favorite_fruit, age)
-	// VALUES('beatrice', 'starfruit', 93) RETURNING id`).Scan(&userid)
-	// log.Println(err)
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	err := c.db.QueryRow(`
+		INSERT INTO post 
+		(user_id, content, blob_id, country_id, category_id, public, createtime, updatetime) 
+		VALUES 
+		($1, $2, $3, $4, $5, $6, $7, $8) RETURNING post_id;`,
+		post.UserID,
+		post.Content,
+		post.BlobID,
+		post.CountryID,
+		post.CategoryID,
+		post.Public,
+		post.Createtime,
+		post.Updatetime,
+	).Scan(&postID)
+	log.Println(err)
 	return postID
 }
