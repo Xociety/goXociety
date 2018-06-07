@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
+	"strconv"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -186,16 +186,17 @@ var graphqlMutationType = graphql.NewObject(
 						return nil, errors.New("file err")
 					}
 					// size check
-					// log.Println(file)
 					post, err := postInputCheck(p)
 					if err != nil {
 						return nil, err
 					}
 					err = untarFileAndUpload(post, file)
-					log.Panicln("untar", err)
-					// fmt.Println(post)
-					// post.PostID = postNow(post)
-					return postDB{PostID: "123"}, nil
+					// log.Println(err)
+					if err != nil {
+						return nil, err
+					}
+					post.PostID = postNow(post)
+					return post, nil
 				},
 				Description: "post",
 				DeprecationReason: `please use form-data to upload file, form-data key:
@@ -217,10 +218,6 @@ func postInputCheck(p graphql.ResolveParams) (post postDB, err error) {
 	if !isOK {
 		return post, errors.New("content err")
 	}
-	blobID, isOK := p.Args["blob_id"].(string)
-	if !isOK {
-		return post, errors.New("blob_id err")
-	}
 	countryID, isOK := p.Args["country_id"].(int)
 	if !isOK {
 		return post, errors.New("country_id err")
@@ -240,7 +237,7 @@ func postInputCheck(p graphql.ResolveParams) (post postDB, err error) {
 	timestamp := int(time.Now().Unix())
 	post.UserID = userID
 	post.Content = content
-	post.BlobID = blobID
+	post.BlobID = post.UserID + "_" + strconv.Itoa(timestamp)
 	// Point
 	post.CountryID = countryID
 	post.CategoryID = categoryID

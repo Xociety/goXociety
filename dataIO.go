@@ -137,15 +137,16 @@ func postNow(post postDB) (postID string) {
 	defer c.db.Close()
 	err := c.db.QueryRow(`
 		INSERT INTO post 
-		(user_id, content, blob_id, country_id, category_id, public, createtime, updatetime) 
+		(user_id, content, blob_id, country_id, category_id, public, type, createtime, updatetime) 
 		VALUES 
-		($1, $2, $3, $4, $5, $6, $7, $8) RETURNING post_id;`,
+		($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING post_id;`,
 		post.UserID,
 		post.Content,
 		post.BlobID,
 		post.CountryID,
 		post.CategoryID,
 		post.Public,
+		post.Type,
 		post.Createtime,
 		post.Updatetime,
 	).Scan(&postID)

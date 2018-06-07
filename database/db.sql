@@ -1,21 +1,21 @@
 -- check all PRIMARY KEY, FOREIGN KEY, data valid range, CRUD relation, related api, reference sequence, schema
 ------------------------
 CREATE TABLE country (
-    country_id SERIAL PRIMARY KEY     NOT NULL,
+    country_id int PRIMARY KEY     NOT NULL,
     name CHAR(200),
     code CHAR(2)
 );
-COPY country(name, code) FROM '/var/lib/postgresql/data/country.csv' DELIMITER ';' CSV HEADER;
+COPY country(country_id, name, code) FROM '/var/lib/postgresql/data/country.csv' DELIMITER ';' CSV HEADER;
 /*
 https://developers.google.com/custom-search/docs/xml_results_appendices#countryCodes
 */
 ------------------------
 CREATE TABLE language (
-    language_id SERIAL PRIMARY KEY     NOT NULL,
+    language_id int PRIMARY KEY     NOT NULL,
     display_language CHAR(200),
     value CHAR(10)
 );
-COPY language(display_language, value) FROM '/var/lib/postgresql/data/language.csv' DELIMITER ';' CSV HEADER;
+COPY language(language_id, display_language, value) FROM '/var/lib/postgresql/data/language.csv' DELIMITER ';' CSV HEADER;
 /*
 https://developers.google.com/custom-search/docs/xml_results_appendices#interfaceLanguages
 */
@@ -30,8 +30,8 @@ CREATE TABLE xuser(
     gender          INT, -- 0: not known, 1: male, 2:female
     bio             CHAR(50),
     credit          INT,
-    language_id        SERIAL references language(langauge_id),
-    country_id         SERIAL references country(country_id),
+    language_id        int references language(langauge_id),
+    country_id         int references country(country_id),
     timezone        INT,
     last_ip         CHAR(15), -- ipv4 123.194.188.0
     -- apid
@@ -60,19 +60,23 @@ CREATE TABLE post (
     post_id BIGSERIAL PRIMARY KEY     NOT NULL,
     user_id BIGSERIAL references xuser(user_id),
     content VARCHAR(300), -- include @tagid, #hashtag
-    blob_id VARCHAR(100),
-    -- origin
-    -- small
-    -- type
-    -- url
+    blob_id VARCHAR(100), -- may be foldername
+    type int references post_type(post_type_id),
     point point,
-    country_id SERIAL references country(country_id),
+    country_id int references country(country_id),
     category_id INT,
     public boolean,
     createtime integer, -- timestamp without time zone, unix time
     updatetime integer
 );
 --  maximum 30 hashtag
+------------------------
+CREATE TABLE post_type (
+    post_type_id int PRIMARY KEY NOT NULL,
+    name CHAR(10)
+);
+COPY country(country_id, name, code) FROM '/var/lib/postgresql/data/country.csv' DELIMITER ';' CSV HEADER;
+-- INSERT INTO post_type (post_type_id, name) VALUES (1, 'jpg'), (2, 'hls');
 ------------------------
 CREATE TABLE hashtag(
    hashtag_id BIGSERIAL PRIMARY KEY,
@@ -150,7 +154,6 @@ JOIN post_likes on post.post_id = post_likes.post_id
 JOIN comments on post.post_id = comments.post_id 
 JOIN comment_likes on comments.comment_id = comment_likes.comment_id;
 
-
 ------------------------
 CREATE TABLE comments_deep (
     comment_deep_id BIGSERIAL NOT NULL,
@@ -175,7 +178,7 @@ CREATE TABLE follow (
     valid boolean,
     createtime integer
 );
--- following limit 7500 on Instagram, we might limit following 50000 people
+-- following limit 7500 on Instagram, we might limit following 5000 people
 ------------------------
 CREATE TABLE block (
     user_id BIGSERIAL references xuser(user_id),

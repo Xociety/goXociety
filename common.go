@@ -9,7 +9,6 @@ import (
 	"errors"
 	"io"
 	"log"
-	"strconv"
 	"strings"
 
 	"cloud.google.com/go/storage"
@@ -36,7 +35,7 @@ func untarFileAndUpload(post postDB, r io.Reader) error {
 	case 1:
 		foldername += bucketVideosCloudStorage
 	}
-	foldername += "/" + post.UserID + "_" + strconv.Itoa(post.Createtime) + "/"
+	foldername += "/" + post.BlobID + "/"
 
 	// define gcp client
 	client, err := storage.NewClient(context.Background(), clientOptionGoogleAPI)
@@ -67,24 +66,34 @@ func untarFileAndUpload(post postDB, r io.Reader) error {
 			continue
 		}
 
-		filename := ""
-		directoryStrSplitter := strings.Split(header.Name, "/")
-		if len(directoryStrSplitter) > 1 {
-			filename = directoryStrSplitter[len(directoryStrSplitter)-1]
-		}
-
 		formatStrSplitter := strings.Split(header.Name, ".")
 		if len(formatStrSplitter) == 1 {
 			continue
 		}
 		fileFormat := strings.ToLower(formatStrSplitter[len(formatStrSplitter)-1])
+		if !(fileFormat == "jpg" || fileFormat == "m3u8" || fileFormat == "ts") {
+			continue
+		}
+
+		filename := ""
+		directoryStrSplitter := strings.Split(header.Name, "/")
+		if len(directoryStrSplitter) > 1 {
+			filename = directoryStrSplitter[len(directoryStrSplitter)-1]
+		}
+		if len(filename) >= 1 {
+			if filename[:1] == "." {
+				continue
+			}
+		}
+
+		isUpload := false
 		switch post.Type { // type load from config
 		case 0:
 			if fileFormat == "jpg" {
-				log.Println("good jpg")
+				jpgCount++
+				isUpload = true
 			}
 		case 1:
-			isUpload := false
 			if !m3u8uploaded && fileFormat == "m3u8" {
 				isUpload = true
 				m3u8uploaded = true
@@ -92,12 +101,11 @@ func untarFileAndUpload(post postDB, r io.Reader) error {
 				tsCount++
 				isUpload = true
 			}
-			if isUpload {
-				if err := writeAndMakePublicCloudStorageGCP(client, bucketRootCloudStorage, foldername+filename, tr); err != nil {
-					log.Println("upload failed: ", err)
-					return errors.New("upload failed")
-				}
-				log.Println("good video", filename)
+		}
+		if isUpload {
+			if err := writeAndMakePublicCloudStorageGCP(client, bucketRootCloudStorage, foldername+filename, tr); err != nil {
+				log.Println("upload failed: ", err)
+				return errors.New("upload failed")
 			}
 		}
 	}
