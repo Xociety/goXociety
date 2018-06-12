@@ -10,8 +10,14 @@ import (
 	"github.com/chienfuchen32/goXHandler"
 )
 
+const (
+	userTokenHeaderKey  = "User-Token"
+	fileFormDataBodyKey = "file"
+)
+
 var (
-	contextKeyFile = contextKey("file")
+	contextUserToken = contextKey(userTokenHeaderKey)
+	contextKeyFile   = contextKey(fileFormDataBodyKey)
 )
 
 type contextKey string
@@ -24,12 +30,15 @@ func startServer() {
 	h := func(inner http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// header user token
-			if file, _, err := r.FormFile("file"); err == nil {
-				fileCtx := context.WithValue(context.Background(), contextKeyFile, file)
-				inner.ServeHTTP(w, r.WithContext(fileCtx))
-			} else {
-				inner.ServeHTTP(w, r)
+			reqCtx := context.Background()
+			if userToken := r.Header.Get(userTokenHeaderKey); userToken != "" {
+				reqCtx = context.WithValue(reqCtx, contextUserToken, userToken)
 			}
+			// file upload
+			if file, _, err := r.FormFile(fileFormDataBodyKey); err == nil {
+				reqCtx = context.WithValue(reqCtx, contextKeyFile, file)
+			}
+			inner.ServeHTTP(w, r.WithContext(reqCtx)) // r.WithContext(fileCtx))
 		})
 	}(handler.New(&handler.Config{
 		Schema:   &graphqlSchema,

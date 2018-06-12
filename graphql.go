@@ -6,10 +6,20 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"strconv"
 	"time"
 
 	"github.com/graphql-go/graphql"
+)
+
+var loginGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "login",
+		Fields: graphql.Fields{
+			"token": &graphql.Field{Type: graphql.String},
+		},
+	},
 )
 
 var xuserGraphqlType = graphql.NewObject(
@@ -19,18 +29,43 @@ var xuserGraphqlType = graphql.NewObject(
 			"user_id":     &graphql.Field{Type: graphql.String},
 			"username":    &graphql.Field{Type: graphql.String},
 			"email":       &graphql.Field{Type: graphql.String},
-			"password":    &graphql.Field{Type: graphql.String},
 			"name":        &graphql.Field{Type: graphql.String},
 			"phone":       &graphql.Field{Type: graphql.String},
 			"gender":      &graphql.Field{Type: graphql.Int},
 			"bio":         &graphql.Field{Type: graphql.String},
 			"credit":      &graphql.Field{Type: graphql.Int},
+			"photo_url":   &graphql.Field{Type: graphql.String},
 			"language_id": &graphql.Field{Type: graphql.Int},
 			"country_id":  &graphql.Field{Type: graphql.Int},
 			"timezone":    &graphql.Field{Type: graphql.Int},
 			"last_ip":     &graphql.Field{Type: graphql.String},
 			"createtime":  &graphql.Field{Type: graphql.Int},
 			"updatetime":  &graphql.Field{Type: graphql.Int},
+		},
+	},
+)
+var xusersGraphqlType = graphql.NewList(xuserGraphqlType)
+
+var xuserFollowingGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "following_user",
+		Fields: graphql.Fields{
+			"user_id":        &graphql.Field{Type: graphql.String},
+			"username":       &graphql.Field{Type: graphql.String},
+			"name":           &graphql.Field{Type: graphql.String},
+			"photo_url":      &graphql.Field{Type: graphql.String},
+			"following_time": &graphql.Field{Type: graphql.Int},
+		},
+	},
+)
+var xusersFollowingGraphqlType = graphql.NewList(xuserFollowingGraphqlType)
+
+var followingStatusGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "following_status",
+		Fields: graphql.Fields{
+			"request_pending": &graphql.Field{Type: graphql.Boolean},
+			"valid":           &graphql.Field{Type: graphql.Boolean},
 		},
 	},
 )
@@ -59,7 +94,7 @@ var graphqlQueryType = graphql.NewObject(
 		Name: "Query",
 		Fields: graphql.Fields{
 			"login": &graphql.Field{
-				Type: xuserGraphqlType,
+				Type: loginGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"email": &graphql.ArgumentConfig{
 						Type:        graphql.String,
@@ -79,8 +114,11 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, nil
 					}
-					user := login(email, password)
-					return user, nil
+					lc, err := login(email, password)
+					if err != nil {
+						return lc, err
+					}
+					return lc, nil
 				},
 				Description: "login",
 			},
@@ -95,10 +133,10 @@ var graphqlQueryType = graphql.NewObject(
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					userID, isOK := p.Args["user_id"].(string)
 					if !isOK {
-						return nil, nil
+						return nil, errors.New("user_id format")
 					}
-					user := getXuserByID(userID)
-					return user, nil
+					user, err := getXuserByID(userID)
+					return user, err
 				},
 				Description: "get xuser",
 			},
@@ -113,19 +151,77 @@ var graphqlQueryType = graphql.NewObject(
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					username, isOK := p.Args["username"].(string)
 					if !isOK {
-						return nil, nil
+						return nil, errors.New("username format")
 					}
-					user := getXuserByUsername(username)
-					return user, nil
+					user, err := getXuserByUsername(username)
+					return user, err
 				},
 				Description: "get xuser",
 			},
-			"posts": &graphql.Field{
+			"folling_list": &graphql.Field{
+				Type: xusersFollowingGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"valid": &graphql.ArgumentConfig{
+						Type:        graphql.Boolean,
+						Description: "valid",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					valid, isOK := p.Args["valid"].(bool)
+					if !isOK {
+						return nil, errors.New("valid format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					userToken, isOK := p.Context.Value(contextUserToken).(string)
+					if !isOK {
+						return nil, errors.New("user-token invalid")
+					}
+					user, err := checkSession(userToken)
+					users, err := getFollowingList(user.UserID, valid, page)
+					return users, err
+				},
+				Description: "get xuser",
+			},
+			"following_status": &graphql.Field{
+				Type: followingStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"user_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "user_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					userID, isOK := p.Args["user_id"].(string)
+					if !isOK {
+						return nil, errors.New("valid userID")
+					}
+					userToken, isOK := p.Context.Value(contextUserToken).(string)
+					if !isOK {
+						return nil, errors.New("user-token invalid")
+					}
+					user, err := checkSession(userToken)
+					fs, err := checkIsFollowing(userID, user.UserID)
+					return fs, err
+				},
+				Description: "get xuser",
+			},
+			"posts_following": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"category_id": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
 						Description: "category_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -133,10 +229,40 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, nil
 					}
-					posts := getPost(categoryID)
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, nil
+					}
+					posts := getFollowingUsersPosts(categoryID, page)
 					return posts, nil
 				},
 				Description: "posts",
+			},
+			"posts_recent": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, nil
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, nil
+					}
+					posts := getPostsRecent(categoryID, page)
+					return posts, nil
+				},
+				Description: "posts_recent",
 			},
 		},
 	})
@@ -181,22 +307,31 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
+					userToken, isOK := p.Context.Value(contextUserToken).(string)
+					if !isOK {
+						return nil, errors.New("user-token invalid")
+					}
+					user, err := checkSession(userToken)
+					log.Println(user, err)
 					file, isOK := p.Context.Value(contextKeyFile).(io.Reader)
 					if !isOK {
 						return nil, errors.New("file err")
 					}
-					// size check
+					// post parameter check
 					post, err := postInputCheck(p)
 					if err != nil {
 						return nil, err
 					}
+					// size check
 					err = untarFileAndUpload(post, file)
 					// log.Println(err)
 					if err != nil {
 						return nil, err
 					}
 					post.PostID = postNow(post)
-					return post, nil
+					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
+					return postDB{}, nil
 				},
 				Description: "post",
 				DeprecationReason: `please use form-data to upload file, form-data key:

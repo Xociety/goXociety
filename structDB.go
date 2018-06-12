@@ -13,21 +13,22 @@ type language struct {
 }
 
 type xuserDB struct {
-	UserID     string `json:"user_id,omitempty"`
-	Username   string `json:"username,omitempty"`
-	Email      string `json:"email,omitempty"`
-	Password   string `json:"password,omitempty"`
-	Name       string `json:"name,omitempty"`
-	Phone      string `json:"phone,omitempty"`
-	Gender     int    `json:"gender,omitempty"`
-	Bio        string `json:"bio,omitempty"`
-	Credit     int    `json:"credit,omitempty"`
-	LanguageID int    `json:"language_id,omitempty"`
-	CountryID  int    `json:"country_id,omitempty"`
-	Timezone   int    `json:"timezone,omitempty"`
-	LastIP     string `json:"last_ip,omitempty"`
-	Updatetime int    `json:"updatetime,omitempty"`
-	Createtime int    `json:"createtime,omitempty"`
+	UserID     string
+	Username   string
+	Email      string
+	Password   string
+	Name       string
+	Phone      string
+	Gender     int
+	Bio        string
+	Credit     int
+	PhotoURL   string
+	LanguageID int
+	CountryID  int
+	Timezone   int
+	LastIP     string
+	Updatetime int
+	Createtime int
 }
 
 type postDB struct {

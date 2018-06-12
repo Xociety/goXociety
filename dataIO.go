@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"log"
+	"time"
 )
 
 type conn struct {
@@ -20,21 +22,28 @@ func connectDB(dbinfo string, name string) conn {
 	return c
 }
 
-// query
-func login(email, password string) (user xuserDB) {
+// auth
+func checkSession(userToken string) (user xuserAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	row := c.db.QueryRow("SELECT user_id, username, email, password, name, phone, gender, bio, credit, language_id, country_id, timezone, last_ip, createtime, updatetime FROM xuser WHERE email=$1 AND password=$2", email, password)
+	row := c.db.QueryRow(`
+		SELECT 
+		user_id, username, email, name, phone, 
+		gender, bio, credit, photo_url, 
+		language_id, country_id, 
+		timezone, last_ip, createtime, updatetime 
+		FROM xuser WHERE user_id=$1;`,
+		userToken)
 	if err := row.Scan(
 		&user.UserID,
 		&user.Username,
 		&user.Email,
-		&user.Password,
 		&user.Name,
 		&user.Phone,
 		&user.Gender,
 		&user.Bio,
 		&user.Credit,
+		&user.PhotoURL,
 		&user.LanguageID,
 		&user.CountryID,
 		&user.Timezone,
@@ -42,17 +51,209 @@ func login(email, password string) (user xuserDB) {
 		&user.Createtime,
 		&user.Updatetime,
 	); err != nil {
-		log.Println("login", err)
+		log.Println("checkSession", err)
+		return user, err
 	}
-	return user
+	return user, nil
 }
 
-func getPost(categoryID int) (posts []postDB) {
+// query
+func login(email, password string) (lc loginAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	rows, err := c.db.Query("SELECT post_id, user_id, content, blob_id, country_id, category_id, public, createtime, updatetime FROM post WHERE category_id=$1;", categoryID)
+	row := c.db.QueryRow(`
+		SELECT user_id FROM xuser WHERE email=$1 AND password=$2;`,
+		email, password)
+	if err := row.Scan(
+		&lc.Token,
+	); err != nil {
+		log.Println("login", err)
+		return lc, errors.New("not valid")
+	}
+	return lc, nil
+}
+
+func getXuserByID(userID string) (user xuserAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	row := c.db.QueryRow(`
+		SELECT 
+		user_id, username, email, name, phone, 
+		gender, bio, credit, photo_url, 
+		language_id, country_id, 
+		timezone, last_ip, createtime, updatetime 
+		FROM xuser WHERE user_id=$1;`,
+		userID)
+	if err := row.Scan(
+		&user.UserID,
+		&user.Username,
+		&user.Email,
+		&user.Name,
+		&user.Phone,
+		&user.Gender,
+		&user.Bio,
+		&user.Credit,
+		&user.PhotoURL,
+		&user.LanguageID,
+		&user.CountryID,
+		&user.Timezone,
+		&user.LastIP,
+		&user.Createtime,
+		&user.Updatetime,
+	); err != nil {
+		// log.Println("getXuserByID", err)
+		return user, errors.New("user not found")
+	}
+	return user, nil
+}
+
+func getXuserByUsername(username string) (user xuserAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	row := c.db.QueryRow(`
+		SELECT 
+		user_id, username, email, name, phone, 
+		gender, bio, credit, photo_url, 
+		language_id, country_id, 
+		timezone, last_ip, createtime, updatetime 
+		FROM xuser WHERE username=$1;`,
+		username)
+	if err := row.Scan(
+		&user.UserID,
+		&user.Username,
+		&user.Email,
+		&user.Name,
+		&user.Phone,
+		&user.Gender,
+		&user.Bio,
+		&user.Credit,
+		&user.PhotoURL,
+		&user.LanguageID,
+		&user.CountryID,
+		&user.Timezone,
+		&user.LastIP,
+		&user.Createtime,
+		&user.Updatetime,
+	); err != nil {
+		// log.Println("getXuserByUsername", err)
+		return user, errors.New("user not found")
+	}
+	return user, nil
+}
+
+func getFollowingList(followerUserID string, valid bool, page int) (users []xuserFollowingAPI, err error) {
+	numPerRequest := 10
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	rows, err := c.db.Query(`
+		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
+		FROM follow 
+		FULL OUTER JOIN xuser ON follow.following_user_id = xuser.user_id
+		WHERE follow.follower_user_id=$1 AND follow.valid=$2 
+		ORDER BY follow.createtime DESC OFFSET $3 LIMIT $4;`,
+		followerUserID, valid, page*numPerRequest, numPerRequest)
+	if err != nil {
+		log.Println("getFollowing1", err)
+		return users, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		user := xuserFollowingAPI{}
+		if err := rows.Scan(
+			&user.UserID,
+			&user.UserName,
+			&user.Name,
+			&user.PhotoURL,
+			&user.FollowingTime,
+		); err != nil {
+			log.Println("err", err)
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("getFollowing2", err)
+		return users, err
+	}
+	return users, nil
+}
+
+func checkIsFollowing(followingUserID, followerUserID string) (fs followingStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	row := c.db.QueryRow(`
+		SELECT valid 
+		FROM follow 
+		WHERE following_user_id=$1 AND follower_user_id=$2;`,
+		followingUserID,
+		followerUserID)
+	if err := row.Scan(
+		&fs.Valid,
+	); err != nil {
+		// no rows in result set, then return not Valid = false and FollowingRequestPending = false
+		// log.Println("checkIsFollowing", err)
+		return fs, nil
+	}
+	// if there's result in sql query by following_user_id and follower_user_id
+	if fs.Valid == false {
+		fs.FollowingRequestPending = true
+	}
+	return fs, nil
+}
+
+func getPostsRecent(categoryID, page int) (posts []postDB) {
+	numPerRequest := 10
+	timestamp := int(time.Now().Unix()) - sevenDaysInSecond
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	rows, err := c.db.Query(`SELECT 
+		post_id, user_id, content, blob_id, country_id, 
+		category_id, public, type, createtime, updatetime 
+		FROM post 
+		WHERE category_id=$1 AND createtime>=$2 
+		ORDER BY createtime DESC OFFSET $3 LIMIT $4;`,
+		categoryID, timestamp, page*numPerRequest, numPerRequest)
 	if err != nil {
 		log.Println("getPost", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		post := postDB{}
+		if err := rows.Scan(
+			&post.PostID,
+			&post.UserID,
+			&post.Content,
+			&post.BlobID,
+			&post.CountryID,
+			&post.CategoryID,
+			&post.Public,
+			&post.Type,
+			&post.Createtime,
+			&post.Updatetime,
+		); err != nil {
+			log.Println("errrr", err)
+		}
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+	}
+	return posts
+}
+
+func getFollowingUsersPosts(categoryID, page int) (posts []postDB) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	rows, err := c.db.Query(`
+		SELECT post.* 
+		FROM post 
+		FULL OUTER JOIN follow ON follow.following_id=post.user_id 
+		ORDER BY post.createtime 
+		DESC OFFSET $ LIMIT $ 
+		WHERE follow.followed_by_id=$;`,
+		categoryID)
+	if err != nil {
+		// log.Println("getPostsFollowing", err)
+
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -79,59 +280,8 @@ func getPost(categoryID int) (posts []postDB) {
 	return posts
 }
 
-func getXuserByID(userID string) (user xuserDB) {
-	c := connectDB(postgresConStr, "PgSQL")
-	defer c.db.Close()
-	row := c.db.QueryRow("SELECT user_id, username, email, password, name, phone, gender, bio, credit, language_id, country_id, timezone, last_ip, createtime, updatetime FROM xuser WHERE user_id=$1;", userID)
-	if err := row.Scan(
-		&user.UserID,
-		&user.Username,
-		&user.Email,
-		&user.Password,
-		&user.Name,
-		&user.Phone,
-		&user.Gender,
-		&user.Bio,
-		&user.Credit,
-		&user.LanguageID,
-		&user.CountryID,
-		&user.Timezone,
-		&user.LastIP,
-		&user.Createtime,
-		&user.Updatetime,
-	); err != nil {
-		log.Println("getXuserByID", err)
-	}
-	return user
-}
-
-func getXuserByUsername(username string) (user xuserDB) {
-	c := connectDB(postgresConStr, "PgSQL")
-	defer c.db.Close()
-	row := c.db.QueryRow("SELECT user_id, username, email, password, name, phone, gender, bio, credit, language_id, country_id, timezone, last_ip, createtime, updatetime FROM xuser WHERE username=$1;", username)
-	if err := row.Scan(
-		&user.UserID,
-		&user.Username,
-		&user.Email,
-		&user.Password,
-		&user.Name,
-		&user.Phone,
-		&user.Gender,
-		&user.Bio,
-		&user.Credit,
-		&user.LanguageID,
-		&user.CountryID,
-		&user.Timezone,
-		&user.LastIP,
-		&user.Createtime,
-		&user.Updatetime,
-	); err != nil {
-		log.Println("getXuserByUsername", err)
-	}
-	return user
-}
-
 // mutation
+
 func postNow(post postDB) (postID string) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -150,6 +300,9 @@ func postNow(post postDB) (postID string) {
 		post.Createtime,
 		post.Updatetime,
 	).Scan(&postID)
+	// tag
+	// hashtag
+	// post_hashtag
 	log.Println(err)
 	return postID
 }
