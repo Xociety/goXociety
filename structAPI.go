@@ -29,8 +29,10 @@ type xuserFollowingAPI struct {
 	PhotoURL      string `json:"photo_url,omitempty"`
 	FollowingTime int    `json:"following_time,omitempty"`
 }
-
-type followingStatusAPI struct {
-	FollowingRequestPending bool `json:"following_request_pending,omitempty"`
-	Valid                   bool `json:"valid,omitempty"`
+type xuserFollowerAPI struct {
+	UserID        string `json:"user_id,omitempty"`
+	UserName      string `json:"user_name,omitempty"`
+	Name          string `json:"name,omitempty"`
+	PhotoURL      string `json:"photo_url,omitempty"`
+	FollowingTime int    `json:"following_time,omitempty"`
 }

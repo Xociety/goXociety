@@ -51,7 +51,7 @@ func checkSession(userToken string) (user xuserAPI, err error) {
 		&user.Createtime,
 		&user.Updatetime,
 	); err != nil {
-		log.Println("checkSession", err)
+		// log.Println("checkSession", err)
 		return user, err
 	}
 	return user, nil
@@ -141,7 +141,7 @@ func getXuserByUsername(username string) (user xuserAPI, err error) {
 	return user, nil
 }
 
-func getFollowingList(followerUserID string, valid bool, page int) (users []xuserFollowingAPI, err error) {
+func getFollowingList(followerUserID string, page int) (users []xuserFollowingAPI, err error) {
 	numPerRequest := 10
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -149,11 +149,11 @@ func getFollowingList(followerUserID string, valid bool, page int) (users []xuse
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
 		FULL OUTER JOIN xuser ON follow.following_user_id = xuser.user_id
-		WHERE follow.follower_user_id=$1 AND follow.valid=$2 
-		ORDER BY follow.createtime DESC OFFSET $3 LIMIT $4;`,
-		followerUserID, valid, page*numPerRequest, numPerRequest)
+		WHERE follow.follower_user_id=$1 AND follow.valid=true 
+		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;`,
+		followerUserID, page*numPerRequest, numPerRequest)
 	if err != nil {
-		log.Println("getFollowing1", err)
+		log.Println("getFollowingList1", err)
 		return users, err
 	}
 	defer rows.Close()
@@ -171,33 +171,46 @@ func getFollowingList(followerUserID string, valid bool, page int) (users []xuse
 		users = append(users, user)
 	}
 	if err := rows.Err(); err != nil {
-		log.Println("getFollowing2", err)
+		log.Println("getFollowingList2", err)
 		return users, err
 	}
 	return users, nil
 }
 
-func checkIsFollowing(followingUserID, followerUserID string) (fs followingStatusAPI, err error) {
+func getFollwerList(followerUserID string, page int) (users []xuserFollowerAPI, err error) {
+	numPerRequest := 10
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	row := c.db.QueryRow(`
-		SELECT valid 
+	rows, err := c.db.Query(`
+		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
-		WHERE following_user_id=$1 AND follower_user_id=$2;`,
-		followingUserID,
-		followerUserID)
-	if err := row.Scan(
-		&fs.Valid,
-	); err != nil {
-		// no rows in result set, then return not Valid = false and FollowingRequestPending = false
-		// log.Println("checkIsFollowing", err)
-		return fs, nil
+		FULL OUTER JOIN xuser ON follow.following_user_id = xuser.user_id
+		WHERE follow.following_user_id=$1 AND follow.valid=true 
+		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;`,
+		followerUserID, page*numPerRequest, numPerRequest)
+	if err != nil {
+		log.Println("getFollwerList1", err)
+		return users, err
 	}
-	// if there's result in sql query by following_user_id and follower_user_id
-	if fs.Valid == false {
-		fs.FollowingRequestPending = true
+	defer rows.Close()
+	for rows.Next() {
+		user := xuserFollowerAPI{}
+		if err := rows.Scan(
+			&user.UserID,
+			&user.UserName,
+			&user.Name,
+			&user.PhotoURL,
+			&user.FollowingTime,
+		); err != nil {
+			log.Println("err", err)
+		}
+		users = append(users, user)
 	}
-	return fs, nil
+	if err := rows.Err(); err != nil {
+		log.Println("getFollwerList2", err)
+		return users, err
+	}
+	return users, nil
 }
 
 func getPostsRecent(categoryID, page int) (posts []postDB) {

@@ -67,10 +67,11 @@ https://en.wikipedia.org/wiki/ISO_3166-1
 */
 ------------------------
 CREATE TABLE follow (
-    following_user_id bigint references xuser(user_id),
-    follower_user_id bigint references xuser(user_id),
-    valid boolean,
-    createtime integer
+    following_user_id bigint references xuser(user_id), -- a person whom you follow
+    follower_user_id bigint references xuser(user_id), -- a person who follows you
+    valid boolean, -- update by following_user
+    updatetime integer -- update by following_user
+    createtime integer -- create and delete by follower_user
     -- CONSTRAINT target UNIQUE (following_user_id, follower_user_id)
     -- CONSTRAINT self CHECK (followed_user_id <> follower_user_id) NOT VALID
 );

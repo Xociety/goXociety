@@ -44,36 +44,3 @@ type postDB struct {
 	Createtime int  `json:"createtime,omitempty"`
 	Updatetime int  `json:"updatetime,omitempty"`
 }
-
-type hashtagDB struct {
-	HashtagID string
-	Name      string
-}
-
-type postHashtagDB struct {
-	PostID    string
-	HashtagID string
-}
-
-type postLikesDB struct {
-	PostID     string
-	UserID     string
-	Type       int
-	Createtime int
-}
-
-type commentsDB struct {
-	CommentID  string
-	PostID     string
-	UserID     string
-	Comment    string
-	Createtime int
-	Updatetime int
-}
-
-type commentLikesDB struct {
-	CommentID  string
-	UserID     string
-	Type       int
-	Createtime int
-}

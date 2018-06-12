@@ -16,6 +16,7 @@ const (
 	serverPort   = 4000
 	graphqlRoute = "/graphql"
 	graphiql     = true
+	// numPerRequest := 10
 )
 
 // application
