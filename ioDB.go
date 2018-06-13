@@ -61,9 +61,8 @@ func checkSession(userToken string) (user xuserAPI, err error) {
 func login(email, password string) (lc loginAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	row := c.db.QueryRow(`
-		SELECT user_id FROM xuser WHERE email=$1 AND password=$2;`,
-		email, password)
+	sqlStr := `SELECT user_id FROM xuser WHERE email=$1 AND password=$2;`
+	row := c.db.QueryRow(sqlStr, email, password)
 	if err := row.Scan(
 		&lc.Token,
 	); err != nil {
@@ -76,14 +75,15 @@ func login(email, password string) (lc loginAPI, err error) {
 func getXuserByID(userID string) (user xuserAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	row := c.db.QueryRow(`
+	sqlStr := `
 		SELECT 
 		user_id, username, email, name, phone, 
 		gender, bio, credit, photo_url, 
 		language_id, country_id, 
 		timezone, last_ip, createtime, updatetime 
-		FROM xuser WHERE user_id=$1;`,
-		userID)
+		FROM xuser WHERE user_id=$1;
+	`
+	row := c.db.QueryRow(sqlStr, userID)
 	if err := row.Scan(
 		&user.UserID,
 		&user.Username,
@@ -110,14 +110,15 @@ func getXuserByID(userID string) (user xuserAPI, err error) {
 func getXuserByUsername(username string) (user xuserAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	row := c.db.QueryRow(`
+	sqlStr := `
 		SELECT 
 		user_id, username, email, name, phone, 
 		gender, bio, credit, photo_url, 
 		language_id, country_id, 
 		timezone, last_ip, createtime, updatetime 
-		FROM xuser WHERE username=$1;`,
-		username)
+		FROM xuser WHERE username=$1;
+	`
+	row := c.db.QueryRow(sqlStr, username)
 	if err := row.Scan(
 		&user.UserID,
 		&user.Username,
@@ -145,13 +146,14 @@ func getFollowingList(followerUserID string, page int) (users []xuserFollowingAP
 	numPerRequest := 10
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	rows, err := c.db.Query(`
+	sqlStr := `
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
 		FULL OUTER JOIN xuser ON follow.following_user_id = xuser.user_id
 		WHERE follow.follower_user_id=$1 AND follow.valid=true 
-		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;`,
-		followerUserID, page*numPerRequest, numPerRequest)
+		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
+	`
+	rows, err := c.db.Query(sqlStr, followerUserID, page*numPerRequest, numPerRequest)
 	if err != nil {
 		log.Println("getFollowingList1", err)
 		return users, err
@@ -181,13 +183,14 @@ func getFollwerList(followerUserID string, page int) (users []xuserFollowerAPI, 
 	numPerRequest := 10
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	rows, err := c.db.Query(`
+	sqlStr := `
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
 		FULL OUTER JOIN xuser ON follow.follower_user_id = xuser.user_id
 		WHERE follow.following_user_id=$1 AND follow.valid=true 
-		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;`,
-		followerUserID, page*numPerRequest, numPerRequest)
+		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
+	`
+	rows, err := c.db.Query(sqlStr, followerUserID, page*numPerRequest, numPerRequest)
 	if err != nil {
 		log.Println("getFollwerList1", err)
 		return users, err
@@ -213,33 +216,49 @@ func getFollwerList(followerUserID string, page int) (users []xuserFollowerAPI, 
 	return users, nil
 }
 
-func getPostsRecent(categoryID, page int) (posts []postDB) {
-	numPerRequest := 10
-	timestamp := int(time.Now().Unix()) - sevenDaysInSecond
+func checkIfFollowing(followingUserID, followerUserID string) (isFollowing bool, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	rows, err := c.db.Query(`SELECT 
-		post_id, user_id, content, blob_id, country_id, 
-		category_id, public, type, createtime, updatetime 
+	count := 0
+	sqlStr := `SELECT COUNT(*) FROM follow WHERE following_user_id=$1 AND follower_user_id=$2;`
+	err = c.db.QueryRow(sqlStr, followingUserID, followerUserID).Scan(&count)
+	if err != nil {
+		return count == 1, err
+	}
+	return count == 1, err
+}
+
+func getPostsRecent(categoryID, page int) (posts []postAPI) {
+	numPerRequest := 10
+	timestamp := int(time.Now().Unix()) - twoMonthsInSecond
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		post_id, user_id, content, blob_id, type, 
+		like_count, dislike_count, country_id, 
+		category_id, createtime, updatetime 
 		FROM post 
 		WHERE category_id=$1 AND createtime>=$2 
-		ORDER BY createtime DESC OFFSET $3 LIMIT $4;`,
-		categoryID, timestamp, page*numPerRequest, numPerRequest)
+		ORDER BY createtime DESC OFFSET $3 LIMIT $4;
+	`
+	rows, err := c.db.Query(sqlStr, categoryID, timestamp, page*numPerRequest, numPerRequest)
 	if err != nil {
-		log.Println("getPost", err)
+		log.Println("getPostsRecent", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		post := postDB{}
+		post := postAPI{}
 		if err := rows.Scan(
 			&post.PostID,
 			&post.UserID,
 			&post.Content,
 			&post.BlobID,
+			&post.Type,
+			&post.LikeCount,
+			&post.DislikeCount,
 			&post.CountryID,
 			&post.CategoryID,
-			&post.Public,
-			&post.Type,
 			&post.Createtime,
 			&post.Updatetime,
 		); err != nil {
@@ -253,32 +272,38 @@ func getPostsRecent(categoryID, page int) (posts []postDB) {
 	return posts
 }
 
-func getFollowingUsersPosts(categoryID, page int) (posts []postDB) {
+func getFollowingUsersPosts(userID string, page int) (posts []postAPI) { // not done yet
+	numPerRequest := 10
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	rows, err := c.db.Query(`
-		SELECT post.* 
+	sqlStr := `
+		SELECT 
+		post.post_id, post.user_id, post.content, post.blob_id, post.type, 
+		post.like_count, post.dislike_count, post.country_id, 
+		post.category_id, post.createtime, post.updatetime 
 		FROM post 
-		FULL OUTER JOIN follow ON follow.following_id=post.user_id 
-		ORDER BY post.createtime 
-		DESC OFFSET $ LIMIT $ 
-		WHERE follow.followed_by_id=$;`,
-		categoryID)
+		FULL OUTER JOIN follow ON follow.following_user_id = post.user_id
+		WHERE follow.follower_user_id= $1
+		ORDER BY post.createtime
+		DESC OFFSET $2 LIMIT $3;
+	`
+	rows, err := c.db.Query(sqlStr, userID, page*numPerRequest, numPerRequest)
 	if err != nil {
-		// log.Println("getPostsFollowing", err)
-
+		log.Println("getFollowingUsersPosts", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		post := postDB{}
+		post := postAPI{}
 		if err := rows.Scan(
 			&post.PostID,
 			&post.UserID,
 			&post.Content,
 			&post.BlobID,
+			&post.Type,
+			&post.LikeCount,
+			&post.DislikeCount,
 			&post.CountryID,
 			&post.CategoryID,
-			&post.Public,
 			&post.Createtime,
 			&post.Updatetime,
 		); err != nil {
@@ -294,16 +319,16 @@ func getFollowingUsersPosts(categoryID, page int) (posts []postDB) {
 }
 
 // mutation
-
 func follow(followingUserID, followerUserID string) (user xuserFollowingAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
 	timestamp := getNowUnixTimestamp()
-	err = c.db.QueryRow(`
+	sqlStr := `
 		INSERT INTO follow 
 		(following_user_id, follower_user_id, valid, createtime, updatetime) 
-		values($1,$2,$3,$4,$5) returning createtime;`,
-		followingUserID, followerUserID, true, timestamp, timestamp).Scan(&user.FollowingTime)
+		values($1,$2,$3,$4,$5) returning createtime;
+	`
+	err = c.db.QueryRow(sqlStr, followingUserID, followerUserID, true, timestamp, timestamp).Scan(&user.FollowingTime)
 	if err != nil {
 		return user, errors.New("you've followed this user")
 	}
@@ -313,9 +338,11 @@ func follow(followingUserID, followerUserID string) (user xuserFollowingAPI, err
 func unfollow(followingUserID, followerUserID string) (ds deleteStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	res, err := c.db.Exec(`
+	sqlStr := `
 		DELETE FROM follow 
-		WHERE following_user_id=$1 AND follower_user_id=$2;`,
+		WHERE following_user_id=$1 AND follower_user_id=$2;
+	`
+	res, err := c.db.Exec(sqlStr,
 		followingUserID, followerUserID)
 	if err != nil {
 		return ds, err
@@ -331,18 +358,25 @@ func unfollow(followingUserID, followerUserID string) (ds deleteStatusAPI, err e
 func postNow(post postDB) (postID string) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
-	err := c.db.QueryRow(`
+	sqlStr := `
 		INSERT INTO post 
-		(user_id, content, blob_id, country_id, category_id, public, type, createtime, updatetime) 
-		VALUES 
-		($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING post_id;`,
+		(
+			user_id, content, blob_id, type, 
+			like_count, dislike_count,
+			country_id, category_id, public, createtime, updatetime
+		) VALUES 
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING post_id;
+	`
+	err := c.db.QueryRow(sqlStr,
 		post.UserID,
 		post.Content,
 		post.BlobID,
+		post.Type,
+		0,
+		0,
 		post.CountryID,
 		post.CategoryID,
 		post.Public,
-		post.Type,
 		post.Createtime,
 		post.Updatetime,
 	).Scan(&postID)

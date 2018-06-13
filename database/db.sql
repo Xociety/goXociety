@@ -82,7 +82,6 @@ CREATE TABLE post_type (
     name VARCHAR(10)
 );
 COPY post_type(post_type_id, name) FROM '/var/lib/postgresql/data/post_type.csv' DELIMITER ';' CSV HEADER;
--- INSERT INTO post_type (post_type_id, name) VALUES (0, 'image'), (1, 'video');
 ------------------------
 CREATE TABLE post (
     post_id BIGSERIAL PRIMARY KEY     NOT NULL,
@@ -91,12 +90,16 @@ CREATE TABLE post (
     blob_id VARCHAR(200), -- may be foldername
     -- notice: multiple images, videos
     type integer references post_type(post_type_id),
+    like_count bigint,
+    dislike_count bigint,
     point point,
     country_id integer references country(country_id),
     category_id integer,
     public boolean,
     createtime integer, -- timestamp without time zone, unix time || *index
     updatetime integer
+    -- constraint like_count (check (like_count >= 0))
+    -- constraint dislike_count (check (dislike_count >= 0))
 );
 --  maximum 30 hashtag
 ------------------------
@@ -123,9 +126,9 @@ CREATE TABLE post_tag_xuser (
 );
 ------------------------
 INSERT INTO post 
-(user_id, content, blob_id, type, point, country_id, category_id, public, createtime, updatetime) 
+(user_id, content, blob_id, type, like_count, dislike_count, point, country_id, category_id, public, createtime, updatetime) 
 VALUES 
-(4, 'hello world #happy @jeff', 'sha256 hashed id', 0, point('121.5643,25.0336'), 206, 0, true, 1527498044, 1527498044);
+(4, 'hello world #happy @jeff', 'sha256 hashed id', 0, 0, 0, point('121.5643,25.0336'), 206, 0, true, 1527498044, 1527498044);
 -- UPDATE post SET content='hello world #happy @jeff', blob_id='sha256 hashed id' WHERE post_id = 1;
 INSERT INTO hashtag 
 (name) 
@@ -142,6 +145,7 @@ CREATE TABLE post_actions (
     user_id bigint references xuser(user_id),
     act integer reference actions(action_id), -- 0: like, 1: dislike
     createtime integer
+    -- CONSTRAINT post_target UNIQUE (post_id, user_id)
 );
 INSERT INTO post_actions 
 (post_id, user_id, act, createtime) 
@@ -155,6 +159,7 @@ CREATE TABLE comments (
     createtime integer,
     updatetime integer
     -- constraint like_count (check (like_count >= 0))
+    -- constraint dislike_count (check (dislike_count >= 0))
 );
 ------------------------
 CREATE TABLE comment_actions (
@@ -183,10 +188,12 @@ TABLE comments_deep (
     comment_id bigint references comments(comment_id),
     user_id bigint references xuser(user_id),
     comment VARCHAR(300),
-    like_count integer,
-    dislike_count integer,
+    like_count bigint,
+    dislike_count bigint,
     createtime integer,
     updatetime integer
+    -- constraint like_count (check (like_count >= 0))
+    -- constraint dislike_count (check (dislike_count >= 0))
 );
 -- maximum taged user number: 5
 ------------------------

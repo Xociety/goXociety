@@ -32,15 +32,17 @@ type xuserDB struct {
 }
 
 type postDB struct {
-	PostID  string `json:"post_id,omitempty"`
-	UserID  string `json:"user_id,omitempty"`
-	Content string `json:"content,omitempty"`
-	BlobID  string `json:"blob_id,omitempty"`
+	PostID       string
+	UserID       string
+	Content      string
+	BlobID       string
+	Type         int
+	LikeCount    string
+	DislikeCount string
 	// Point
-	CountryID  int  `json:"country_id,omitempty"`
-	CategoryID int  `json:"category_id,omitempty"`
-	Public     bool `json:"public,omitempty"`
-	Type       int  `json:"type,omitempty"`
-	Createtime int  `json:"createtime,omitempty"`
-	Updatetime int  `json:"updatetime,omitempty"`
+	CountryID  int
+	CategoryID int
+	Public     bool
+	Createtime int
+	Updatetime int
 }

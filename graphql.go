@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"strconv"
 	"time"
@@ -105,20 +102,64 @@ var postGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Posts",
 		Fields: graphql.Fields{
-			"post_id":     &graphql.Field{Type: graphql.String},
-			"user_id":     &graphql.Field{Type: graphql.String},
-			"content":     &graphql.Field{Type: graphql.String},
-			"blob_id":     &graphql.Field{Type: graphql.String},
-			"country_id":  &graphql.Field{Type: graphql.Int},
-			"category_id": &graphql.Field{Type: graphql.Int},
-			"public":      &graphql.Field{Type: graphql.Boolean},
-			"type":        &graphql.Field{Type: graphql.Int, Description: "0: image, 1: video"}, // config
-			"createtime":  &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
-			"updatetime":  &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			"post_id":       &graphql.Field{Type: graphql.String},
+			"user_id":       &graphql.Field{Type: graphql.String},
+			"content":       &graphql.Field{Type: graphql.String},
+			"blob_id":       &graphql.Field{Type: graphql.String},
+			"type":          &graphql.Field{Type: graphql.Int, Description: "media type"},
+			"like_count":    &graphql.Field{Type: graphql.String},
+			"dislike_count": &graphql.Field{Type: graphql.String},
+			"country_id":    &graphql.Field{Type: graphql.Int},
+			"category_id":   &graphql.Field{Type: graphql.Int},
+			"createtime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			"updatetime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 		},
 	},
 )
 var postsGraphqlType = graphql.NewList(postGraphqlType)
+
+// funcs
+func postInputCheck(p graphql.ResolveParams) (post postDB, err error) {
+	content, isOK := p.Args["content"].(string)
+	if !isOK {
+		return post, errors.New("content err")
+	}
+	countryID, isOK := p.Args["country_id"].(int)
+	if !isOK {
+		return post, errors.New("country_id err")
+	}
+	categoryID, isOK := p.Args["category_id"].(int)
+	if !isOK {
+		return post, errors.New("category_id err")
+	}
+	public, isOK := p.Args["public"].(bool)
+	if !isOK {
+		return post, errors.New("public err")
+	}
+	Type, isOK := p.Args["type"].(int)
+	if !isOK {
+		return post, errors.New("public err")
+	}
+	timestamp := getNowUnixTimestamp()
+	post.Content = content
+	post.BlobID = post.UserID + "_" + strconv.Itoa(timestamp)
+	// Point
+	post.CountryID = countryID
+	post.CategoryID = categoryID
+	post.Public = public
+	post.Type = Type
+	post.Createtime = timestamp
+	post.Updatetime = timestamp
+	return post, nil
+}
+
+// schema
+var graphqlSchema, _ = graphql.NewSchema(
+	graphql.SchemaConfig{
+		Query:    graphqlQueryType,
+		Mutation: graphqlMutationType,
+	},
+)
 
 var graphqlQueryType = graphql.NewObject(
 	graphql.ObjectConfig{
@@ -151,7 +192,7 @@ var graphqlQueryType = graphql.NewObject(
 					}
 					return lc, nil
 				},
-				Description: "login",
+				Description: "",
 			},
 			"xuser_by_user_id": &graphql.Field{
 				Type: xuserGraphqlType,
@@ -169,7 +210,7 @@ var graphqlQueryType = graphql.NewObject(
 					user, err := getXuserByID(userID)
 					return user, err
 				},
-				Description: "get xuser",
+				Description: "",
 			},
 			"xuser_by_username": &graphql.Field{
 				Type: xuserGraphqlType,
@@ -187,7 +228,7 @@ var graphqlQueryType = graphql.NewObject(
 					user, err := getXuserByUsername(username)
 					return user, err
 				},
-				Description: "get xuser",
+				Description: "",
 			},
 			"following_list": &graphql.Field{
 				Type: xusersFollowingGraphqlType,
@@ -213,7 +254,7 @@ var graphqlQueryType = graphql.NewObject(
 					users, err := getFollowingList(user.UserID, page)
 					return users, err
 				},
-				Description: "get following xuser list",
+				Description: "",
 			},
 			"follower_list": &graphql.Field{
 				Type: xusersFollowerGraphqlType,
@@ -239,33 +280,59 @@ var graphqlQueryType = graphql.NewObject(
 					users, err := getFollwerList(user.UserID, page)
 					return users, err
 				},
-				Description: "get follower xuser list",
+				Description: "",
+			},
+			"is_following": &graphql.Field{
+				Type: graphql.Boolean,
+				Args: graphql.FieldConfigArgument{
+					"user_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "user_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					userID, isOK := p.Args["user_id"].(string)
+					if !isOK {
+						return nil, errors.New("user_id format")
+					}
+					userToken, isOK := p.Context.Value(contextUserToken).(string)
+					if !isOK {
+						return nil, errors.New("user-token format")
+					}
+					user, err := checkSession(userToken)
+					if err != nil {
+						return nil, errors.New("user-token invalid")
+					}
+					isFollowing, err := checkIfFollowing(userID, user.UserID)
+					return isFollowing, err
+				},
+				Description: "",
 			},
 			"posts_following": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
-					"category_id": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "category_id",
-					},
 					"page": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
 						Description: "page",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					categoryID, isOK := p.Args["category_id"].(int)
-					if !isOK {
-						return nil, nil
-					}
 					page, isOK := p.Args["page"].(int)
 					if !isOK {
 						return nil, nil
 					}
-					posts := getFollowingUsersPosts(categoryID, page)
+					userToken, isOK := p.Context.Value(contextUserToken).(string)
+					if !isOK {
+						return nil, errors.New("user-token format")
+					}
+					user, err := checkSession(userToken)
+					if err != nil {
+						return nil, errors.New("user-token invalid")
+					}
+					posts := getFollowingUsersPosts(user.UserID, page)
 					return posts, nil
 				},
-				Description: "posts",
+				Description: "",
 			},
 			"posts_recent": &graphql.Field{
 				Type: postsGraphqlType,
@@ -291,7 +358,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts := getPostsRecent(categoryID, page)
 					return posts, nil
 				},
-				Description: "posts_recent",
+				Description: "",
 			},
 		},
 	})
@@ -323,7 +390,7 @@ var graphqlMutationType = graphql.NewObject(
 					userFollowing, err := follow(userID, user.UserID)
 					return userFollowing, err
 				},
-				Description: "follow xuser",
+				Description: "",
 			},
 			"unfollow": &graphql.Field{
 				Type: deleteStatusGraphqlType,
@@ -349,7 +416,7 @@ var graphqlMutationType = graphql.NewObject(
 					ds, err := unfollow(userID, user.UserID)
 					return ds, err
 				},
-				Description: "unfollow xuser",
+				Description: "",
 			},
 			"post_now": &graphql.Field{
 				Type: postGraphqlType,
@@ -376,7 +443,7 @@ var graphqlMutationType = graphql.NewObject(
 					},
 					"type": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
-						Description: "0: image, 1: video",
+						Description: "media type",
 					},
 					"file": &graphql.ArgumentConfig{
 						Type:        graphql.String,
@@ -412,69 +479,13 @@ var graphqlMutationType = graphql.NewObject(
 					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
 					return post, nil
 				},
-				Description: "post",
+				Description: "",
 				DeprecationReason: `please use form-data to upload file, form-data key:
-					query: mutation{post(...:...){post_id}}
-					file: tar.gz file, 
-					. not finished yet
-				`,
+						query: mutation{post(...:...){post_id}}
+						file: tar.gz file,
+						. not finished yet
+					`,
 			},
 		},
 	},
 )
-
-func postInputCheck(p graphql.ResolveParams) (post postDB, err error) {
-	content, isOK := p.Args["content"].(string)
-	if !isOK {
-		return post, errors.New("content err")
-	}
-	countryID, isOK := p.Args["country_id"].(int)
-	if !isOK {
-		return post, errors.New("country_id err")
-	}
-	categoryID, isOK := p.Args["category_id"].(int)
-	if !isOK {
-		return post, errors.New("category_id err")
-	}
-	public, isOK := p.Args["public"].(bool)
-	if !isOK {
-		return post, errors.New("public err")
-	}
-	Type, isOK := p.Args["type"].(int)
-	if !isOK {
-		return post, errors.New("public err")
-	}
-	timestamp := getNowUnixTimestamp()
-	post.Content = content
-	post.BlobID = post.UserID + "_" + strconv.Itoa(timestamp)
-	// Point
-	post.CountryID = countryID
-	post.CategoryID = categoryID
-	post.Public = public
-	post.Type = Type
-	post.Createtime = timestamp
-	post.Updatetime = timestamp
-	return post, nil
-}
-
-var graphqlSchema, _ = graphql.NewSchema(
-	graphql.SchemaConfig{
-		Query:    graphqlQueryType,
-		Mutation: graphqlMutationType,
-	},
-)
-
-func importJSONDataFromGraphqlFile(fileName string, result interface{}) (isOK bool) {
-	isOK = true
-	content, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		fmt.Print("Error:", err)
-		isOK = false
-	}
-	err = json.Unmarshal(content, result)
-	if err != nil {
-		isOK = false
-		fmt.Print("Error:", err)
-	}
-	return
-}

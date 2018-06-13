@@ -21,6 +21,11 @@
 
 <!-- `go get github.com/mholt/archiver` -->
 
+## config
+
+actions.csv, post_type.csv
+
+
 ## start this repo
 
 `go build; ./goXociety`

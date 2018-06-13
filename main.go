@@ -19,10 +19,16 @@ const (
 )
 
 // application
-const sixHoursInSecond = 6 * 3600
-const twelveHoursInSecond = 12 * 3600
-const twentyFourHoursInSecond = 24 * 3600
-const sevenDaysInSecond = 7 * 24 * 3600
+const (
+	sixHoursInSecond        = 6 * 3600
+	twelveHoursInSecond     = 12 * 3600
+	twentyFourHoursInSecond = 24 * 3600
+	sevenDaysInSecond       = 7 * 24 * 3600
+	twoMonthsInSecond       = 2 * 30 * 24 * 3600
+)
+
+var postTypeMapID2Type = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
+var postTypeMapType2ID = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
 
 // Postgres
 const postgresConStr = "host=localhost port=31160 user=postgres password=mysecretpassword sslmode=disable"
@@ -36,17 +42,16 @@ const clientAuthGCPFilePath = "./keyfileGCP.json"
 var clientOptionGoogleAPI option.ClientOption
 
 const (
-	// bucketRootCloudStorage = "storage.1mthechildbride.com"
-	bucketRootCloudStorage = "storagejp.1mthechildbride.com"
-	// bucketRootCloudStorage   = "storagetw.1mthechildbride.com"
-	// bucketRootCloudStorage   = "storageasia.1mthechildbride.com"
+	bucketRootCloudStorage   = "storage.1mthechildbride.com" // "storagejp.1mthechildbride.com", "storagetw.1mthechildbride.com", "storageasia.1mthechildbride.com"
 	bucketImagesCloudStorage = "images"
 	bucketVideosCloudStorage = "videos"
 )
 
 const (
-	postImageDefaultName = "origin.jpg"
-	postVideoDefaultName = "video.m3u8"
+	mediaFormatJPG  = "jpg"
+	mediaFormatHLS  = "hls"
+	mediaFormatM3U8 = "m3u8"
+	mediaFormatTS   = "ts"
 )
 
 func init() {
@@ -60,11 +65,10 @@ func init() {
 	}
 	// cloud storage
 	clientOptionGoogleAPI = option.WithServiceAccountFile(clientAuthGCPFilePath)
+	// config
+	loadPostTypeFromFConfig("./database/post_type.csv")
 }
 
 func main() {
-	// err := startInsertXuserfaker()
-	// fmt.Println("finished", err)
-
 	startServer()
 }

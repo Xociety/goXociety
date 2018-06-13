@@ -44,3 +44,20 @@ type xuserFollowerAPI struct {
 	PhotoURL      string `json:"photo_url,omitempty"`
 	FollowingTime int    `json:"following_time,omitempty"`
 }
+
+// post
+type postAPI struct {
+	PostID       string `json:"post_id,omitempty"`
+	UserID       string `json:"user_id,omitempty"`
+	Content      string `json:"content,omitempty"`
+	BlobID       string `json:"blob_id,omitempty"`
+	Type         int    `json:"type,omitempty"`
+	LikeCount    string `json:"like_count,omitempty"`
+	DislikeCount string `json:"dislike_count,omitempty"`
+	// Point
+	CountryID  int  `json:"country_id,omitempty"`
+	CategoryID int  `json:"category_id,omitempty"`
+	Public     bool `json:"public,omitempty"`
+	Createtime int  `json:"createtime,omitempty"`
+	Updatetime int  `json:"updatetime,omitempty"`
+}
