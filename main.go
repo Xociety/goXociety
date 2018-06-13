@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
 	"io/ioutil"
@@ -64,7 +63,6 @@ func init() {
 }
 
 func main() {
-	fmt.Println("hello xcociety")
 	// err := startInsertXuserfaker()
 	// fmt.Println("finished", err)
 

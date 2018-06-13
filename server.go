@@ -38,7 +38,7 @@ func startServer() {
 			if file, _, err := r.FormFile(fileFormDataBodyKey); err == nil {
 				reqCtx = context.WithValue(reqCtx, contextKeyFile, file)
 			}
-			inner.ServeHTTP(w, r.WithContext(reqCtx)) // r.WithContext(fileCtx))
+			inner.ServeHTTP(w, r.WithContext(reqCtx))
 		})
 	}(handler.New(&handler.Config{
 		Schema:   &graphqlSchema,
@@ -55,5 +55,6 @@ func startServer() {
 		WriteTimeout:   5 * time.Minute,
 		MaxHeaderBytes: 1 << 20,
 	}
+	log.Println("xcociety graphql api server port:" + strconv.Itoa(serverPort))
 	log.Fatal(server.ListenAndServe())
 }

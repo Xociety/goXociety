@@ -1,9 +1,16 @@
 package main
 
+// common
+type deleteStatusAPI struct {
+	RowsAffected int `json:"rows_affected,omitempty"`
+}
+
+// login
 type loginAPI struct {
 	Token string `json:"token,omitempty"`
 }
 
+// user
 type xuserAPI struct {
 	UserID     string `json:"user_id,omitempty"`
 	Username   string `json:"username,omitempty"`
@@ -22,6 +29,7 @@ type xuserAPI struct {
 	Createtime int    `json:"createtime,omitempty"`
 }
 
+// follow
 type xuserFollowingAPI struct {
 	UserID        string `json:"user_id,omitempty"`
 	UserName      string `json:"user_name,omitempty"`

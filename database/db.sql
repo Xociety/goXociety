@@ -197,11 +197,11 @@ TABLE comments_deep_actions (
     createtime integer
 );
 ------------------------
-TABLE block (
-    user_id BIGSERIAL references xuser(user_id),
-    blocked_user_id BIGSERIAL references xuser(user_id),
-    createtime integer
-);
+-- TABLE block ( -- this should be implement in follow valid field
+--     user_id BIGSERIAL references xuser(user_id),
+--     blocked_user_id BIGSERIAL references xuser(user_id),
+--     createtime integer
+-- );
 ------------------------
 TABLE report (
     user_id

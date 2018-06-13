@@ -13,6 +13,19 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
+// graphql type
+
+// common
+var deleteStatusGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "delete_status",
+		Fields: graphql.Fields{
+			"rows_affected": &graphql.Field{Type: graphql.Int},
+		},
+	},
+)
+
+// login
 var loginGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "login",
@@ -22,6 +35,7 @@ var loginGraphqlType = graphql.NewObject(
 	},
 )
 
+// user
 var xuserGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "XUser",
@@ -46,6 +60,7 @@ var xuserGraphqlType = graphql.NewObject(
 )
 var xusersGraphqlType = graphql.NewList(xuserGraphqlType)
 
+// following
 var xuserFollowingGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "following_user",
@@ -59,6 +74,8 @@ var xuserFollowingGraphqlType = graphql.NewObject(
 	},
 )
 var xusersFollowingGraphqlType = graphql.NewList(xuserFollowingGraphqlType)
+
+// follower
 var xuserFollowerGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "follower_user",
@@ -73,6 +90,17 @@ var xuserFollowerGraphqlType = graphql.NewObject(
 )
 var xusersFollowerGraphqlType = graphql.NewList(xuserFollowerGraphqlType)
 
+var followingGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "following",
+		Fields: graphql.Fields{
+			"user_id":        &graphql.Field{Type: graphql.String},
+			"following_time": &graphql.Field{Type: graphql.Int},
+		},
+	},
+)
+
+// post
 var postGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Posts",
@@ -271,6 +299,58 @@ var graphqlMutationType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Mutation",
 		Fields: graphql.Fields{
+			"follow": &graphql.Field{
+				Type: followingGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"user_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "user_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					userID, isOK := p.Args["user_id"].(string)
+					if !isOK {
+						return nil, errors.New("user_id format")
+					}
+					userToken, isOK := p.Context.Value(contextUserToken).(string)
+					if !isOK {
+						return nil, errors.New("user-token format")
+					}
+					user, err := checkSession(userToken)
+					if err != nil {
+						return nil, errors.New("user-token invalid")
+					}
+					userFollowing, err := follow(userID, user.UserID)
+					return userFollowing, err
+				},
+				Description: "follow xuser",
+			},
+			"unfollow": &graphql.Field{
+				Type: deleteStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"user_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "user_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					userID, isOK := p.Args["user_id"].(string)
+					if !isOK {
+						return nil, errors.New("user_id format")
+					}
+					userToken, isOK := p.Context.Value(contextUserToken).(string)
+					if !isOK {
+						return nil, errors.New("user-token format")
+					}
+					user, err := checkSession(userToken)
+					if err != nil {
+						return nil, errors.New("user-token invalid")
+					}
+					ds, err := unfollow(userID, user.UserID)
+					return ds, err
+				},
+				Description: "unfollow xuser",
+			},
 			"post_now": &graphql.Field{
 				Type: postGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -325,13 +405,12 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					// size check
 					err = untarFileAndUpload(post, file)
-					// log.Println(err)
 					if err != nil {
 						return nil, err
 					}
 					post.PostID = postNow(post)
 					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
-					return postDB{}, nil
+					return post, nil
 				},
 				Description: "post",
 				DeprecationReason: `please use form-data to upload file, form-data key:
@@ -365,7 +444,7 @@ func postInputCheck(p graphql.ResolveParams) (post postDB, err error) {
 	if !isOK {
 		return post, errors.New("public err")
 	}
-	timestamp := int(time.Now().Unix())
+	timestamp := getNowUnixTimestamp()
 	post.Content = content
 	post.BlobID = post.UserID + "_" + strconv.Itoa(timestamp)
 	// Point

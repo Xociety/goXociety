@@ -10,9 +10,14 @@ import (
 	"io"
 	"log"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/storage"
 )
+
+func getNowUnixTimestamp() int {
+	return int(time.Now().Unix())
+}
 
 func getSHA256Hash(input []byte) string {
 	h := sha256.New()

@@ -184,7 +184,7 @@ func getFollwerList(followerUserID string, page int) (users []xuserFollowerAPI, 
 	rows, err := c.db.Query(`
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
-		FULL OUTER JOIN xuser ON follow.following_user_id = xuser.user_id
+		FULL OUTER JOIN xuser ON follow.follower_user_id = xuser.user_id
 		WHERE follow.following_user_id=$1 AND follow.valid=true 
 		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;`,
 		followerUserID, page*numPerRequest, numPerRequest)
@@ -295,6 +295,39 @@ func getFollowingUsersPosts(categoryID, page int) (posts []postDB) {
 
 // mutation
 
+func follow(followingUserID, followerUserID string) (user xuserFollowingAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	timestamp := getNowUnixTimestamp()
+	err = c.db.QueryRow(`
+		INSERT INTO follow 
+		(following_user_id, follower_user_id, valid, createtime, updatetime) 
+		values($1,$2,$3,$4,$5) returning createtime;`,
+		followingUserID, followerUserID, true, timestamp, timestamp).Scan(&user.FollowingTime)
+	if err != nil {
+		return user, errors.New("you've followed this user")
+	}
+	return user, nil
+}
+
+func unfollow(followingUserID, followerUserID string) (ds deleteStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	res, err := c.db.Exec(`
+		DELETE FROM follow 
+		WHERE following_user_id=$1 AND follower_user_id=$2;`,
+		followingUserID, followerUserID)
+	if err != nil {
+		return ds, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return ds, err
+	}
+	ds.RowsAffected = int(count)
+	return ds, nil
+}
+
 func postNow(post postDB) (postID string) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -316,6 +349,8 @@ func postNow(post postDB) (postID string) {
 	// tag
 	// hashtag
 	// post_hashtag
-	log.Println(err)
+	if err != nil {
+		log.Println(err)
+	}
 	return postID
 }
