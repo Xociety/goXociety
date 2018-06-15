@@ -31,7 +31,7 @@ var postTypeMapID2Type = make(map[int]string) // example: [0: "jpg", 1: "hls" ..
 var postTypeMapType2ID = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
 
 // Postgres
-const postgresConStr = "host=localhost port=31160 user=postgres password=mysecretpassword sslmode=disable"
+const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
 
 // GCP
 var clientAuthGCP clientAuthFromServiceAccountFileGCP

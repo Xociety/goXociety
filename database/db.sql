@@ -92,6 +92,7 @@ CREATE TABLE post (
     type integer references post_type(post_type_id),
     like_count bigint,
     dislike_count bigint,
+    comment_count bigint,
     point point,
     country_id integer references country(country_id),
     category_id integer,
@@ -100,6 +101,7 @@ CREATE TABLE post (
     updatetime integer
     -- constraint like_count (check (like_count >= 0))
     -- constraint dislike_count (check (dislike_count >= 0))
+    -- constraint comment_count (check (dislike_count >= 0))
 );
 --  maximum 30 hashtag
 ------------------------
@@ -156,10 +158,14 @@ CREATE TABLE comments (
     post_id bigint references post(post_id),
     user_id bigint references xuser(user_id),
     comment VARCHAR(300),
+    like_count bigint,
+    dislike_count bigint,
+    comment_count bigint,
     createtime integer,
     updatetime integer
     -- constraint like_count (check (like_count >= 0))
     -- constraint dislike_count (check (dislike_count >= 0))
+    -- constraint comment_count (check (comment_count >= 0))
 );
 ------------------------
 CREATE TABLE comment_actions (

@@ -13,7 +13,7 @@ type language struct {
 }
 
 type xuserDB struct {
-	UserID     string
+	UserID     int64
 	Username   string
 	Email      string
 	Password   string
@@ -32,13 +32,14 @@ type xuserDB struct {
 }
 
 type postDB struct {
-	PostID       string
-	UserID       string
+	PostID       int64
+	UserID       int64
 	Content      string
 	BlobID       string
 	Type         int
-	LikeCount    string
-	DislikeCount string
+	LikeCount    int64
+	DislikeCount int64
+	CommentCount int64
 	// Point
 	CountryID  int
 	CategoryID int

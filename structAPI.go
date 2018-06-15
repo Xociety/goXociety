@@ -12,7 +12,7 @@ type loginAPI struct {
 
 // user
 type xuserAPI struct {
-	UserID     string `json:"user_id,omitempty"`
+	UserID     int64  `json:"user_id,omitempty"`
 	Username   string `json:"username,omitempty"`
 	Email      string `json:"email,omitempty"`
 	Name       string `json:"name,omitempty"`
@@ -31,14 +31,14 @@ type xuserAPI struct {
 
 // follow
 type xuserFollowingAPI struct {
-	UserID        string `json:"user_id,omitempty"`
+	UserID        int64  `json:"user_id,omitempty"`
 	UserName      string `json:"user_name,omitempty"`
 	Name          string `json:"name,omitempty"`
 	PhotoURL      string `json:"photo_url,omitempty"`
 	FollowingTime int    `json:"following_time,omitempty"`
 }
 type xuserFollowerAPI struct {
-	UserID        string `json:"user_id,omitempty"`
+	UserID        int64  `json:"user_id,omitempty"`
 	UserName      string `json:"user_name,omitempty"`
 	Name          string `json:"name,omitempty"`
 	PhotoURL      string `json:"photo_url,omitempty"`
@@ -47,17 +47,36 @@ type xuserFollowerAPI struct {
 
 // post
 type postAPI struct {
-	PostID       string `json:"post_id,omitempty"`
-	UserID       string `json:"user_id,omitempty"`
+	PostID       int64  `json:"post_id,omitempty"`
+	UserID       int64  `json:"user_id,omitempty"`
+	Username     string `json:"username,omitempty"`
+	Name         string `json:"name,omitempty"`
 	Content      string `json:"content,omitempty"`
 	BlobID       string `json:"blob_id,omitempty"`
 	Type         int    `json:"type,omitempty"`
-	LikeCount    string `json:"like_count,omitempty"`
-	DislikeCount string `json:"dislike_count,omitempty"`
+	LikeCount    int64  `json:"like_count,omitempty"`
+	DislikeCount int64  `json:"dislike_count,omitempty"`
+	CommentCount int64  `json:"comment_count,omitempty"`
 	// Point
 	CountryID  int  `json:"country_id,omitempty"`
 	CategoryID int  `json:"category_id,omitempty"`
 	Public     bool `json:"public,omitempty"`
 	Createtime int  `json:"createtime,omitempty"`
 	Updatetime int  `json:"updatetime,omitempty"`
+}
+
+// comment
+
+type commentAPI struct {
+	CommentID    int64  `json:"comment_id,omitempty"`
+	PostID       int64  `json:"post_id,omitempty"`
+	UserID       int64  `json:"user_id,omitempty"`
+	Username     string `json:"username,omitempty"`
+	Name         string `json:"name,omitempty"`
+	Comment      string `json:"comment,omitempty"`
+	LikeCount    int64  `json:"like_count,omitempty"`
+	DislikeCount int64  `json:"dislike_count,omitempty"`
+	CommentCount int64  `json:"comment_count,omitempty"`
+	Createtime   int    `json:"createtime,omitempty"`
+	Updatetime   int    `json:"updatetime,omitempty"`
 }
