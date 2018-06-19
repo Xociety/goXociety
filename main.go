@@ -18,6 +18,14 @@ const (
 	// numPerRequest := 10
 )
 
+// api
+var (
+	countryConfigAPI  []countryAPI
+	languageConfigAPI []languageAPI
+	genderConfigAPI   []genderAPI
+	actionsConfigAPI  []actionsAPI
+)
+
 // application
 const (
 	sixHoursInSecond        = 6 * 3600
@@ -27,11 +35,18 @@ const (
 	twoMonthsInSecond       = 2 * 30 * 24 * 3600
 )
 
+type forwardLookupMap map[int]string
+type reverseLookupMap map[string]int
+
 var (
-	postTypeMapID2Type    = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
-	postTypeMapType2ID    = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
-	actionsTypeMapID2Type = make(map[int]string) // example: [0: "like", 1: "dislike"]
-	actionsTypeMapType2ID = make(map[string]int) // example: ["like": 0, "dislike": 1]
+	postTypeMapID2Type                 = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
+	postTypeMapType2ID                 = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
+	actionsTypeMapID2Description       = make(map[int]string) // example: [0: "like", 1: "dislike"]
+	countryTypeMapID2Country           = make(map[int]string) // example: [0: "Afghanistan"]
+	countryTypeMapID2CountryCode       = make(map[int]string) // example: [0: "af"]
+	languageTypeMapID2DisplayLanguage  = make(map[int]string) // example: [0: "Afrikaans"]
+	languageTypeMapID2HlParameterValue = make(map[int]string) // example: [0: "af"]
+	genderTypeMapID2Description        = make(map[int]string) // example: [0: "not known"]
 )
 
 // Postgres
@@ -59,6 +74,7 @@ const (
 )
 
 func init() {
+
 	// GCP
 	if file, err := ioutil.ReadFile(clientAuthGCPFilePath); err != nil {
 		log.Panicln("gcp auth file miss", err)
@@ -69,9 +85,47 @@ func init() {
 	}
 	// cloud storage
 	clientOptionGoogleAPI = option.WithServiceAccountFile(clientAuthGCPFilePath)
+
 	// config
-	loadPostTypeFromFConfig("./database/post_type.csv")
-	loadActionsTypeFromFConfig("./database/actions.csv")
+	loadConfigFromFile("./database/country.csv", 0, 1, 3, false, countryTypeMapID2Country, nil)
+	loadConfigFromFile("./database/country.csv", 0, 2, 3, false, countryTypeMapID2CountryCode, nil)
+	loadConfigFromFile("./database/language.csv", 0, 1, 3, false, languageTypeMapID2DisplayLanguage, nil)
+	loadConfigFromFile("./database/language.csv", 0, 2, 3, false, languageTypeMapID2HlParameterValue, nil)
+	loadConfigFromFile("./database/gender.csv", 0, 1, 2, false, genderTypeMapID2Description, nil)
+	loadConfigFromFile("./database/actions.csv", 0, 1, 2, false, actionsTypeMapID2Description, nil)
+	loadConfigFromFile("./database/post_type.csv", 0, 1, 2, true, postTypeMapID2Type, postTypeMapType2ID)
+
+	// api
+	for k, v := range countryTypeMapID2Country {
+		country := countryAPI{
+			CountryID:   k,
+			Country:     v,
+			CountryCode: countryTypeMapID2CountryCode[k],
+		}
+		countryConfigAPI = append(countryConfigAPI, country)
+	}
+	for k, v := range languageTypeMapID2DisplayLanguage {
+		language := languageAPI{
+			LanguageID:       k,
+			DisplayLanguage:  v,
+			HlParameterValue: languageTypeMapID2HlParameterValue[k],
+		}
+		languageConfigAPI = append(languageConfigAPI, language)
+	}
+	for k, v := range genderTypeMapID2Description {
+		gender := genderAPI{
+			Gender:      k,
+			Description: v,
+		}
+		genderConfigAPI = append(genderConfigAPI, gender)
+	}
+	for k, v := range actionsTypeMapID2Description {
+		action := actionsAPI{
+			Action:      k,
+			Description: v,
+		}
+		actionsConfigAPI = append(actionsConfigAPI, action)
+	}
 }
 
 func main() {

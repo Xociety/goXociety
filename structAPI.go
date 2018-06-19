@@ -96,18 +96,20 @@ type actionPostAPI struct {
 
 // country
 type countryAPI struct {
+	CountryID   int    `json:"country_id,omitempty"`
 	Country     string `json:"country,omitempty"`
 	CountryCode string `json:"country_code,omitempty"`
 }
 
 // language
 type languageAPI struct {
+	LanguageID       int    `json:"language_id,omitempty"`
 	DisplayLanguage  string `json:"display_language,omitempty"`
 	HlParameterValue string `json:"hl_parameter_value,omitempty"`
 }
 
 // gender
-type gender struct {
+type genderAPI struct {
 	Gender      int    `json:"gender,omitempty"`
 	Description string `json:"description,omitempty"`
 }

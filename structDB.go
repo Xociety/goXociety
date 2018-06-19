@@ -1,17 +1,5 @@
 package main
 
-type country struct {
-	CountryID int
-	Name      string
-	Code      string
-}
-
-type language struct {
-	LanguageID      int
-	DisplayLanguage string
-	Value           string
-}
-
 type xuserDB struct {
 	UserID     int64
 	Username   string

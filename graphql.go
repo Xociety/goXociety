@@ -132,6 +132,40 @@ var updateStatusGraphqlType = graphql.NewObject(
 	},
 )
 
+var countryGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "country",
+			Fields: graphql.Fields{
+				"country":      &graphql.Field{Type: graphql.String},
+				"country_code": &graphql.Field{Type: graphql.String},
+			},
+		},
+	),
+)
+var languageGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "language",
+			Fields: graphql.Fields{
+				"display_language":   &graphql.Field{Type: graphql.String},
+				"hl_parameter_value": &graphql.Field{Type: graphql.String},
+			},
+		},
+	),
+)
+var genderGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "gender",
+			Fields: graphql.Fields{
+				"gender":      &graphql.Field{Type: graphql.String},
+				"description": &graphql.Field{Type: graphql.String},
+			},
+		},
+	),
+)
+
 // login
 var loginGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
@@ -327,16 +361,13 @@ func parsePost(p graphql.ResolveParams, userID int64) (post postDB, err error) {
 	post.Updatetime = timestamp
 	return post, nil
 }
-func parseComment(p graphql.ResolveParams, userID int64) (c commentAPI, err error) {
-	postID, isOK := p.Args["post_id"].(int64)
-	if !isOK {
-		return c, errors.New("post_id format")
-	}
+func parseComment(p graphql.ResolveParams, postID, commentID, userID int64) (c commentAPI, err error) {
 	comment, isOK := p.Args["comment"].(string)
 	if !isOK {
 		return c, errors.New("comment format")
 	}
 	timestamp := getNowUnixTimestamp()
+	c.CommentID = commentID
 	c.PostID = postID
 	c.UserID = userID
 	c.Comment = comment
@@ -360,6 +391,34 @@ var graphqlQueryType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "Query",
 		Fields: graphql.Fields{
+			"country": &graphql.Field{
+				Type: countryGraphqlType,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return countryConfigAPI, nil
+				},
+				Description: "",
+			},
+			"language": &graphql.Field{
+				Type: languageGraphqlType,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return languageConfigAPI, nil
+				},
+				Description: "",
+			},
+			"gender": &graphql.Field{
+				Type: genderGraphqlType,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return genderConfigAPI, nil
+				},
+				Description: "",
+			},
+			"actions": &graphql.Field{
+				Type: actionsGraphqlType,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return actionsConfigAPI, nil
+				},
+				Description: "",
+			},
 			"login": &graphql.Field{
 				Type: loginGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -592,21 +651,6 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			"actions": &graphql.Field{
-				Type: actionsGraphqlType,
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					actions := []actionsAPI{}
-					for k, v := range actionsTypeMapID2Type {
-						action := actionsAPI{
-							Action:      k,
-							Description: v,
-						}
-						actions = append(actions, action)
-					}
-					return actions, nil
-				},
-				Description: "",
-			},
 		},
 	})
 var graphqlMutationType = graphql.NewObject(
@@ -737,9 +781,46 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return nil, err
 					}
-					comment, err := parseComment(p, user.UserID)
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, err
+					}
+					comment, err := parseComment(p, postID, 0, user.UserID)
+					if err != nil {
+						return nil, err
+					}
 					comment.CommentID, err = commentNow(comment)
 					return comment, err
+				},
+				Description: "",
+			},
+			"comment_update": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"comment_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+					"comment": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "comment",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					commentID, isOK := p.Args["comment_id"].(int64)
+					if !isOK {
+						return nil, errors.New("comment_id format")
+					}
+					comment, err := parseComment(p, 0, commentID, user.UserID)
+					if err != nil {
+						return nil, err
+					}
+					us, err := commentUpdate(comment)
+					return us, err
 				},
 				Description: "",
 			},
@@ -792,7 +873,7 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("actions format")
 					}
-					if actionsTypeMapID2Type[act] == "" {
+					if actionsTypeMapID2Description[act] == "" {
 						return nil, errors.New("actions format")
 					}
 					actionsPost := actionPostAPI{

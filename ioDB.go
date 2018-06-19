@@ -507,6 +507,26 @@ func commentNow(comment commentAPI) (commentID int64, err error) {
 	return commentID, nil
 }
 
+func commentUpdate(comment commentAPI) (us updateStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		UPDATE comments 
+		SET comment=$1, updatetime=$2
+		WHERE comment_id=$3 AND user_id=$4;
+	`
+	res, err := c.db.Exec(sqlStr,
+		comment.Comment, comment.Updatetime, comment.CommentID, comment.UserID)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	return us, nil
+}
 func commentDelete(comment commentAPI) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -549,7 +569,6 @@ func actionNow(actionPost actionPostAPI) (us updateStatusAPI, err error) {
 	us.RowsAffected = int(count)
 	return us, nil
 }
-
 func actionDelete(actionPost actionPostAPI) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
