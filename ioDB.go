@@ -51,7 +51,7 @@ func checkSession(userToken string) (user xuserAPI, err error) {
 		&user.Createtime,
 		&user.Updatetime,
 	); err != nil {
-		log.Println("checkSession", err)
+		// log.Println("checkSession", err)
 		return user, err
 	}
 	return user, nil
@@ -369,6 +369,44 @@ func getCommentsPost(postID int64, page int) (comments []commentAPI, err error) 
 	return comments, nil
 }
 
+func getPostActions(postID int64, page int) (actionsPost []actionPostAPI, err error) {
+	numPerRequest := 10
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		post_actions.post_id, 
+		post_actions.user_id, xuser.username, xuser.name, 
+		post_actions.act, post_actions.createtime 
+		FROM public.post_actions FULL OUTER JOIN xuser on post_actions.user_id = xuser.user_id
+		WHERE post_id=$1
+		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
+	`
+	rows, err := c.db.Query(sqlStr, postID, page*numPerRequest, numPerRequest)
+	if err != nil {
+		log.Println("getPostActions", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		actionPost := actionPostAPI{}
+		if err := rows.Scan(
+			&actionPost.PostID,
+			&actionPost.UserID,
+			&actionPost.Username,
+			&actionPost.Name,
+			&actionPost.Act,
+			&actionPost.Createtime,
+		); err != nil {
+			log.Println("errrr", err)
+		}
+		actionsPost = append(actionsPost, actionPost)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+	}
+	return actionsPost, nil
+}
+
 // mutation
 func follow(followingUserID, followerUserID int64) (user xuserFollowingAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
@@ -386,7 +424,7 @@ func follow(followingUserID, followerUserID int64) (user xuserFollowingAPI, err 
 	return user, nil
 }
 
-func unfollow(followingUserID, followerUserID int64) (ds deleteStatusAPI, err error) {
+func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
 	sqlStr := `
@@ -396,14 +434,14 @@ func unfollow(followingUserID, followerUserID int64) (ds deleteStatusAPI, err er
 	res, err := c.db.Exec(sqlStr,
 		followingUserID, followerUserID)
 	if err != nil {
-		return ds, err
+		return us, err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
-		return ds, err
+		return us, err
 	}
-	ds.RowsAffected = int(count)
-	return ds, nil
+	us.RowsAffected = int(count)
+	return us, nil
 }
 
 func postNow(post postDB) (postID int64) {
@@ -467,4 +505,67 @@ func commentNow(comment commentAPI) (commentID int64, err error) {
 		log.Println(err)
 	}
 	return commentID, nil
+}
+
+func commentDelete(comment commentAPI) (us updateStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		DELETE FROM comments 
+		WHERE comment_id=$1 AND user_id=$2;
+	`
+	res, err := c.db.Exec(sqlStr,
+		comment.CommentID, comment.UserID)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	return us, nil
+}
+func actionNow(actionPost actionPostAPI) (us updateStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		INSERT INTO post_actions (
+			post_id,user_id,act,createtime
+		) 
+		VALUES($1,$2,$3,$4) 
+		ON CONFLICT ON CONSTRAINT post_target DO 
+		UPDATE SET post_id=$1, user_id=$2, act=$3, createtime=$4;
+	`
+	res, err := c.db.Exec(sqlStr,
+		actionPost.PostID, actionPost.UserID, actionPost.Act, actionPost.Createtime)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	return us, nil
+}
+
+func actionDelete(actionPost actionPostAPI) (us updateStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		DELETE FROM post_actions 
+		WHERE post_id=$1 AND user_id=$2;
+	`
+	res, err := c.db.Exec(sqlStr,
+		actionPost.PostID, actionPost.UserID)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	return us, nil
 }

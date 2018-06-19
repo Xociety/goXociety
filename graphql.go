@@ -123,9 +123,9 @@ var int64GraphqlScalar = graphql.NewScalar(graphql.ScalarConfig{
 // graphql type
 
 // common
-var deleteStatusGraphqlType = graphql.NewObject(
+var updateStatusGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "delete_status",
+		Name: "update_status",
 		Fields: graphql.Fields{
 			"rows_affected": &graphql.Field{Type: graphql.Int},
 		},
@@ -252,6 +252,32 @@ var commentGraphqlType = graphql.NewObject(
 )
 var commentsGraphqlType = graphql.NewList(commentGraphqlType)
 
+// actions
+var actionGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "actions",
+		Fields: graphql.Fields{
+			"action":      &graphql.Field{Type: graphql.Int},
+			"description": &graphql.Field{Type: graphql.String},
+		},
+	},
+)
+var actionsGraphqlType = graphql.NewList(actionGraphqlType)
+var postActionGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "post_actions",
+		Fields: graphql.Fields{
+			"post_id":    &graphql.Field{Type: int64GraphqlScalar},
+			"user_id":    &graphql.Field{Type: int64GraphqlScalar},
+			"username":   &graphql.Field{Type: graphql.String},
+			"name":       &graphql.Field{Type: graphql.String},
+			"act":        &graphql.Field{Type: graphql.Int},
+			"createtime": &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+		},
+	},
+)
+var postActionsGraphqlType = graphql.NewList(postActionGraphqlType)
+
 // funcs
 func parseAuth(p graphql.ResolveParams) (user xuserAPI, err error) {
 	userToken, isOK := p.Context.Value(contextUserToken).(string)
@@ -301,7 +327,7 @@ func parsePost(p graphql.ResolveParams, userID int64) (post postDB, err error) {
 	post.Updatetime = timestamp
 	return post, nil
 }
-func parseComment(p graphql.ResolveParams) (c commentAPI, err error) {
+func parseComment(p graphql.ResolveParams, userID int64) (c commentAPI, err error) {
 	postID, isOK := p.Args["post_id"].(int64)
 	if !isOK {
 		return c, errors.New("post_id format")
@@ -312,6 +338,7 @@ func parseComment(p graphql.ResolveParams) (c commentAPI, err error) {
 	}
 	timestamp := getNowUnixTimestamp()
 	c.PostID = postID
+	c.UserID = userID
 	c.Comment = comment
 	c.LikeCount = 0
 	c.DislikeCount = 0
@@ -481,6 +508,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
+					// block check
 					posts := getFollowingUsersPosts(user.UserID, page)
 					return posts, nil
 				},
@@ -538,6 +566,47 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
+			"post_actions": &graphql.Field{
+				Type: postActionsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					actionsPost, err := getPostActions(postID, page)
+					return actionsPost, err
+				},
+				Description: "",
+			},
+			"actions": &graphql.Field{
+				Type: actionsGraphqlType,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					actions := []actionsAPI{}
+					for k, v := range actionsTypeMapID2Type {
+						action := actionsAPI{
+							Action:      k,
+							Description: v,
+						}
+						actions = append(actions, action)
+					}
+					return actions, nil
+				},
+				Description: "",
+			},
 		},
 	})
 var graphqlMutationType = graphql.NewObject(
@@ -553,13 +622,9 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					userToken, isOK := p.Context.Value(contextUserToken).(string)
-					if !isOK {
-						return nil, errors.New("user-token format")
-					}
-					user, err := checkSession(userToken)
+					user, err := parseAuth(p)
 					if err != nil {
-						return nil, errors.New("user-token invalid")
+						return nil, err
 					}
 					userID, isOK := p.Args["user_id"].(int64)
 					if !isOK {
@@ -571,7 +636,7 @@ var graphqlMutationType = graphql.NewObject(
 				Description: "",
 			},
 			"unfollow": &graphql.Field{
-				Type: deleteStatusGraphqlType,
+				Type: updateStatusGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"user_id": &graphql.ArgumentConfig{
 						Type:        int64GraphqlScalar,
@@ -579,20 +644,16 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					userToken, isOK := p.Context.Value(contextUserToken).(string)
-					if !isOK {
-						return nil, errors.New("user-token format")
-					}
-					user, err := checkSession(userToken)
+					user, err := parseAuth(p)
 					if err != nil {
-						return nil, errors.New("user-token invalid")
+						return nil, err
 					}
 					userID, isOK := p.Args["user_id"].(int64)
 					if !isOK {
 						return nil, errors.New("user_id format")
 					}
-					ds, err := unfollow(userID, user.UserID)
-					return ds, err
+					us, err := unfollow(userID, user.UserID)
+					return us, err
 				},
 				Description: "",
 			},
@@ -676,11 +737,98 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return nil, err
 					}
-					comment, err := parseComment(p)
-					comment.UserID = user.UserID
-					// block check
+					comment, err := parseComment(p, user.UserID)
 					comment.CommentID, err = commentNow(comment)
 					return comment, err
+				},
+				Description: "",
+			},
+			"comment_delete": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"comment_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					commentID, isOK := p.Args["comment_id"].(int64)
+					if !isOK {
+						return nil, errors.New("comment_id format")
+					}
+					comment := commentAPI{CommentID: commentID, UserID: user.UserID}
+					// delete deep
+					us, err := commentDelete(comment)
+					return us, err
+				},
+				Description: "",
+			},
+			"action": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+					"action": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "action",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					act, isOK := p.Args["action"].(int)
+					if !isOK {
+						return nil, errors.New("actions format")
+					}
+					if actionsTypeMapID2Type[act] == "" {
+						return nil, errors.New("actions format")
+					}
+					actionsPost := actionPostAPI{
+						PostID:     postID,
+						UserID:     user.UserID,
+						Act:        act,
+						Createtime: getNowUnixTimestamp(),
+					}
+					us, err := actionNow(actionsPost)
+					return us, err
+				},
+				Description: "",
+			},
+			"action_delete": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					actionsPost := actionPostAPI{
+						PostID: postID,
+						UserID: user.UserID,
+					}
+					us, err := actionDelete(actionsPost)
+					return us, err
 				},
 				Description: "",
 			},

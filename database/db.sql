@@ -54,17 +54,6 @@ VALUES ('jeff', 'jeff@gmail.com', 'salted', 'jeff', '+886-911111111', 1, 'hi', 0
 ('kyler', 'kyler@gmail.com', 'salted', 'kyler', '+886-911111111', 1, 'yo', 0, '', 12, 206, 28800, '123.194.188.0', 1527496777, 1527496777),
 ('robby', 'robby@gmail.com', 'salted', 'robby', '+886-911111111', 1, 'man', 0, '', 12, 206, 28800, '123.194.188.0', 1527496777, 1527496777);
 -- username, phone + country code, email (lower case) logic check
-/*
-gender -- ISO/IEC 5218
-0 = not known, 1 = male, 2 = female, 9 = not applicable.
-ref: https://en.wikipedia.org/wiki/ISO/IEC_5218
-
-language -- ISO 639-1
-ref: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
-
-country
-https://en.wikipedia.org/wiki/ISO_3166-1
-*/
 ------------------------
 CREATE TABLE follow (
     following_user_id bigint references xuser(user_id), -- a person whom you follow

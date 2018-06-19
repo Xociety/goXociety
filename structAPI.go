@@ -1,7 +1,7 @@
 package main
 
 // common
-type deleteStatusAPI struct {
+type updateStatusAPI struct {
 	RowsAffected int `json:"rows_affected,omitempty"`
 }
 
@@ -66,7 +66,6 @@ type postAPI struct {
 }
 
 // comment
-
 type commentAPI struct {
 	CommentID    int64  `json:"comment_id,omitempty"`
 	PostID       int64  `json:"post_id,omitempty"`
@@ -79,4 +78,36 @@ type commentAPI struct {
 	CommentCount int64  `json:"comment_count,omitempty"`
 	Createtime   int    `json:"createtime,omitempty"`
 	Updatetime   int    `json:"updatetime,omitempty"`
+}
+
+// action
+type actionsAPI struct {
+	Action      int    `json:"action,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+type actionPostAPI struct {
+	PostID     int64  `json:"post_id,omitempty"`
+	UserID     int64  `json:"user_id,omitempty"`
+	Username   string `json:"username,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Act        int    `json:"act,omitempty"`
+	Createtime int    `json:"createtime,omitempty"`
+}
+
+// country
+type countryAPI struct {
+	Country     string `json:"country,omitempty"`
+	CountryCode string `json:"country_code,omitempty"`
+}
+
+// language
+type languageAPI struct {
+	DisplayLanguage  string `json:"display_language,omitempty"`
+	HlParameterValue string `json:"hl_parameter_value,omitempty"`
+}
+
+// gender
+type gender struct {
+	Gender      int    `json:"gender,omitempty"`
+	Description string `json:"description,omitempty"`
 }

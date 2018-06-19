@@ -27,8 +27,12 @@ const (
 	twoMonthsInSecond       = 2 * 30 * 24 * 3600
 )
 
-var postTypeMapID2Type = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
-var postTypeMapType2ID = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
+var (
+	postTypeMapID2Type    = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
+	postTypeMapType2ID    = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
+	actionsTypeMapID2Type = make(map[int]string) // example: [0: "like", 1: "dislike"]
+	actionsTypeMapType2ID = make(map[string]int) // example: ["like": 0, "dislike": 1]
+)
 
 // Postgres
 const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
@@ -67,6 +71,7 @@ func init() {
 	clientOptionGoogleAPI = option.WithServiceAccountFile(clientAuthGCPFilePath)
 	// config
 	loadPostTypeFromFConfig("./database/post_type.csv")
+	loadActionsTypeFromFConfig("./database/actions.csv")
 }
 
 func main() {
