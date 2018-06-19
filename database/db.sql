@@ -102,8 +102,8 @@ CREATE TABLE hashtag(
 -- define hashtag length
 ------------------------
 CREATE TABLE post_hashtag(
-   post_id integer NOT NULL references post(post_id),
-   hashtag_id integer NOT NULL references hashtag(hashtag_id)
+   post_id bigint NOT NULL references post(post_id),
+   hashtag_id bigint NOT NULL references hashtag(hashtag_id)
  );
 ------------------------
 CREATE TABLE post_tag_xuser (
