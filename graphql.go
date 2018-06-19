@@ -324,7 +324,7 @@ func parseAuth(p graphql.ResolveParams) (user xuserAPI, err error) {
 	}
 	return user, nil
 }
-func parsePost(p graphql.ResolveParams, userID int64) (post postDB, err error) {
+func parsePost(p graphql.ResolveParams, postID, userID int64, postType int) (post postAPI, err error) {
 	content, isOK := p.Args["content"].(string)
 	if !isOK {
 		return post, errors.New("content format")
@@ -337,31 +337,24 @@ func parsePost(p graphql.ResolveParams, userID int64) (post postDB, err error) {
 	if !isOK {
 		return post, errors.New("category_id format")
 	}
-	public, isOK := p.Args["public"].(bool)
-	if !isOK {
-		return post, errors.New("public format")
-	}
-	Type, isOK := p.Args["type"].(int)
-	if !isOK {
-		return post, errors.New("type format")
-	}
 	timestamp := getNowUnixTimestamp()
+	post.PostID = postID
+	post.UserID = userID
 	post.Content = content
-
 	post.BlobID = strconv.FormatInt(userID, 10) + "_" + strconv.Itoa(timestamp)
 	// Point
-	post.Type = Type
+	post.Type = postType
 	post.CommentCount = 0
 	post.LikeCount = 0
 	post.DislikeCount = 0
 	post.CountryID = countryID
 	post.CategoryID = categoryID
-	post.Public = public
+	post.Public = true
 	post.Createtime = timestamp
 	post.Updatetime = timestamp
 	return post, nil
 }
-func parseComment(p graphql.ResolveParams, postID, commentID, userID int64) (c commentAPI, err error) {
+func parseComment(p graphql.ResolveParams, commentID, postID, userID int64) (c commentAPI, err error) {
 	comment, isOK := p.Args["comment"].(string)
 	if !isOK {
 		return c, errors.New("comment format")
@@ -708,10 +701,6 @@ var graphqlMutationType = graphql.NewObject(
 						Type:        graphql.String,
 						Description: "content",
 					},
-					"blob_id": &graphql.ArgumentConfig{
-						Type:        graphql.String,
-						Description: "blob_id",
-					},
 					"country_id": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
 						Description: "country_id",
@@ -719,10 +708,6 @@ var graphqlMutationType = graphql.NewObject(
 					"category_id": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
 						Description: "category_id",
-					},
-					"public": &graphql.ArgumentConfig{
-						Type:        graphql.Boolean,
-						Description: "public",
 					},
 					"type": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
@@ -744,16 +729,26 @@ var graphqlMutationType = graphql.NewObject(
 						return nil, errors.New("file format")
 					}
 					// post parameter check
-					post, err := parsePost(p, user.UserID)
-					if err != nil {
-						return nil, err
+					postType, isOK := p.Args["type"].(int)
+					if !isOK {
+						return nil, errors.New("type format")
 					}
-					// size check
+					if postTypeMapID2Type[postType] == "" {
+						return nil, errors.New("type format")
+					}
+					post, err := parsePost(p, 0, user.UserID, postType)
+					if err != nil {
+						return post, err
+					}
+					// tag check
+					// place check
+					// hashtag check
+					// file size check
 					err = untarFileAndUpload(post, file)
 					if err != nil {
 						return nil, err
 					}
-					post.PostID = postNow(post)
+					post.PostID, err = postNow(post)
 					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
 					return post, nil
 				},
@@ -763,6 +758,69 @@ var graphqlMutationType = graphql.NewObject(
 						file: tar.gz file,
 						. not finished yet
 					`,
+			},
+			"post_update": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+					"content": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "content",
+					},
+					"country_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "country_id",
+					},
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					// post parameter check
+					post, err := parsePost(p, postID, user.UserID, 0)
+					if err != nil {
+						return post, err
+					}
+					us, err := postUpdate(post)
+					return us, err
+				},
+				Description: "",
+			},
+			"post_delete": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					post := postAPI{PostID: postID, UserID: user.UserID}
+					// delete post_actions, post_tag_user, comment, comment_actions, comment_deep
+					us, err := postDelete(post)
+					return us, err
+				},
+				Description: "",
 			},
 			"comment": &graphql.Field{
 				Type: commentGraphqlType,
@@ -785,9 +843,9 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, err
 					}
-					comment, err := parseComment(p, postID, 0, user.UserID)
+					comment, err := parseComment(p, 0, postID, user.UserID)
 					if err != nil {
-						return nil, err
+						return comment, err
 					}
 					comment.CommentID, err = commentNow(comment)
 					return comment, err
@@ -799,7 +857,7 @@ var graphqlMutationType = graphql.NewObject(
 				Args: graphql.FieldConfigArgument{
 					"comment_id": &graphql.ArgumentConfig{
 						Type:        int64GraphqlScalar,
-						Description: "post_id",
+						Description: "comment_id",
 					},
 					"comment": &graphql.ArgumentConfig{
 						Type:        graphql.String,
@@ -815,9 +873,9 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("comment_id format")
 					}
-					comment, err := parseComment(p, 0, commentID, user.UserID)
+					comment, err := parseComment(p, commentID, 0, user.UserID)
 					if err != nil {
-						return nil, err
+						return comment, err
 					}
 					us, err := commentUpdate(comment)
 					return us, err
@@ -829,7 +887,7 @@ var graphqlMutationType = graphql.NewObject(
 				Args: graphql.FieldConfigArgument{
 					"comment_id": &graphql.ArgumentConfig{
 						Type:        int64GraphqlScalar,
-						Description: "post_id",
+						Description: "comment_id",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {

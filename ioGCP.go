@@ -7,27 +7,31 @@ import (
 	"errors"
 	"io"
 	"log"
+	"strconv"
 	"strings"
 
 	"cloud.google.com/go/storage"
 )
 
-func untarFileAndUpload(post postDB, r io.Reader) error {
-
-	// format checker
-	jpgCount := 0
-	m3u8uploaded := false
-	tsCount := 0
-
+func makeBucketFolderName(postType int, blobID string) (foldername string) {
 	// define cloud storage folder under bucket
-	foldername := ""
-	switch postTypeMapID2Type[post.Type] {
+	switch postTypeMapID2Type[postType] {
 	case mediaFormatJPG:
 		foldername += bucketImagesCloudStorage
 	case mediaFormatHLS:
 		foldername += bucketVideosCloudStorage
 	}
-	foldername += "/" + post.BlobID + "/"
+	foldername += "/" + blobID + "/"
+	return foldername
+}
+func untarFileAndUpload(post postAPI, r io.Reader) error {
+	// format checker
+	jpgCount := 0
+	m3u8Count := 0
+	m3u8uploaded := false
+	tsCount := 0
+
+	foldername := makeBucketFolderName(post.Type, post.BlobID)
 
 	// define gcp client
 	client, err := storage.NewClient(context.Background(), clientOptionGoogleAPI)
@@ -82,11 +86,13 @@ func untarFileAndUpload(post postDB, r io.Reader) error {
 		switch postTypeMapID2Type[post.Type] {
 		case mediaFormatJPG:
 			if fileFormat == mediaFormatJPG {
+				filename = strconv.Itoa(jpgCount)
 				jpgCount++
 				isUpload = true
 			}
 		case mediaFormatHLS:
 			if !m3u8uploaded && fileFormat == mediaFormatM3U8 {
+				filename = strconv.Itoa(m3u8Count)
 				isUpload = true
 				m3u8uploaded = true
 			} else if fileFormat == mediaFormatTS {
@@ -95,7 +101,7 @@ func untarFileAndUpload(post postDB, r io.Reader) error {
 			}
 		}
 		if isUpload {
-			if err := writeAndMakePublicCloudStorageGCP(client, bucketRootCloudStorage, foldername+filename, tr); err != nil {
+			if err := writeAndMakePublicCloudStorageGCP(client, bucketRootCloudStorage, foldername+filename+"."+fileFormat, tr); err != nil {
 				log.Println("upload failed: ", err)
 				return errors.New("upload failed")
 			}

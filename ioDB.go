@@ -228,6 +228,17 @@ func checkIfFollowing(followingUserID, followerUserID int64) (isFollowing bool, 
 	return count == 1, err
 }
 
+func makeBlobURL(post postAPI) string {
+	// restore url
+	url := bucketRootCloudStorage + "/" + makeBucketFolderName(post.Type, post.BlobID)
+	switch postTypeMapID2Type[post.Type] {
+	case mediaFormatJPG:
+		url += "0." + mediaFormatJPG
+	case mediaFormatHLS:
+		url += "0." + mediaFormatM3U8
+	}
+	return url
+}
 func getPostsRecent(categoryID, page int) (posts []postAPI) {
 	numPerRequest := 10
 	timestamp := int(time.Now().Unix()) - twoMonthsInSecond
@@ -270,6 +281,7 @@ func getPostsRecent(categoryID, page int) (posts []postAPI) {
 		); err != nil {
 			log.Println("errrr", err)
 		}
+		post.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
@@ -277,7 +289,6 @@ func getPostsRecent(categoryID, page int) (posts []postAPI) {
 	}
 	return posts
 }
-
 func getFollowingUsersPosts(userID int64, page int) (posts []postAPI) { // not done yet
 	numPerRequest := 10
 	c := connectDB(postgresConStr, "PgSQL")
@@ -321,6 +332,7 @@ func getFollowingUsersPosts(userID int64, page int) (posts []postAPI) { // not d
 		); err != nil {
 			log.Println(err)
 		}
+		post.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
@@ -423,7 +435,6 @@ func follow(followingUserID, followerUserID int64) (user xuserFollowingAPI, err 
 	}
 	return user, nil
 }
-
 func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -444,7 +455,7 @@ func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err er
 	return us, nil
 }
 
-func postNow(post postDB) (postID int64) {
+func postNow(post postAPI) (postID int64, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
 	sqlStr := `
@@ -454,9 +465,9 @@ func postNow(post postDB) (postID int64) {
 			like_count, dislike_count, comment_count,
 			country_id, category_id, public, createtime, updatetime
 		) VALUES 
-		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING post_id;
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING post_id;
 	`
-	err := c.db.QueryRow(sqlStr,
+	err = c.db.QueryRow(sqlStr,
 		post.UserID,
 		post.Content,
 		post.BlobID,
@@ -474,9 +485,49 @@ func postNow(post postDB) (postID int64) {
 	// hashtag
 	// post_hashtag
 	if err != nil {
-		log.Println(err)
+		// log.Println(err)
+		return postID, err
 	}
-	return postID
+	return postID, err
+}
+func postUpdate(post postAPI) (us updateStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		UPDATE post 
+		SET content=$1, country_id=$2, category_id=$3, updatetime=$4
+		WHERE post_id=$5 AND user_id=$6;
+	`
+	res, err := c.db.Exec(sqlStr,
+		post.Content, post.CountryID, post.CategoryID, post.Updatetime,
+		post.PostID, post.UserID)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	return us, nil
+}
+func postDelete(post postAPI) (us updateStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		DELETE FROM post
+		WHERE post_id=$1 AND user_id=$2;
+	`
+	res, err := c.db.Exec(sqlStr, post.PostID, post.UserID)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	return us, nil
 }
 
 func commentNow(comment commentAPI) (commentID int64, err error) {
@@ -506,7 +557,6 @@ func commentNow(comment commentAPI) (commentID int64, err error) {
 	}
 	return commentID, nil
 }
-
 func commentUpdate(comment commentAPI) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -516,7 +566,9 @@ func commentUpdate(comment commentAPI) (us updateStatusAPI, err error) {
 		WHERE comment_id=$3 AND user_id=$4;
 	`
 	res, err := c.db.Exec(sqlStr,
-		comment.Comment, comment.Updatetime, comment.CommentID, comment.UserID)
+		comment.Comment, comment.Updatetime,
+		comment.CommentID, comment.UserID,
+	)
 	if err != nil {
 		return us, err
 	}
@@ -546,6 +598,7 @@ func commentDelete(comment commentAPI) (us updateStatusAPI, err error) {
 	us.RowsAffected = int(count)
 	return us, nil
 }
+
 func actionNow(actionPost actionPostAPI) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
