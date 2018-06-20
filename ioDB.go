@@ -555,6 +555,17 @@ func commentNow(comment commentAPI) (commentID int64, err error) {
 	if err != nil {
 		log.Println(err)
 	}
+	// update post.comment_count
+	sqlStr = `
+		UPDATE post
+		SET comment_count =
+		(SELECT COUNT(*) FROM comments
+		WHERE comments.post_id = post.post_id AND comments.post_id = $1) WHERE post_id = $1;
+	`
+	_, err = c.db.Exec(sqlStr, comment.PostID)
+	if err != nil {
+		return commentID, err
+	}
 	return commentID, nil
 }
 func commentUpdate(comment commentAPI) (us updateStatusAPI, err error) {
@@ -596,6 +607,17 @@ func commentDelete(comment commentAPI) (us updateStatusAPI, err error) {
 		return us, err
 	}
 	us.RowsAffected = int(count)
+	// update post.comment_count
+	sqlStr = `
+		UPDATE post
+		SET comment_count =
+		(SELECT COUNT(*) FROM comments
+		WHERE comments.post_id = post.post_id AND comments.post_id = $1) WHERE post_id = $1;
+	`
+	_, err = c.db.Exec(sqlStr, comment.PostID)
+	if err != nil {
+		return us, err
+	}
 	return us, nil
 }
 
@@ -620,6 +642,17 @@ func actionNow(actionPost actionPostAPI) (us updateStatusAPI, err error) {
 		return us, err
 	}
 	us.RowsAffected = int(count)
+	// update post.like_count || post.dislike_count
+	sqlStr = `
+		UPDATE post
+		SET ` + actionsTypeMapID2Description[actionPost.Act] + `_count =
+		(SELECT COUNT(*) FROM post_actions
+		WHERE post_actions.post_id = post.post_id AND post_actions.post_id = $1) WHERE post_id = $1;
+	`
+	_, err = c.db.Exec(sqlStr, actionPost.PostID)
+	if err != nil {
+		return us, err
+	}
 	return us, nil
 }
 func actionDelete(actionPost actionPostAPI) (us updateStatusAPI, err error) {
@@ -639,5 +672,16 @@ func actionDelete(actionPost actionPostAPI) (us updateStatusAPI, err error) {
 		return us, err
 	}
 	us.RowsAffected = int(count)
+	// update post.like_count || post.dislike_count
+	sqlStr = `
+		UPDATE post
+		SET ` + actionsTypeMapID2Description[actionPost.Act] + `_count =
+		(SELECT COUNT(*) FROM post_actions
+		WHERE post_actions.post_id = post.post_id AND post_actions.post_id = $1) WHERE post_id = $1;
+	`
+	_, err = c.db.Exec(sqlStr, actionPost.PostID)
+	if err != nil {
+		return us, err
+	}
 	return us, nil
 }

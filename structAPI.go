@@ -81,10 +81,6 @@ type commentAPI struct {
 }
 
 // action
-type actionsAPI struct {
-	Action      int    `json:"action,omitempty"`
-	Description string `json:"description,omitempty"`
-}
 type actionPostAPI struct {
 	PostID     int64  `json:"post_id,omitempty"`
 	UserID     int64  `json:"user_id,omitempty"`
@@ -94,22 +90,26 @@ type actionPostAPI struct {
 	Createtime int    `json:"createtime,omitempty"`
 }
 
-// country
+// common
 type countryAPI struct {
 	CountryID   int    `json:"country_id,omitempty"`
 	Country     string `json:"country,omitempty"`
 	CountryCode string `json:"country_code,omitempty"`
 }
-
-// language
 type languageAPI struct {
-	LanguageID       int    `json:"language_id,omitempty"`
-	DisplayLanguage  string `json:"display_language,omitempty"`
-	HlParameterValue string `json:"hl_parameter_value,omitempty"`
+	LanguageID      int    `json:"language_id,omitempty"`
+	DisplayLanguage string `json:"display_language,omitempty"`
+	Value           string `json:"value,omitempty"`
 }
-
-// gender
 type genderAPI struct {
-	Gender      int    `json:"gender,omitempty"`
-	Description string `json:"description,omitempty"`
+	GenderID int    `json:"gender_id,omitempty"`
+	Value    string `json:"value,omitempty"`
+}
+type actionsAPI struct {
+	ActionID int    `json:"action_id,omitempty"`
+	Value    string `json:"value,omitempty"`
+}
+type postTypeAPI struct {
+	PostTypeID int    `json:"post_type_id,omitempty"`
+	Value      string `json:"value,omitempty"`
 }

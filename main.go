@@ -24,6 +24,7 @@ var (
 	languageConfigAPI []languageAPI
 	genderConfigAPI   []genderAPI
 	actionsConfigAPI  []actionsAPI
+	postTypeConfigAPI []postTypeAPI
 )
 
 // application
@@ -97,34 +98,36 @@ func init() {
 
 	// api
 	for k, v := range countryTypeMapID2Country {
-		country := countryAPI{
+		countryConfigAPI = append(countryConfigAPI, countryAPI{
 			CountryID:   k,
 			Country:     v,
 			CountryCode: countryTypeMapID2CountryCode[k],
-		}
-		countryConfigAPI = append(countryConfigAPI, country)
+		})
 	}
 	for k, v := range languageTypeMapID2DisplayLanguage {
-		language := languageAPI{
-			LanguageID:       k,
-			DisplayLanguage:  v,
-			HlParameterValue: languageTypeMapID2HlParameterValue[k],
-		}
-		languageConfigAPI = append(languageConfigAPI, language)
+		languageConfigAPI = append(languageConfigAPI, languageAPI{
+			LanguageID:      k,
+			DisplayLanguage: v,
+			Value:           languageTypeMapID2HlParameterValue[k],
+		})
 	}
 	for k, v := range genderTypeMapID2Description {
-		gender := genderAPI{
-			Gender:      k,
-			Description: v,
-		}
-		genderConfigAPI = append(genderConfigAPI, gender)
+		genderConfigAPI = append(genderConfigAPI, genderAPI{
+			GenderID: k,
+			Value:    v,
+		})
 	}
 	for k, v := range actionsTypeMapID2Description {
-		action := actionsAPI{
-			Action:      k,
-			Description: v,
-		}
-		actionsConfigAPI = append(actionsConfigAPI, action)
+		actionsConfigAPI = append(actionsConfigAPI, actionsAPI{
+			ActionID: k,
+			Value:    v,
+		})
+	}
+	for k, v := range postTypeMapID2Type {
+		postTypeConfigAPI = append(postTypeConfigAPI, postTypeAPI{
+			PostTypeID: k,
+			Value:      v,
+		})
 	}
 }
 

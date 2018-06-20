@@ -148,8 +148,8 @@ var languageGraphqlType = graphql.NewList(
 		graphql.ObjectConfig{
 			Name: "language",
 			Fields: graphql.Fields{
-				"display_language":   &graphql.Field{Type: graphql.String},
-				"hl_parameter_value": &graphql.Field{Type: graphql.String},
+				"display_language": &graphql.Field{Type: graphql.String},
+				"value":            &graphql.Field{Type: graphql.String},
 			},
 		},
 	),
@@ -159,8 +159,30 @@ var genderGraphqlType = graphql.NewList(
 		graphql.ObjectConfig{
 			Name: "gender",
 			Fields: graphql.Fields{
-				"gender":      &graphql.Field{Type: graphql.String},
-				"description": &graphql.Field{Type: graphql.String},
+				"gender_id": &graphql.Field{Type: graphql.String},
+				"value":     &graphql.Field{Type: graphql.String},
+			},
+		},
+	),
+)
+var actionsGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "actions",
+			Fields: graphql.Fields{
+				"action_id": &graphql.Field{Type: graphql.Int},
+				"value":     &graphql.Field{Type: graphql.String},
+			},
+		},
+	),
+)
+var postTypeGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "post_type",
+			Fields: graphql.Fields{
+				"post_type_id": &graphql.Field{Type: graphql.Int},
+				"value":        &graphql.Field{Type: graphql.String},
 			},
 		},
 	),
@@ -287,16 +309,6 @@ var commentGraphqlType = graphql.NewObject(
 var commentsGraphqlType = graphql.NewList(commentGraphqlType)
 
 // actions
-var actionGraphqlType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "actions",
-		Fields: graphql.Fields{
-			"action":      &graphql.Field{Type: graphql.Int},
-			"description": &graphql.Field{Type: graphql.String},
-		},
-	},
-)
-var actionsGraphqlType = graphql.NewList(actionGraphqlType)
 var postActionGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "post_actions",
@@ -409,6 +421,13 @@ var graphqlQueryType = graphql.NewObject(
 				Type: actionsGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					return actionsConfigAPI, nil
+				},
+				Description: "",
+			},
+			"post_type": &graphql.Field{
+				Type: postTypeGraphqlType,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return postTypeConfigAPI, nil
 				},
 				Description: "",
 			},
@@ -667,6 +686,7 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("user_id format")
 					}
+					// follow count limit?
 					userFollowing, err := follow(userID, user.UserID)
 					return userFollowing, err
 				},
