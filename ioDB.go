@@ -230,7 +230,7 @@ func checkIfFollowing(followingUserID, followerUserID int64) (isFollowing bool, 
 
 func makeBlobURL(post postAPI) string {
 	// restore url
-	url := bucketRootCloudStorage + "/" + makeBucketFolderName(post.Type, post.BlobID)
+	url := "http://" + bucketRootCloudStorage + "/" + makeBucketFolderName(post.Type, post.BlobID)
 	switch postTypeMapID2Type[post.Type] {
 	case mediaFormatJPG:
 		url += "0." + mediaFormatJPG
