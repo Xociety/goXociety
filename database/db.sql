@@ -141,8 +141,8 @@ CREATE TABLE post_actions (
     post_id             bigint references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [primary key]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     act                 integer references actions(action_id), -- 0: like, 1: dislike
-    createtime          integer -- [index]
-    -- CONSTRAINT post_target UNIQUE (post_id, user_id)
+    createtime          integer, -- [index]
+    CONSTRAINT post_target UNIQUE (post_id, user_id)
 );
 INSERT INTO post_actions 
 (post_id, user_id, act, createtime) 
