@@ -1,4 +1,4 @@
--- check all PRIMARY KEY, FOREIGN KEY, data valid range, CRUD relation, related api, reference sequence, schema
+-- check all PRIMARY KEY, FOREIGN KEY, data valid range, Default, CRUD relation, related api, reference sequence, schema
 -- alter table XXX DROP CONTAINT XXX;
 -- alter table post ADD CONSTAINT post_type_fkey FOREIGN KEY (type) REFERENCES post_type(post_type_id) ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -8,7 +8,7 @@ CREATE TABLE country (
     country             VARCHAR(200),
     country_code        VARCHAR(2)
 );
-COPY country(country_id, country, country_code) FROM '/var/lib/postgresql/data/country.csv' DELIMITER ';' CSV; -- HEADER;
+COPY country(country_id, country, country_code) FROM '/var/lib/postgresql/data/pgdata/xsrc/country.csv' DELIMITER ';' CSV; -- HEADER;
 /*
 https://developers.google.com/custom-search/docs/xml_results_appendices#countryCodes
 */
@@ -18,7 +18,7 @@ CREATE TABLE language (
     display_language    VARCHAR(200),
     value               VARCHAR(10)
 );
-COPY language(language_id, display_language, value) FROM '/var/lib/postgresql/data/language.csv' DELIMITER ';' CSV;
+COPY language(language_id, display_language, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/language.csv' DELIMITER ';' CSV;
 /*
 https://developers.google.com/custom-search/docs/xml_results_appendices#interfaceLanguages
 */
@@ -27,19 +27,19 @@ CREATE TABLE actions (
     action_id           integer PRIMARY KEY NOT NULL,
     value               VARCHAR(15)
 );
-COPY actions(action_id, name) FROM '/var/lib/postgresql/data/actions.csv' DELIMITER ';' CSV;
+COPY actions(action_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/actions.csv' DELIMITER ';' CSV;
 ------------------------
 CREATE TABLE gender (
     gender_id           integer PRIMARY KEY NOT NULL,
     value               VARCHAR(15)
 );
-COPY gender(gender_id, value) FROM '/var/lib/postgresql/data/gender.csv' DELIMITER ';' CSV;
+COPY gender(gender_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/gender.csv' DELIMITER ';' CSV;
 ------------------------
 CREATE TABLE post_type (
     post_type_id        integer PRIMARY KEY NOT NULL,
     value               VARCHAR(10)
 );
-COPY post_type(post_type_id, value) FROM '/var/lib/postgresql/data/post_type.csv' DELIMITER ';' CSV HEADER;
+COPY post_type(post_type_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/post_type.csv' DELIMITER ';' CSV; -- CSV HEADER;
 ------------------------
 CREATE TABLE xuser(
     user_id             BIGSERIAL PRIMARY KEY NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE xuser(
     bio                 VARCHAR(100),
     credit              double precision,
     photo_url           VARCHAR(200),
-    language_id         integer references language(langauge_id),
+    language_id         integer references language(language_id),
     country_id          integer references country(country_id),
     timezone            integer,
     last_ip             VARCHAR(15), -- ipv4 123.194.188.0
@@ -108,8 +108,8 @@ CREATE TABLE hashtag(
 -- define hashtag length, space check
 ------------------------
 CREATE TABLE post_hashtag(
-   hashtag_id           bigint NOT NULL references hashtag(hashtag_id) -- [primary key or index]?
-   post_id              bigint NOT NULL references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE,
+   hashtag_id           bigint NOT NULL references hashtag(hashtag_id), -- [primary key or index]?
+   post_id              bigint NOT NULL references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE
  );
 ------------------------
 CREATE TABLE post_tag_xuser (
@@ -140,7 +140,7 @@ VALUES (33, 4, 0, 0, false, 1527498711, 1527498711);
 CREATE TABLE post_actions (
     post_id             bigint references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [primary key]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    act                 integer reference actions(action_id), -- 0: like, 1: dislike
+    act                 integer references actions(action_id), -- 0: like, 1: dislike
     createtime          integer -- [index]
     -- CONSTRAINT post_target UNIQUE (post_id, user_id)
 );
