@@ -1,3 +1,5 @@
 goXociety
 development/
 keyfileGCP.json
+server.key
+server.cert

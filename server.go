@@ -50,11 +50,11 @@ func startServer() {
 		http.ServeFile(w, r, "index.html")
 	})
 	server := &http.Server{
-		Addr:           "127.0.0.1:" + strconv.Itoa(serverPort),
+		Addr:           hostname + ":" + strconv.Itoa(serverPort),
 		ReadTimeout:    5 * time.Minute,
 		WriteTimeout:   5 * time.Minute,
 		MaxHeaderBytes: 1 << 20,
 	}
-	log.Println("xcociety graphql api server port:" + strconv.Itoa(serverPort))
-	log.Fatal(server.ListenAndServe())
+	log.Println("xcociety graphql api server " + hostname + ":" + strconv.Itoa(serverPort))
+	log.Fatal(server.ListenAndServeTLS("./server.cert", "./server.key"))
 }
