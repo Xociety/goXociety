@@ -140,9 +140,9 @@ VALUES (33, 4, 0, 0, false, 1527498711, 1527498711);
 CREATE TABLE post_reaction (
     post_id             bigint references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [primary key]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    reaction_id         integer references reactions(reaction_id), -- 0: like, 1: dislike
+    reaction_id         integer references reaction(reaction_id), -- 0: like, 1: dislike
     createtime          integer, -- [index]
-    CONSTRAINT post_reactions_post_user_unique UNIQUE (post_id, user_id)
+    CONSTRAINT post_reaction_post_user_unique UNIQUE (post_id, user_id)
 );
 INSERT INTO post_reaction 
 (post_id, user_id, reaction_id, createtime) 
@@ -166,8 +166,9 @@ CREATE TABLE comment (
 CREATE TABLE comment_reaction (
     comment_id          bigint references comments(comment_id), -- [PRIMARY KEY]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    reaction_id         integer references reactions(reaction_id),
-    createtime          integer
+    reaction_id         integer references reaction(reaction_id),
+    createtime          integer, -- [index]
+    CONSTRAINT comment_reaction_comment_user_unique UNIQUE (comment_id, user_id)
 );
 INSERT INTO comment 
 (post_id, user_id, comment, createtime, updatetime) 
@@ -194,9 +195,9 @@ CREATE TABLE thread (
 CREATE TABLE thread_reaction (
     thread_id           bigint references comment_threads(thread_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [PRIMARY KEY]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    reaction_id         integer reference reactions(reaction_id),
+    reaction_id         integer reference reaction(reaction_id),
     createtime          integer, --[index]
-    CONSTRAINT comment_thread_reactions_thread_user_unique UNIQUE (thread_id, user_id)
+    CONSTRAINT thread_reaction_thread_user_unique UNIQUE (thread_id, user_id)
 );
 ------------------------
 -- TABLE block ( -- this should be implement in follow valid field

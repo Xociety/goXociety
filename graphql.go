@@ -305,12 +305,27 @@ var postReactionGraphqlType = graphql.NewList(
 		graphql.ObjectConfig{
 			Name: "post_reaction",
 			Fields: graphql.Fields{
-				"post_id":    &graphql.Field{Type: int64GraphqlScalar},
-				"user_id":    &graphql.Field{Type: int64GraphqlScalar},
-				"username":   &graphql.Field{Type: graphql.String},
-				"name":       &graphql.Field{Type: graphql.String},
-				"reaction":   &graphql.Field{Type: graphql.Int},
-				"createtime": &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+				"post_id":     &graphql.Field{Type: int64GraphqlScalar},
+				"user_id":     &graphql.Field{Type: int64GraphqlScalar},
+				"username":    &graphql.Field{Type: graphql.String},
+				"name":        &graphql.Field{Type: graphql.String},
+				"reaction_id": &graphql.Field{Type: graphql.Int},
+				"createtime":  &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			},
+		},
+	),
+)
+var commentReactionGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "comment_reaction",
+			Fields: graphql.Fields{
+				"comment_id":  &graphql.Field{Type: int64GraphqlScalar},
+				"user_id":     &graphql.Field{Type: int64GraphqlScalar},
+				"username":    &graphql.Field{Type: graphql.String},
+				"name":        &graphql.Field{Type: graphql.String},
+				"reaction_id": &graphql.Field{Type: graphql.Int},
+				"createtime":  &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 			},
 		},
 	),
@@ -656,6 +671,33 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
+			"reactions_by_comment": &graphql.Field{
+				Type: commentReactionGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"comment_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "comment_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					commentID, isOK := p.Args["comment_id"].(int64)
+					if !isOK {
+						return nil, errors.New("comment_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					reactionsComment, err := getReactionsByComment(commentID, page)
+					return reactionsComment, err
+				},
+				Description: "",
+			},
+			// "reationcs_by_thread"
 			"comments_by_post": &graphql.Field{
 				Type: commentsGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -682,6 +724,7 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
+			// "threads_by_comment"
 		},
 	})
 var graphqlMutationType = graphql.NewObject(
@@ -855,13 +898,144 @@ var graphqlMutationType = graphql.NewObject(
 						return nil, errors.New("post_id format")
 					}
 					post := postAPI{PostID: postID, UserID: user.UserID}
-					// delete post_reactions, post_tag_user, comment, comment_reactions, comment_deep
 					us, err := postDelete(post)
 					return us, err
 				},
 				Description: "",
 			},
-			"comment_insert": &graphql.Field{
+			"reaction_on_post": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+					"reaction_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "reaction_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					reactionID, isOK := p.Args["reaction_id"].(int)
+					if !isOK {
+						return nil, errors.New("reaction_id format")
+					}
+					if reactionsTypeMapID2Description[reactionID] == "" {
+						return nil, errors.New("reaction_id format")
+					}
+					reactionOnPost := reactionOnPostAPI{
+						PostID:     postID,
+						UserID:     user.UserID,
+						ReactionID: reactionID,
+						Createtime: getNowUnixTimestamp(),
+					}
+					us, err := reactionOnPostSet(reactionOnPost)
+					return us, err
+				},
+				Description: "",
+			},
+			"reaction_on_post_delete": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					reactionOnPost := reactionOnPostAPI{
+						PostID: postID,
+						UserID: user.UserID,
+					}
+					us, err := reactionOnPostDelete(reactionOnPost)
+					return us, err
+				},
+				Description: "",
+			},
+			"reaction_on_comment": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"comment_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "comment_id",
+					},
+					"reaction_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "reaction_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					commentID, isOK := p.Args["comment_id"].(int64)
+					if !isOK {
+						return nil, errors.New("comment_id format")
+					}
+					reactionID, isOK := p.Args["reaction_id"].(int)
+					if !isOK {
+						return nil, errors.New("reaction_id format")
+					}
+					if reactionsTypeMapID2Description[reactionID] == "" {
+						return nil, errors.New("reaction_id format")
+					}
+					reactionOnComment := reactionOnCommentAPI{
+						CommentID:  commentID,
+						UserID:     user.UserID,
+						ReactionID: reactionID,
+						Createtime: getNowUnixTimestamp(),
+					}
+					us, err := reactionOnCommentSet(reactionOnComment)
+					return us, err
+				},
+				Description: "",
+			},
+			"reaction_on_comment_delete": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"comment_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "comment_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					commentID, isOK := p.Args["comment_id"].(int64)
+					if !isOK {
+						return nil, errors.New("comment_id format")
+					}
+					reactionOnComment := reactionOnCommentAPI{
+						CommentID: commentID,
+						UserID:    user.UserID,
+					}
+					us, err := reactionOnCommentDelete(reactionOnComment)
+					return us, err
+				},
+				Description: "",
+			},
+			// "reaction_on_thread"
+			// "reaction_on_thread_delete"
+			"comment_on_post_insert": &graphql.Field{
 				Type: commentGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"post_id": &graphql.ArgumentConfig{
@@ -886,12 +1060,12 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return comment, err
 					}
-					comment.CommentID, err = commentInsert(comment)
+					comment.CommentID, err = commentOnPostInsert(comment)
 					return comment, err
 				},
 				Description: "",
 			},
-			"comment_update": &graphql.Field{
+			"comment_on_post_update": &graphql.Field{
 				Type: updateStatusGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"comment_id": &graphql.ArgumentConfig{
@@ -916,12 +1090,12 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return comment, err
 					}
-					us, err := commentUpdate(comment)
+					us, err := commentOnPostUpdate(comment)
 					return us, err
 				},
 				Description: "",
 			},
-			"comment_delete": &graphql.Field{
+			"comment_on_post_delete": &graphql.Field{
 				Type: updateStatusGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"comment_id": &graphql.ArgumentConfig{
@@ -939,77 +1113,14 @@ var graphqlMutationType = graphql.NewObject(
 						return nil, errors.New("comment_id format")
 					}
 					comment := commentAPI{CommentID: commentID, UserID: user.UserID}
-					// delete deep
-					us, err := commentDelete(comment)
+					us, err := commentOnPostDelete(comment)
 					return us, err
 				},
 				Description: "",
 			},
-			"reaction": &graphql.Field{
-				Type: updateStatusGraphqlType,
-				Args: graphql.FieldConfigArgument{
-					"post_id": &graphql.ArgumentConfig{
-						Type:        int64GraphqlScalar,
-						Description: "post_id",
-					},
-					"reaction": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "reaction",
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					user, err := parseAuth(p)
-					if err != nil {
-						return nil, err
-					}
-					postID, isOK := p.Args["post_id"].(int64)
-					if !isOK {
-						return nil, errors.New("post_id format")
-					}
-					reactionID, isOK := p.Args["reaction_id"].(int)
-					if !isOK {
-						return nil, errors.New("reaction_id format")
-					}
-					if reactionsTypeMapID2Description[reactionID] == "" {
-						return nil, errors.New("reaction format")
-					}
-					reactionsPost := reactionPostAPI{
-						PostID:     postID,
-						UserID:     user.UserID,
-						ReactionID: reactionID,
-						Createtime: getNowUnixTimestamp(),
-					}
-					us, err := reactionsPostSet(reactionsPost)
-					return us, err
-				},
-				Description: "",
-			},
-			"reaction_delete": &graphql.Field{
-				Type: updateStatusGraphqlType,
-				Args: graphql.FieldConfigArgument{
-					"post_id": &graphql.ArgumentConfig{
-						Type:        int64GraphqlScalar,
-						Description: "post_id",
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					user, err := parseAuth(p)
-					if err != nil {
-						return nil, err
-					}
-					postID, isOK := p.Args["post_id"].(int64)
-					if !isOK {
-						return nil, errors.New("post_id format")
-					}
-					reactionsPost := reactionPostAPI{
-						PostID: postID,
-						UserID: user.UserID,
-					}
-					us, err := reactionPostDelete(reactionsPost)
-					return us, err
-				},
-				Description: "",
-			},
+			// "thread_on_comment_insert"
+			// "thread_on_comment_update"
+			// "thread_on_comment_delete"
 		},
 	},
 )

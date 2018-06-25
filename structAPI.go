@@ -81,8 +81,24 @@ type commentAPI struct {
 }
 
 // reaction
-type reactionPostAPI struct {
+type reactionOnPostAPI struct {
 	PostID     int64  `json:"post_id,omitempty"`
+	UserID     int64  `json:"user_id,omitempty"`
+	Username   string `json:"username,omitempty"`
+	Name       string `json:"name,omitempty"`
+	ReactionID int    `json:"reaction_id,omitempty"`
+	Createtime int    `json:"createtime,omitempty"`
+}
+type reactionOnCommentAPI struct {
+	CommentID  int64  `json:"comment_id,omitempty"`
+	UserID     int64  `json:"user_id,omitempty"`
+	Username   string `json:"username,omitempty"`
+	Name       string `json:"name,omitempty"`
+	ReactionID int    `json:"reaction_id,omitempty"`
+	Createtime int    `json:"createtime,omitempty"`
+}
+type reactionOnThreadAPI struct {
+	ThreadID   int64  `json:"thread_id,omitempty"`
 	UserID     int64  `json:"user_id,omitempty"`
 	Username   string `json:"username,omitempty"`
 	Name       string `json:"name,omitempty"`

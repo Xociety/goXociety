@@ -432,7 +432,7 @@ func getCommentsByPost(postID int64, page int) (comments []commentAPI, err error
 	return comments, nil
 }
 
-func getReactionsByPost(postID int64, page int) (reactionsPost []reactionPostAPI, err error) {
+func getReactionsByPost(postID int64, page int) (reactionsOnPost []reactionOnPostAPI, err error) {
 	numPerRequest := 10
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -451,23 +451,60 @@ func getReactionsByPost(postID int64, page int) (reactionsPost []reactionPostAPI
 	}
 	defer rows.Close()
 	for rows.Next() {
-		reactionPost := reactionPostAPI{}
+		reactionOnPost := reactionOnPostAPI{}
 		if err := rows.Scan(
-			&reactionPost.PostID,
-			&reactionPost.UserID,
-			&reactionPost.Username,
-			&reactionPost.Name,
-			&reactionPost.ReactionID,
-			&reactionPost.Createtime,
+			&reactionOnPost.PostID,
+			&reactionOnPost.UserID,
+			&reactionOnPost.Username,
+			&reactionOnPost.Name,
+			&reactionOnPost.ReactionID,
+			&reactionOnPost.Createtime,
 		); err != nil {
 			log.Println("errrr", err)
 		}
-		reactionsPost = append(reactionsPost, reactionPost)
+		reactionsOnPost = append(reactionsOnPost, reactionOnPost)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 	}
-	return reactionsPost, nil
+	return reactionsOnPost, nil
+}
+func getReactionsByComment(commentID int64, page int) (reactionsOnComment []reactionOnCommentAPI, err error) {
+	numPerRequest := 10
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		comment_reaction.comment_id, 
+		comment_reaction.user_id, xuser.username, xuser.name, 
+		comment_reaction.reaction_id, comment_reaction.createtime 
+		FROM public.comment_reaction FULL OUTER JOIN xuser on comment_reaction.user_id = xuser.user_id
+		WHERE comment_id=$1
+		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
+	`
+	rows, err := c.db.Query(sqlStr, commentID, page*numPerRequest, numPerRequest)
+	if err != nil {
+		log.Println("getReactionsByComment", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		reactionOnComment := reactionOnCommentAPI{}
+		if err := rows.Scan(
+			&reactionOnComment.CommentID,
+			&reactionOnComment.UserID,
+			&reactionOnComment.Username,
+			&reactionOnComment.Name,
+			&reactionOnComment.ReactionID,
+			&reactionOnComment.Createtime,
+		); err != nil {
+			log.Println("errrr", err)
+		}
+		reactionsOnComment = append(reactionsOnComment, reactionOnComment)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+	}
+	return reactionsOnComment, nil
 }
 
 // mutation
@@ -586,7 +623,7 @@ func postDelete(post postAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 
-func commentInsert(comment commentAPI) (commentID int64, err error) {
+func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
 	sqlStr := `
@@ -624,7 +661,7 @@ func commentInsert(comment commentAPI) (commentID int64, err error) {
 	}
 	return commentID, nil
 }
-func commentUpdate(comment commentAPI) (us updateStatusAPI, err error) {
+func commentOnPostUpdate(comment commentAPI) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
 	sqlStr := `
@@ -646,7 +683,7 @@ func commentUpdate(comment commentAPI) (us updateStatusAPI, err error) {
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func commentDelete(comment commentAPI) (us updateStatusAPI, err error) {
+func commentOnPostDelete(comment commentAPI) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
 	sqlStr := `
@@ -677,7 +714,7 @@ func commentDelete(comment commentAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 
-func reactionsPostSet(reactionPost reactionPostAPI) (us updateStatusAPI, err error) {
+func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
 	sqlStr := `
@@ -686,10 +723,10 @@ func reactionsPostSet(reactionPost reactionPostAPI) (us updateStatusAPI, err err
 		) 
 		VALUES($1,$2,$3,$4) 
 		ON CONFLICT ON CONSTRAINT post_reaction_post_user_unique DO 
-		UPDATE SET post_id=$1, user_id=$2, act=$3, createtime=$4;
+		UPDATE SET post_id=$1, user_id=$2, reaction_id=$3, createtime=$4;
 	`
 	res, err := c.db.Exec(sqlStr,
-		reactionPost.PostID, reactionPost.UserID, reactionPost.ReactionID, reactionPost.Createtime)
+		reactionOnPost.PostID, reactionOnPost.UserID, reactionOnPost.ReactionID, reactionOnPost.Createtime)
 	if err != nil {
 		return us, err
 	}
@@ -701,17 +738,17 @@ func reactionsPostSet(reactionPost reactionPostAPI) (us updateStatusAPI, err err
 	// update post.like_count || post.dislike_count
 	sqlStr = `
 		UPDATE post
-		SET ` + reactionsTypeMapID2Description[reactionPost.ReactionID] + `_count =
+		SET ` + reactionsTypeMapID2Description[reactionOnPost.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM post_reaction
 		WHERE post_reaction.post_id = post.post_id AND post_reaction.post_id = $1) WHERE post_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, reactionPost.PostID)
+	_, err = c.db.Exec(sqlStr, reactionOnPost.PostID)
 	if err != nil {
 		return us, err
 	}
 	return us, nil
 }
-func reactionPostDelete(reactionPost reactionPostAPI) (us updateStatusAPI, err error) {
+func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
 	sqlStr := `
@@ -719,7 +756,7 @@ func reactionPostDelete(reactionPost reactionPostAPI) (us updateStatusAPI, err e
 		WHERE post_id=$1 AND user_id=$2;
 	`
 	res, err := c.db.Exec(sqlStr,
-		reactionPost.PostID, reactionPost.UserID)
+		reactionOnPost.PostID, reactionOnPost.UserID)
 	if err != nil {
 		return us, err
 	}
@@ -731,11 +768,75 @@ func reactionPostDelete(reactionPost reactionPostAPI) (us updateStatusAPI, err e
 	// update post.like_count || post.dislike_count
 	sqlStr = `
 		UPDATE post
-		SET ` + reactionsTypeMapID2Description[reactionPost.ReactionID] + `_count =
+		SET ` + reactionsTypeMapID2Description[reactionOnPost.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM post_reaction
 		WHERE post_reaction.post_id = post.post_id AND post_reaction.post_id = $1) WHERE post_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, reactionPost.PostID)
+	_, err = c.db.Exec(sqlStr, reactionOnPost.PostID)
+	if err != nil {
+		return us, err
+	}
+	return us, nil
+}
+func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		INSERT INTO comment_reaction (
+			comment_id,user_id,reaction_id,createtime
+		) 
+		VALUES($1,$2,$3,$4) 
+		ON CONFLICT ON CONSTRAINT comment_reaction_comment_user_unique DO 
+		UPDATE SET comment_id=$1, user_id=$2, reaction_id=$3, createtime=$4;
+	`
+	res, err := c.db.Exec(sqlStr,
+		reactionOnComment.CommentID, reactionOnComment.UserID, reactionOnComment.ReactionID, reactionOnComment.Createtime)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	// update comment.like_count || comment.dislike_count
+	sqlStr = `
+		UPDATE comment
+		SET ` + reactionsTypeMapID2Description[reactionOnComment.ReactionID] + `_count =
+		(SELECT COUNT(*) FROM comment_reaction
+		WHERE comment_reaction.comment_id = comment.comment_id AND comment_reaction.comment_id = $1) WHERE comment_id = $1;
+	`
+	_, err = c.db.Exec(sqlStr, reactionOnComment.CommentID)
+	if err != nil {
+		return us, err
+	}
+	return us, nil
+}
+func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		DELETE FROM comment_reaction 
+		WHERE comment_id=$1 AND user_id=$2;
+	`
+	res, err := c.db.Exec(sqlStr,
+		reactionOnComment.CommentID, reactionOnComment.UserID)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	// update comment.like_count || comment.dislike_count
+	sqlStr = `
+		UPDATE comment
+		SET ` + reactionsTypeMapID2Description[reactionOnComment.ReactionID] + `_count =
+		(SELECT COUNT(*) FROM comment_reaction
+		WHERE comment_reaction.comment_id = comment.comment_id AND comment_reaction.comment_id = $1) WHERE comment_id = $1;
+	`
+	_, err = c.db.Exec(sqlStr, reactionOnComment.CommentID)
 	if err != nil {
 		return us, err
 	}
