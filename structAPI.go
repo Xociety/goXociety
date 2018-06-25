@@ -30,14 +30,14 @@ type xuserAPI struct {
 }
 
 // follow
-type xuserFollowingAPI struct {
+type userFollowingAPI struct {
 	UserID        int64  `json:"user_id,omitempty"`
 	UserName      string `json:"user_name,omitempty"`
 	Name          string `json:"name,omitempty"`
 	PhotoURL      string `json:"photo_url,omitempty"`
 	FollowingTime int    `json:"following_time,omitempty"`
 }
-type xuserFollowerAPI struct {
+type userFollowerAPI struct {
 	UserID        int64  `json:"user_id,omitempty"`
 	UserName      string `json:"user_name,omitempty"`
 	Name          string `json:"name,omitempty"`
@@ -80,13 +80,13 @@ type commentAPI struct {
 	Updatetime   int    `json:"updatetime,omitempty"`
 }
 
-// action
-type actionPostAPI struct {
+// reaction
+type reactionPostAPI struct {
 	PostID     int64  `json:"post_id,omitempty"`
 	UserID     int64  `json:"user_id,omitempty"`
 	Username   string `json:"username,omitempty"`
 	Name       string `json:"name,omitempty"`
-	Act        int    `json:"act,omitempty"`
+	ReactionID int    `json:"reaction_id,omitempty"`
 	Createtime int    `json:"createtime,omitempty"`
 }
 
@@ -105,9 +105,9 @@ type genderAPI struct {
 	GenderID int    `json:"gender_id,omitempty"`
 	Value    string `json:"value,omitempty"`
 }
-type actionsAPI struct {
-	ActionID int    `json:"action_id,omitempty"`
-	Value    string `json:"value,omitempty"`
+type reactionAPI struct {
+	ReactionID int    `json:"reaction_id,omitempty"`
+	Value      string `json:"value,omitempty"`
 }
 type postTypeAPI struct {
 	PostTypeID int    `json:"post_type_id,omitempty"`

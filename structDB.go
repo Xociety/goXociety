@@ -1,6 +1,6 @@
 package main
 
-type xuserDB struct {
+type userDB struct {
 	UserID     int64
 	Username   string
 	Email      string

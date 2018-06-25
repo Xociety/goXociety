@@ -12,7 +12,8 @@ import (
 
 // Graphql Server
 const (
-	hostname     = "0.0.0.0" // "127.0.0.1"
+	hostname = "127.0.0.1"
+	// hostname     = "0.0.0.0"
 	serverPort   = 4000
 	graphqlRoute = "/graphql"
 	graphiql     = true
@@ -24,7 +25,7 @@ var (
 	countryConfigAPI  []countryAPI
 	languageConfigAPI []languageAPI
 	genderConfigAPI   []genderAPI
-	actionsConfigAPI  []actionsAPI
+	reactionConfigAPI []reactionAPI
 	postTypeConfigAPI []postTypeAPI
 )
 
@@ -43,7 +44,7 @@ type reverseLookupMap map[string]int
 var (
 	postTypeMapID2Type                 = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
 	postTypeMapType2ID                 = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
-	actionsTypeMapID2Description       = make(map[int]string) // example: [0: "like", 1: "dislike"]
+	reactionsTypeMapID2Description     = make(map[int]string) // example: [0: "like", 1: "dislike"]
 	countryTypeMapID2Country           = make(map[int]string) // example: [0: "Afghanistan"]
 	countryTypeMapID2CountryCode       = make(map[int]string) // example: [0: "af"]
 	languageTypeMapID2DisplayLanguage  = make(map[int]string) // example: [0: "Afrikaans"]
@@ -52,9 +53,9 @@ var (
 )
 
 // Postgres
-// const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
+const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
 
-const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=MGmQClLFup sslmode=disable"
+// const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=MGmQClLFup sslmode=disable"
 
 // GCP
 var clientAuthGCP clientAuthFromServiceAccountFileGCP
@@ -96,7 +97,7 @@ func init() {
 	loadConfigFromFile("./database/language.csv", 0, 1, 3, false, languageTypeMapID2DisplayLanguage, nil)
 	loadConfigFromFile("./database/language.csv", 0, 2, 3, false, languageTypeMapID2HlParameterValue, nil)
 	loadConfigFromFile("./database/gender.csv", 0, 1, 2, false, genderTypeMapID2Description, nil)
-	loadConfigFromFile("./database/actions.csv", 0, 1, 2, false, actionsTypeMapID2Description, nil)
+	loadConfigFromFile("./database/reaction.csv", 0, 1, 2, false, reactionsTypeMapID2Description, nil)
 	loadConfigFromFile("./database/post_type.csv", 0, 1, 2, true, postTypeMapID2Type, postTypeMapType2ID)
 
 	// api
@@ -120,10 +121,10 @@ func init() {
 			Value:    v,
 		})
 	}
-	for k, v := range actionsTypeMapID2Description {
-		actionsConfigAPI = append(actionsConfigAPI, actionsAPI{
-			ActionID: k,
-			Value:    v,
+	for k, v := range reactionsTypeMapID2Description {
+		reactionConfigAPI = append(reactionConfigAPI, reactionAPI{
+			ReactionID: k,
+			Value:      v,
 		})
 	}
 	for k, v := range postTypeMapID2Type {

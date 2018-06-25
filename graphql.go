@@ -165,13 +165,13 @@ var genderGraphqlType = graphql.NewList(
 		},
 	),
 )
-var actionsGraphqlType = graphql.NewList(
+var reactionGraphqlType = graphql.NewList(
 	graphql.NewObject(
 		graphql.ObjectConfig{
-			Name: "actions",
+			Name: "reaction",
 			Fields: graphql.Fields{
-				"action_id": &graphql.Field{Type: graphql.Int},
-				"value":     &graphql.Field{Type: graphql.String},
+				"reaction_id": &graphql.Field{Type: graphql.Int},
+				"value":       &graphql.Field{Type: graphql.String},
 			},
 		},
 	),
@@ -199,9 +199,9 @@ var loginGraphqlType = graphql.NewObject(
 )
 
 // user
-var xuserGraphqlType = graphql.NewObject(
+var userGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "XUser",
+		Name: "User",
 		Fields: graphql.Fields{
 			"user_id":     &graphql.Field{Type: int64GraphqlScalar},
 			"username":    &graphql.Field{Type: graphql.String},
@@ -221,46 +221,37 @@ var xuserGraphqlType = graphql.NewObject(
 		},
 	},
 )
-var xusersGraphqlType = graphql.NewList(xuserGraphqlType)
 
 // following
-var xuserFollowingGraphqlType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "following_user",
-		Fields: graphql.Fields{
-			"user_id":        &graphql.Field{Type: int64GraphqlScalar},
-			"username":       &graphql.Field{Type: graphql.String},
-			"name":           &graphql.Field{Type: graphql.String},
-			"photo_url":      &graphql.Field{Type: graphql.String},
-			"following_time": &graphql.Field{Type: graphql.Int},
+var usersFollowingGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "user_following",
+			Fields: graphql.Fields{
+				"user_id":        &graphql.Field{Type: int64GraphqlScalar},
+				"username":       &graphql.Field{Type: graphql.String},
+				"name":           &graphql.Field{Type: graphql.String},
+				"photo_url":      &graphql.Field{Type: graphql.String},
+				"following_time": &graphql.Field{Type: graphql.Int},
+			},
 		},
-	},
+	),
 )
-var xusersFollowingGraphqlType = graphql.NewList(xuserFollowingGraphqlType)
 
 // follower
-var xuserFollowerGraphqlType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "follower_user",
-		Fields: graphql.Fields{
-			"user_id":        &graphql.Field{Type: int64GraphqlScalar},
-			"username":       &graphql.Field{Type: graphql.String},
-			"name":           &graphql.Field{Type: graphql.String},
-			"photo_url":      &graphql.Field{Type: graphql.String},
-			"following_time": &graphql.Field{Type: graphql.Int},
+var usersFollowerGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "user_follower",
+			Fields: graphql.Fields{
+				"user_id":        &graphql.Field{Type: int64GraphqlScalar},
+				"username":       &graphql.Field{Type: graphql.String},
+				"name":           &graphql.Field{Type: graphql.String},
+				"photo_url":      &graphql.Field{Type: graphql.String},
+				"following_time": &graphql.Field{Type: graphql.Int},
+			},
 		},
-	},
-)
-var xusersFollowerGraphqlType = graphql.NewList(xuserFollowerGraphqlType)
-
-var followingGraphqlType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "following",
-		Fields: graphql.Fields{
-			"user_id":        &graphql.Field{Type: graphql.String},
-			"following_time": &graphql.Field{Type: graphql.Int},
-		},
-	},
+	),
 )
 
 // post
@@ -287,7 +278,7 @@ var postGraphqlType = graphql.NewObject(
 )
 var postsGraphqlType = graphql.NewList(postGraphqlType)
 
-// comments
+// comment
 var commentGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "comment",
@@ -308,21 +299,22 @@ var commentGraphqlType = graphql.NewObject(
 )
 var commentsGraphqlType = graphql.NewList(commentGraphqlType)
 
-// actions
-var postActionGraphqlType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "post_actions",
-		Fields: graphql.Fields{
-			"post_id":    &graphql.Field{Type: int64GraphqlScalar},
-			"user_id":    &graphql.Field{Type: int64GraphqlScalar},
-			"username":   &graphql.Field{Type: graphql.String},
-			"name":       &graphql.Field{Type: graphql.String},
-			"act":        &graphql.Field{Type: graphql.Int},
-			"createtime": &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+// reaction
+var postReactionGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "post_reaction",
+			Fields: graphql.Fields{
+				"post_id":    &graphql.Field{Type: int64GraphqlScalar},
+				"user_id":    &graphql.Field{Type: int64GraphqlScalar},
+				"username":   &graphql.Field{Type: graphql.String},
+				"name":       &graphql.Field{Type: graphql.String},
+				"reaction":   &graphql.Field{Type: graphql.Int},
+				"createtime": &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			},
 		},
-	},
+	),
 )
-var postActionsGraphqlType = graphql.NewList(postActionGraphqlType)
 
 // funcs
 func parseAuth(p graphql.ResolveParams) (user xuserAPI, err error) {
@@ -417,10 +409,10 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			"actions": &graphql.Field{
-				Type: actionsGraphqlType,
+			"reaction": &graphql.Field{
+				Type: reactionGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					return actionsConfigAPI, nil
+					return reactionConfigAPI, nil
 				},
 				Description: "",
 			},
@@ -460,8 +452,8 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			"xuser_by_user_id": &graphql.Field{
-				Type: xuserGraphqlType,
+			"user_by_user_id": &graphql.Field{
+				Type: userGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"user_id": &graphql.ArgumentConfig{
 						Type:        int64GraphqlScalar,
@@ -473,13 +465,13 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("user_id format")
 					}
-					user, err := getXuserByID(userID)
+					user, err := getUserByUserID(userID)
 					return user, err
 				},
 				Description: "",
 			},
-			"xuser_by_username": &graphql.Field{
-				Type: xuserGraphqlType,
+			"user_by_username": &graphql.Field{
+				Type: userGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"username": &graphql.ArgumentConfig{
 						Type:        graphql.String,
@@ -491,13 +483,13 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("username format")
 					}
-					user, err := getXuserByUsername(username)
+					user, err := getUserByUsername(username)
 					return user, err
 				},
 				Description: "",
 			},
-			"following_list": &graphql.Field{
-				Type: xusersFollowingGraphqlType,
+			"users_by_following": &graphql.Field{
+				Type: usersFollowingGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"page": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
@@ -513,13 +505,13 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
-					users, err := getFollowingList(user.UserID, page)
+					users, err := getUsersByFollowing(user.UserID, page)
 					return users, err
 				},
 				Description: "",
 			},
-			"follower_list": &graphql.Field{
-				Type: xusersFollowerGraphqlType,
+			"users_by_follower": &graphql.Field{
+				Type: usersFollowerGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"page": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
@@ -535,12 +527,12 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
-					users, err := getFollwerList(user.UserID, page)
+					users, err := getUsersByFollower(user.UserID, page)
 					return users, err
 				},
 				Description: "",
 			},
-			"is_following": &graphql.Field{
+			"user_is_following": &graphql.Field{
 				Type: graphql.Boolean,
 				Args: graphql.FieldConfigArgument{
 					"user_id": &graphql.ArgumentConfig{
@@ -557,35 +549,12 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("user_id format")
 					}
-					isFollowing, err := checkIfFollowing(userID, user.UserID)
+					isFollowing, err := checkUserIfFollowing(userID, user.UserID)
 					return isFollowing, err
 				},
 				Description: "",
 			},
-			"posts_following": &graphql.Field{
-				Type: postsGraphqlType,
-				Args: graphql.FieldConfigArgument{
-					"page": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "page",
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					user, err := parseAuth(p)
-					if err != nil {
-						return nil, err
-					}
-					page, isOK := p.Args["page"].(int)
-					if !isOK {
-						return nil, errors.New("page format")
-					}
-					// block check
-					posts := getFollowingUsersPosts(user.UserID, page)
-					return posts, nil
-				},
-				Description: "",
-			},
-			"posts_recent": &graphql.Field{
+			"posts_by_recent": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"category_id": &graphql.ArgumentConfig{
@@ -606,12 +575,88 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
-					posts := getPostsRecent(categoryID, page)
+					posts := getPostsByRecent(categoryID, page)
 					return posts, nil
 				},
 				Description: "",
 			},
-			"comments": &graphql.Field{
+			"posts_by_following_users": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts := getPostsByFollowingUsers(user.UserID, page)
+					return posts, nil
+				},
+				Description: "",
+			},
+			"posts_by_user": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"user_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "user_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					userID, isOK := p.Args["user_id"].(int64)
+					if !isOK {
+						return nil, errors.New("user_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts := getPostsByUser(userID, page)
+					return posts, nil
+				},
+				Description: "",
+			},
+			"reactions_by_post": &graphql.Field{
+				Type: postReactionGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					reactionsPost, err := getReactionsByPost(postID, page)
+					return reactionsPost, err
+				},
+				Description: "",
+			},
+			"comments_by_post": &graphql.Field{
 				Type: commentsGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"post_id": &graphql.ArgumentConfig{
@@ -632,34 +677,8 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
-					comments, err := getCommentsPost(postID, page)
+					comments, err := getCommentsByPost(postID, page)
 					return comments, err
-				},
-				Description: "",
-			},
-			"post_actions": &graphql.Field{
-				Type: postActionsGraphqlType,
-				Args: graphql.FieldConfigArgument{
-					"post_id": &graphql.ArgumentConfig{
-						Type:        int64GraphqlScalar,
-						Description: "post_id",
-					},
-					"page": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "page",
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					postID, isOK := p.Args["post_id"].(int64)
-					if !isOK {
-						return nil, errors.New("post_id format")
-					}
-					page, isOK := p.Args["page"].(int)
-					if !isOK {
-						return nil, errors.New("page format")
-					}
-					actionsPost, err := getPostActions(postID, page)
-					return actionsPost, err
 				},
 				Description: "",
 			},
@@ -670,7 +689,7 @@ var graphqlMutationType = graphql.NewObject(
 		Name: "Mutation",
 		Fields: graphql.Fields{
 			"follow": &graphql.Field{
-				Type: followingGraphqlType,
+				Type: updateStatusGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"user_id": &graphql.ArgumentConfig{
 						Type:        int64GraphqlScalar,
@@ -687,8 +706,8 @@ var graphqlMutationType = graphql.NewObject(
 						return nil, errors.New("user_id format")
 					}
 					// follow count limit?
-					userFollowing, err := follow(userID, user.UserID)
-					return userFollowing, err
+					us, err := follow(userID, user.UserID)
+					return us, err
 				},
 				Description: "",
 			},
@@ -714,7 +733,7 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			"post": &graphql.Field{
+			"post_insert": &graphql.Field{
 				Type: postGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"content": &graphql.ArgumentConfig{
@@ -768,9 +787,9 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return nil, err
 					}
-					post.PostID, err = postNow(post)
+					post.PostID, err = postInsert(post)
 					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
-					return post, nil
+					return post, err
 				},
 				Description: "",
 				DeprecationReason: `please use form-data to upload file, form-data key:
@@ -836,13 +855,13 @@ var graphqlMutationType = graphql.NewObject(
 						return nil, errors.New("post_id format")
 					}
 					post := postAPI{PostID: postID, UserID: user.UserID}
-					// delete post_actions, post_tag_user, comment, comment_actions, comment_deep
+					// delete post_reactions, post_tag_user, comment, comment_reactions, comment_deep
 					us, err := postDelete(post)
 					return us, err
 				},
 				Description: "",
 			},
-			"comment": &graphql.Field{
+			"comment_insert": &graphql.Field{
 				Type: commentGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"post_id": &graphql.ArgumentConfig{
@@ -867,7 +886,7 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return comment, err
 					}
-					comment.CommentID, err = commentNow(comment)
+					comment.CommentID, err = commentInsert(comment)
 					return comment, err
 				},
 				Description: "",
@@ -926,16 +945,16 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			"action": &graphql.Field{
+			"reaction": &graphql.Field{
 				Type: updateStatusGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"post_id": &graphql.ArgumentConfig{
 						Type:        int64GraphqlScalar,
 						Description: "post_id",
 					},
-					"action": &graphql.ArgumentConfig{
+					"reaction": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
-						Description: "action",
+						Description: "reaction",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -947,25 +966,25 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("post_id format")
 					}
-					act, isOK := p.Args["action"].(int)
+					reactionID, isOK := p.Args["reaction_id"].(int)
 					if !isOK {
-						return nil, errors.New("actions format")
+						return nil, errors.New("reaction_id format")
 					}
-					if actionsTypeMapID2Description[act] == "" {
-						return nil, errors.New("actions format")
+					if reactionsTypeMapID2Description[reactionID] == "" {
+						return nil, errors.New("reaction format")
 					}
-					actionsPost := actionPostAPI{
+					reactionsPost := reactionPostAPI{
 						PostID:     postID,
 						UserID:     user.UserID,
-						Act:        act,
+						ReactionID: reactionID,
 						Createtime: getNowUnixTimestamp(),
 					}
-					us, err := actionNow(actionsPost)
+					us, err := reactionsPostSet(reactionsPost)
 					return us, err
 				},
 				Description: "",
 			},
-			"action_delete": &graphql.Field{
+			"reaction_delete": &graphql.Field{
 				Type: updateStatusGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"post_id": &graphql.ArgumentConfig{
@@ -982,11 +1001,11 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("post_id format")
 					}
-					actionsPost := actionPostAPI{
+					reactionsPost := reactionPostAPI{
 						PostID: postID,
 						UserID: user.UserID,
 					}
-					us, err := actionDelete(actionsPost)
+					us, err := reactionPostDelete(reactionsPost)
 					return us, err
 				},
 				Description: "",

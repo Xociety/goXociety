@@ -23,7 +23,7 @@
 
 ## config
 
-actions.csv, post_type.csv
+reaction.csv, post_type.csv
 
 
 ## start this repo

@@ -23,11 +23,11 @@ COPY language(language_id, display_language, value) FROM '/var/lib/postgresql/da
 https://developers.google.com/custom-search/docs/xml_results_appendices#interfaceLanguages
 */
 ------------------------
-CREATE TABLE actions (
-    action_id           integer PRIMARY KEY NOT NULL,
+CREATE TABLE reaction (
+    reaction_id         integer PRIMARY KEY NOT NULL,
     value               VARCHAR(15)
 );
-COPY actions(action_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/actions.csv' DELIMITER ';' CSV;
+COPY reaction(reaction_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/reaction.csv' DELIMITER ';' CSV;
 ------------------------
 CREATE TABLE gender (
     gender_id           integer PRIMARY KEY NOT NULL,
@@ -137,18 +137,18 @@ INSERT INTO post_tag_xuser
 (post_id, user_id, x, y, valid, createtime, updatetime) 
 VALUES (33, 4, 0, 0, false, 1527498711, 1527498711);
 ------------------------
-CREATE TABLE post_actions (
+CREATE TABLE post_reaction (
     post_id             bigint references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [primary key]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    act                 integer references actions(action_id), -- 0: like, 1: dislike
+    reaction_id         integer references reactions(reaction_id), -- 0: like, 1: dislike
     createtime          integer, -- [index]
-    CONSTRAINT post_target UNIQUE (post_id, user_id)
+    CONSTRAINT post_reactions_post_user_unique UNIQUE (post_id, user_id)
 );
-INSERT INTO post_actions 
-(post_id, user_id, act, createtime) 
+INSERT INTO post_reaction 
+(post_id, user_id, reaction_id, createtime) 
 VALUES (33, 4, 0, 1527498711);
 ------------------------
-CREATE TABLE comments (
+CREATE TABLE comment (
     comment_id          BIGSERIAL PRIMARY KEY NOT NULL,
     post_id             bigint references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE,
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -163,46 +163,40 @@ CREATE TABLE comments (
     -- constraint comment_count (check (comment_count >= 0))
 );
 ------------------------
-CREATE TABLE comment_actions (
+CREATE TABLE comment_reaction (
     comment_id          bigint references comments(comment_id), -- [PRIMARY KEY]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    act                 integer references actions(action_id),
+    reaction_id         integer references reactions(reaction_id),
     createtime          integer
 );
-INSERT INTO comments 
+INSERT INTO comment 
 (post_id, user_id, comment, createtime, updatetime) 
 VALUES (33, 4, 'yo', 1527498711, 1527498711);
 -- maximum taged user number: 5
-INSERT INTO comment_actions 
-(comment_id, user_id, act, createtime) 
+INSERT INTO comment_reaction 
+(comment_id, user_id, reaction_id, createtime) 
 VALUES (2, 4, 0, 1527498711);
 
-SELECT * FROM post 
-FULL OUTER JOIN xuser on post.user_id = xuser.user_id 
-FULL OUTER JOIN post_actions on post.post_id = post_actions.post_id 
-FULL OUTER JOIN comments on post.post_id = comments.post_id 
-FULL OUTER JOIN comment_actions on comments.comment_id = comment_actions.comment_id;
-
 ------------------------
-TABLE comments_deep (
-    comment_deep_id     PRIMARY KEY BIGSERIAL NOT NULL,
+CREATE TABLE thread (
+    thread_id           PRIMARY KEY BIGSERIAL NOT NULL,
     comment_id          bigint references comments(comment_id) ON DELETE CASCADE ON UPDATE CASCADE,
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     comment             VARCHAR(300),
     like_count          bigint,
     dislike_count       bigint,
-    createtime          integer,
+    createtime          integer, --[index]
     updatetime          integer
     -- constraint like_count (check (like_count >= 0))
     -- constraint dislike_count (check (dislike_count >= 0))
 );
--- maximum taged user number: 5
 ------------------------
-TABLE comments_deep_actions (
-    comment_deep_id     bigint references comments_deep(comment_deep_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [PRIMARY KEY]
+CREATE TABLE thread_reaction (
+    thread_id           bigint references comment_threads(thread_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [PRIMARY KEY]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    act                 integer reference actions(action_id),
-    createtime          integer
+    reaction_id         integer reference reactions(reaction_id),
+    createtime          integer, --[index]
+    CONSTRAINT comment_thread_reactions_thread_user_unique UNIQUE (thread_id, user_id)
 );
 ------------------------
 -- TABLE block ( -- this should be implement in follow valid field
