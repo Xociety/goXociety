@@ -53,9 +53,9 @@ var (
 )
 
 // Postgres
-const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
+// const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
 
-// const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=mysecretpassword sslmode=disable"
+const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=mysecretpassword sslmode=disable"
 
 // GCP
 var clientAuthGCP clientAuthFromServiceAccountFileGCP

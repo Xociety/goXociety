@@ -164,7 +164,7 @@ CREATE TABLE comment (
 );
 ------------------------
 CREATE TABLE comment_reaction (
-    comment_id          bigint references comments(comment_id), -- [PRIMARY KEY]
+    comment_id          bigint references comment(comment_id), -- [PRIMARY KEY]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     reaction_id         integer references reaction(reaction_id),
     createtime          integer, -- [index]
