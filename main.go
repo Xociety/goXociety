@@ -12,8 +12,8 @@ import (
 
 // Graphql Server
 const (
-	hostname = "127.0.0.1"
-	// hostname     = "0.0.0.0"
+	// hostname = "127.0.0.1"
+	hostname     = "0.0.0.0"
 	serverPort   = 4000
 	graphqlRoute = "/graphql"
 	graphiql     = true
@@ -55,7 +55,7 @@ var (
 // Postgres
 const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
 
-// const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=MGmQClLFup sslmode=disable"
+// const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=mysecretpassword sslmode=disable"
 
 // GCP
 var clientAuthGCP clientAuthFromServiceAccountFileGCP
