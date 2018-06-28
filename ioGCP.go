@@ -86,13 +86,13 @@ func untarFileAndUpload(post postAPI, r io.Reader) error {
 		switch postTypeMapID2Type[post.Type] {
 		case mediaFormatJPG:
 			if fileFormat == mediaFormatJPG {
-				filename = strconv.Itoa(jpgCount)
+				filename = strconv.Itoa(jpgCount) + "." + fileFormat
 				jpgCount++
 				isUpload = true
 			}
 		case mediaFormatHLS:
 			if !m3u8uploaded && fileFormat == mediaFormatM3U8 {
-				filename = strconv.Itoa(m3u8Count)
+				filename = strconv.Itoa(m3u8Count) + "." + fileFormat
 				isUpload = true
 				m3u8uploaded = true
 			} else if fileFormat == mediaFormatTS {
