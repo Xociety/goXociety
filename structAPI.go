@@ -46,64 +46,63 @@ type userFollowerAPI struct {
 }
 
 // post
-type postAPI struct {
-	PostID       int64  `json:"post_id,omitempty"`
-	UserID       int64  `json:"user_id,omitempty"`
-	Username     string `json:"username,omitempty"`
-	Name         string `json:"name,omitempty"`
-	Content      string `json:"content,omitempty"`
+type userBasicAPI struct {
+	UserID   int64  `json:"user_id,omitempty"`
+	Username string `json:"username,omitempty"`
+	Name     string `json:"name,omitempty"`
+}
+type blobAPI struct {
 	BlobID       string `json:"blob_id,omitempty"`
-	Type         int    `json:"type,omitempty"`
-	LikeCount    int64  `json:"like_count,omitempty"`
-	DislikeCount int64  `json:"dislike_count,omitempty"`
-	CommentCount int64  `json:"comment_count,omitempty"`
-	// Point
-	CountryID  int  `json:"country_id,omitempty"`
-	CategoryID int  `json:"category_id,omitempty"`
-	Public     bool `json:"public,omitempty"`
-	Createtime int  `json:"createtime,omitempty"`
-	Updatetime int  `json:"updatetime,omitempty"`
+	OriginWidth  int    `json:"origin_width,omitempty"`
+	OriginHeight int    `json:"origin_height,omitempty"`
+}
+type postAPI struct {
+	PostID       int64        `json:"post_id,omitempty"`
+	User         userBasicAPI `json:"user,omitempty"`
+	Content      string       `json:"content,omitempty"`
+	Blob         blobAPI      `json:"blob,omitempty"`
+	Type         int          `json:"type,omitempty"`
+	LikeCount    int64        `json:"like_count,omitempty"`
+	DislikeCount int64        `json:"dislike_count,omitempty"`
+	CommentCount int64        `json:"comment_count,omitempty"`
+	CountryID    int          `json:"country_id,omitempty"`
+	CategoryID   int          `json:"category_id,omitempty"`
+	Public       bool         `json:"public,omitempty"`
+	Createtime   int          `json:"createtime,omitempty"`
+	Updatetime   int          `json:"updatetime,omitempty"`
 }
 
 // comment
 type commentAPI struct {
-	CommentID    int64  `json:"comment_id,omitempty"`
-	PostID       int64  `json:"post_id,omitempty"`
-	UserID       int64  `json:"user_id,omitempty"`
-	Username     string `json:"username,omitempty"`
-	Name         string `json:"name,omitempty"`
-	Comment      string `json:"comment,omitempty"`
-	LikeCount    int64  `json:"like_count,omitempty"`
-	DislikeCount int64  `json:"dislike_count,omitempty"`
-	CommentCount int64  `json:"comment_count,omitempty"`
-	Createtime   int    `json:"createtime,omitempty"`
-	Updatetime   int    `json:"updatetime,omitempty"`
+	CommentID    int64        `json:"comment_id,omitempty"`
+	PostID       int64        `json:"post_id,omitempty"`
+	User         userBasicAPI `json:"user,omitempty"`
+	Comment      string       `json:"comment,omitempty"`
+	LikeCount    int64        `json:"like_count,omitempty"`
+	DislikeCount int64        `json:"dislike_count,omitempty"`
+	CommentCount int64        `json:"comment_count,omitempty"`
+	Createtime   int          `json:"createtime,omitempty"`
+	Updatetime   int          `json:"updatetime,omitempty"`
 }
 
 // reaction
 type reactionOnPostAPI struct {
-	PostID     int64  `json:"post_id,omitempty"`
-	UserID     int64  `json:"user_id,omitempty"`
-	Username   string `json:"username,omitempty"`
-	Name       string `json:"name,omitempty"`
-	ReactionID int    `json:"reaction_id,omitempty"`
-	Createtime int    `json:"createtime,omitempty"`
+	PostID     int64        `json:"post_id,omitempty"`
+	User       userBasicAPI `json:"user,omitempty"`
+	ReactionID int          `json:"reaction_id,omitempty"`
+	Createtime int          `json:"createtime,omitempty"`
 }
 type reactionOnCommentAPI struct {
-	CommentID  int64  `json:"comment_id,omitempty"`
-	UserID     int64  `json:"user_id,omitempty"`
-	Username   string `json:"username,omitempty"`
-	Name       string `json:"name,omitempty"`
-	ReactionID int    `json:"reaction_id,omitempty"`
-	Createtime int    `json:"createtime,omitempty"`
+	CommentID  int64        `json:"comment_id,omitempty"`
+	User       userBasicAPI `json:"user,omitempty"`
+	ReactionID int          `json:"reaction_id,omitempty"`
+	Createtime int          `json:"createtime,omitempty"`
 }
 type reactionOnThreadAPI struct {
-	ThreadID   int64  `json:"thread_id,omitempty"`
-	UserID     int64  `json:"user_id,omitempty"`
-	Username   string `json:"username,omitempty"`
-	Name       string `json:"name,omitempty"`
-	ReactionID int    `json:"reaction_id,omitempty"`
-	Createtime int    `json:"createtime,omitempty"`
+	ThreadID   int64        `json:"thread_id,omitempty"`
+	User       userBasicAPI `json:"user,omitempty"`
+	ReactionID int          `json:"reaction_id,omitempty"`
+	Createtime int          `json:"createtime,omitempty"`
 }
 
 // common
@@ -126,6 +125,7 @@ type reactionAPI struct {
 	Value      string `json:"value,omitempty"`
 }
 type postTypeAPI struct {
-	PostTypeID int    `json:"post_type_id,omitempty"`
-	Value      string `json:"value,omitempty"`
+	PostTypeID int      `json:"post_type_id,omitempty"`
+	Value      string   `json:"value,omitempty"`
+	FileFormat []string `json:"file_format,omitempty"`
 }

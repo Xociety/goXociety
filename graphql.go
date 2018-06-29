@@ -183,6 +183,7 @@ var postTypeGraphqlType = graphql.NewList(
 			Fields: graphql.Fields{
 				"post_type_id": &graphql.Field{Type: graphql.Int},
 				"value":        &graphql.Field{Type: graphql.String},
+				"file_format":  &graphql.Field{Type: graphql.NewList(graphql.String)},
 			},
 		},
 	),
@@ -223,6 +224,16 @@ var userGraphqlType = graphql.NewObject(
 )
 
 // following
+var userBasicGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "user_basic",
+		Fields: graphql.Fields{
+			"user_id":  &graphql.Field{Type: int64GraphqlScalar},
+			"username": &graphql.Field{Type: graphql.String},
+			"name":     &graphql.Field{Type: graphql.String},
+		},
+	},
+)
 var usersFollowingGraphqlType = graphql.NewList(
 	graphql.NewObject(
 		graphql.ObjectConfig{
@@ -254,18 +265,28 @@ var usersFollowerGraphqlType = graphql.NewList(
 	),
 )
 
+// blob
+var blobGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "blob",
+		Fields: graphql.Fields{
+			"blob_id":       &graphql.Field{Type: graphql.String},
+			"origin_width":  &graphql.Field{Type: graphql.Int},
+			"origin_height": &graphql.Field{Type: graphql.Int},
+		},
+	},
+)
+
 // post
 var postGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "post",
 		Fields: graphql.Fields{
 			"post_id":       &graphql.Field{Type: int64GraphqlScalar},
-			"user_id":       &graphql.Field{Type: int64GraphqlScalar},
-			"username":      &graphql.Field{Type: graphql.String},
-			"name":          &graphql.Field{Type: graphql.String},
+			"user":          &graphql.Field{Type: userBasicGraphqlType},
 			"content":       &graphql.Field{Type: graphql.String},
-			"blob_id":       &graphql.Field{Type: graphql.String},
-			"type":          &graphql.Field{Type: graphql.Int, Description: "media type"},
+			"blob":          &graphql.Field{Type: blobGraphqlType},
+			"type":          &graphql.Field{Type: graphql.Int, Description: "post type"},
 			"like_count":    &graphql.Field{Type: int64GraphqlScalar},
 			"dislike_count": &graphql.Field{Type: int64GraphqlScalar},
 			"comment_count": &graphql.Field{Type: int64GraphqlScalar},
@@ -285,9 +306,7 @@ var commentGraphqlType = graphql.NewObject(
 		Fields: graphql.Fields{
 			"comment_id":    &graphql.Field{Type: int64GraphqlScalar},
 			"post_id":       &graphql.Field{Type: int64GraphqlScalar},
-			"user_id":       &graphql.Field{Type: int64GraphqlScalar},
-			"username":      &graphql.Field{Type: graphql.String},
-			"name":          &graphql.Field{Type: graphql.String},
+			"user":          &graphql.Field{Type: userBasicGraphqlType},
 			"comment":       &graphql.Field{Type: graphql.String},
 			"like_count":    &graphql.Field{Type: int64GraphqlScalar},
 			"dislike_count": &graphql.Field{Type: int64GraphqlScalar},
@@ -306,10 +325,8 @@ var postReactionGraphqlType = graphql.NewList(
 			Name: "post_reaction",
 			Fields: graphql.Fields{
 				"post_id":     &graphql.Field{Type: int64GraphqlScalar},
-				"user_id":     &graphql.Field{Type: int64GraphqlScalar},
-				"username":    &graphql.Field{Type: graphql.String},
-				"name":        &graphql.Field{Type: graphql.String},
-				"reaction_id": &graphql.Field{Type: graphql.Int},
+				"user":        &graphql.Field{Type: userBasicGraphqlType},
+				"reaction_id": &graphql.Field{Type: graphql.Int, Description: "reaction"},
 				"createtime":  &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 			},
 		},
@@ -321,9 +338,7 @@ var commentReactionGraphqlType = graphql.NewList(
 			Name: "comment_reaction",
 			Fields: graphql.Fields{
 				"comment_id":  &graphql.Field{Type: int64GraphqlScalar},
-				"user_id":     &graphql.Field{Type: int64GraphqlScalar},
-				"username":    &graphql.Field{Type: graphql.String},
-				"name":        &graphql.Field{Type: graphql.String},
+				"user":        &graphql.Field{Type: userBasicGraphqlType},
 				"reaction_id": &graphql.Field{Type: graphql.Int},
 				"createtime":  &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 			},
@@ -343,7 +358,7 @@ func parseAuth(p graphql.ResolveParams) (user xuserAPI, err error) {
 	}
 	return user, nil
 }
-func parsePost(p graphql.ResolveParams, postID, userID int64, postType int) (post postAPI, err error) {
+func parsePost(p graphql.ResolveParams, postID, userID int64, postType, originWidth, originHeight int) (post postAPI, err error) {
 	content, isOK := p.Args["content"].(string)
 	if !isOK {
 		return post, errors.New("content format")
@@ -358,9 +373,11 @@ func parsePost(p graphql.ResolveParams, postID, userID int64, postType int) (pos
 	}
 	timestamp := getNowUnixTimestamp()
 	post.PostID = postID
-	post.UserID = userID
+	post.User.UserID = userID
 	post.Content = content
-	post.BlobID = strconv.FormatInt(userID, 10) + "_" + strconv.Itoa(timestamp)
+	post.Blob.BlobID = strconv.FormatInt(userID, 10) + "_" + strconv.Itoa(timestamp)
+	post.Blob.OriginWidth = originWidth
+	post.Blob.OriginHeight = originHeight
 	// Point
 	post.Type = postType
 	post.CommentCount = 0
@@ -381,7 +398,7 @@ func parseComment(p graphql.ResolveParams, commentID, postID, userID int64) (c c
 	timestamp := getNowUnixTimestamp()
 	c.CommentID = commentID
 	c.PostID = postID
-	c.UserID = userID
+	c.User.UserID = userID
 	c.Comment = comment
 	c.LikeCount = 0
 	c.DislikeCount = 0
@@ -793,11 +810,19 @@ var graphqlMutationType = graphql.NewObject(
 					},
 					"type": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
-						Description: "media type",
+						Description: "post type",
 					},
 					"file": &graphql.ArgumentConfig{
 						Type:        graphql.String,
 						Description: "tar.gz[*.jpg,...]/[*.m3u8(only one), *.ts...]",
+					},
+					"origin_width": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "origin width",
+					},
+					"origin_height": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "origin height",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -815,10 +840,18 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("type format")
 					}
+					originWidth, isOK := p.Args["origin_width"].(int)
+					if !isOK {
+						return nil, errors.New("origin_width format")
+					}
+					originHeight, isOK := p.Args["origin_height"].(int)
+					if !isOK {
+						return nil, errors.New("origin_height format")
+					}
 					if postTypeMapID2Type[postType] == "" {
 						return nil, errors.New("type format")
 					}
-					post, err := parsePost(p, 0, user.UserID, postType)
+					post, err := parsePost(p, 0, user.UserID, postType, originWidth, originHeight)
 					if err != nil {
 						return post, err
 					}
@@ -871,7 +904,7 @@ var graphqlMutationType = graphql.NewObject(
 						return nil, errors.New("post_id format")
 					}
 					// post parameter check
-					post, err := parsePost(p, postID, user.UserID, 0)
+					post, err := parsePost(p, postID, user.UserID, 0, 0, 0)
 					if err != nil {
 						return post, err
 					}
@@ -897,7 +930,7 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("post_id format")
 					}
-					post := postAPI{PostID: postID, UserID: user.UserID}
+					post := postAPI{PostID: postID, User: userBasicAPI{UserID: user.UserID}}
 					us, err := postDelete(post)
 					return us, err
 				},
@@ -933,7 +966,7 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					reactionOnPost := reactionOnPostAPI{
 						PostID:     postID,
-						UserID:     user.UserID,
+						User:       userBasicAPI{UserID: user.UserID},
 						ReactionID: reactionID,
 						Createtime: getNowUnixTimestamp(),
 					}
@@ -961,7 +994,7 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					reactionOnPost := reactionOnPostAPI{
 						PostID: postID,
-						UserID: user.UserID,
+						User:   userBasicAPI{UserID: user.UserID},
 					}
 					us, err := reactionOnPostDelete(reactionOnPost)
 					return us, err
@@ -998,7 +1031,7 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					reactionOnComment := reactionOnCommentAPI{
 						CommentID:  commentID,
-						UserID:     user.UserID,
+						User:       userBasicAPI{UserID: user.UserID},
 						ReactionID: reactionID,
 						Createtime: getNowUnixTimestamp(),
 					}
@@ -1026,7 +1059,7 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					reactionOnComment := reactionOnCommentAPI{
 						CommentID: commentID,
-						UserID:    user.UserID,
+						User:      userBasicAPI{UserID: user.UserID},
 					}
 					us, err := reactionOnCommentDelete(reactionOnComment)
 					return us, err
@@ -1112,7 +1145,10 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("comment_id format")
 					}
-					comment := commentAPI{CommentID: commentID, UserID: user.UserID}
+					comment := commentAPI{
+						CommentID: commentID,
+						User:      userBasicAPI{UserID: user.UserID},
+					}
 					us, err := commentOnPostDelete(comment)
 					return us, err
 				},

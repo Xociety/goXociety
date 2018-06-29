@@ -128,10 +128,17 @@ func init() {
 		})
 	}
 	for k, v := range postTypeMapID2Type {
-		postTypeConfigAPI = append(postTypeConfigAPI, postTypeAPI{
+		postType := postTypeAPI{
 			PostTypeID: k,
 			Value:      v,
-		})
+		}
+		switch v {
+		case mediaFormatJPG:
+			postType.FileFormat = []string{mediaFormatJPG}
+		case mediaFormatHLS:
+			postType.FileFormat = []string{mediaFormatM3U8, mediaFormatTS}
+		}
+		postTypeConfigAPI = append(postTypeConfigAPI, postType)
 	}
 }
 

@@ -49,6 +49,12 @@ func startServer() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "index.html")
 	})
+	http.HandleFunc("/upload/sample/image.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./development/upload/sample/image.tar.gz")
+	})
+	http.HandleFunc("/upload/sample/playlist.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./development/upload/sample/playlist.tar.gz")
+	})
 	server := &http.Server{
 		Addr:           hostname + ":" + strconv.Itoa(serverPort),
 		ReadTimeout:    5 * time.Minute,

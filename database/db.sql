@@ -83,6 +83,8 @@ CREATE TABLE post (
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     content             VARCHAR(300), -- include @tagid, #hashtag
     blob_id             VARCHAR(200), -- may be foldername
+    origin_width        int,
+    origin_height       int,
     -- blob_count       int, -- multiple images, videos
     type                integer references post_type(post_type_id),
     like_count          bigint,

@@ -25,6 +25,15 @@
 
 reaction.csv, post_type.csv
 
+## image, video
+
+upload tar.gz
+
+sample [resource](https://videos.pexels.com/)
+
+## cert
+
+currently using cloudflare orgin ssl
 
 ## start this repo
 

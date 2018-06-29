@@ -31,7 +31,7 @@ func untarFileAndUpload(post postAPI, r io.Reader) error {
 	m3u8uploaded := false
 	tsCount := 0
 
-	foldername := makeBucketFolderName(post.Type, post.BlobID)
+	foldername := makeBucketFolderName(post.Type, post.Blob.BlobID)
 
 	// define gcp client
 	client, err := storage.NewClient(context.Background(), clientOptionGoogleAPI)

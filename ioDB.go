@@ -230,7 +230,7 @@ func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bo
 
 func makeBlobURL(post postAPI) string {
 	// restore url
-	url := "http://" + bucketRootCloudStorage + "/" + makeBucketFolderName(post.Type, post.BlobID)
+	url := "http://" + bucketRootCloudStorage + "/" + makeBucketFolderName(post.Type, post.Blob.BlobID)
 	switch postTypeMapID2Type[post.Type] {
 	case mediaFormatJPG:
 		url += "0." + mediaFormatJPG
@@ -248,7 +248,7 @@ func getPostsByRecent(categoryID, page int) (posts []postAPI) {
 		SELECT 
 		post.post_id,
 		post.user_id, xuser.username, xuser.name,
-		post.content, post.blob_id, post.type, 
+		post.content, post.blob_id, post.origin_width, post.origin_height, post.type, 
 		post.like_count, post.dislike_count, post.comment_count, post.country_id, 
 		post.category_id, post.createtime, post.updatetime 
 		FROM post 
@@ -265,11 +265,13 @@ func getPostsByRecent(categoryID, page int) (posts []postAPI) {
 		post := postAPI{}
 		if err := rows.Scan(
 			&post.PostID,
-			&post.UserID,
-			&post.Username,
-			&post.Name,
+			&post.User.UserID,
+			&post.User.Username,
+			&post.User.Name,
 			&post.Content,
-			&post.BlobID,
+			&post.Blob.BlobID,
+			&post.Blob.OriginWidth,
+			&post.Blob.OriginHeight,
 			&post.Type,
 			&post.LikeCount,
 			&post.DislikeCount,
@@ -281,7 +283,7 @@ func getPostsByRecent(categoryID, page int) (posts []postAPI) {
 		); err != nil {
 			log.Println("errrr", err)
 		}
-		post.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
@@ -297,7 +299,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI) { // not
 		SELECT 
 		post.post_id, 
 		post.user_id, xuser.username, xuser.name,
-		post.content, post.blob_id, post.type,
+		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
 		post.like_count, post.dislike_count, post.comment_count,
 		post.country_id, post.category_id, post.createtime, post.updatetime 
 		FROM post
@@ -316,11 +318,13 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI) { // not
 		post := postAPI{}
 		if err := rows.Scan(
 			&post.PostID,
-			&post.UserID,
-			&post.Username,
-			&post.Name,
+			&post.User.UserID,
+			&post.User.Username,
+			&post.User.Name,
 			&post.Content,
-			&post.BlobID,
+			&post.Blob.BlobID,
+			&post.Blob.OriginWidth,
+			&post.Blob.OriginHeight,
 			&post.Type,
 			&post.LikeCount,
 			&post.DislikeCount,
@@ -332,7 +336,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI) { // not
 		); err != nil {
 			log.Println(err)
 		}
-		post.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
@@ -349,7 +353,7 @@ func getPostsByUser(userID int64, page int) (posts []postAPI) { // not done yet
 		SELECT 
 		post.post_id, 
 		post.user_id, xuser.username, xuser.name,
-		post.content, post.blob_id, post.type,
+		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
 		post.like_count, post.dislike_count, post.comment_count,
 		post.country_id, post.category_id, post.createtime, post.updatetime 
 		FROM post
@@ -367,11 +371,13 @@ func getPostsByUser(userID int64, page int) (posts []postAPI) { // not done yet
 		post := postAPI{}
 		if err := rows.Scan(
 			&post.PostID,
-			&post.UserID,
-			&post.Username,
-			&post.Name,
+			&post.User.UserID,
+			&post.User.Username,
+			&post.User.Name,
 			&post.Content,
-			&post.BlobID,
+			&post.Blob.BlobID,
+			&post.Blob.OriginWidth,
+			&post.Blob.OriginHeight,
 			&post.Type,
 			&post.LikeCount,
 			&post.DislikeCount,
@@ -383,7 +389,7 @@ func getPostsByUser(userID int64, page int) (posts []postAPI) { // not done yet
 		); err != nil {
 			log.Println(err)
 		}
-		post.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
@@ -415,9 +421,9 @@ func getCommentsByPost(postID int64, page int) (comments []commentAPI, err error
 		comment := commentAPI{}
 		if err := rows.Scan(
 			&comment.CommentID,
-			&comment.UserID,
-			&comment.Username,
-			&comment.Name,
+			&comment.User.UserID,
+			&comment.User.Username,
+			&comment.User.Name,
 			&comment.Comment,
 			&comment.Createtime,
 			&comment.Updatetime,
@@ -454,9 +460,9 @@ func getReactionsByPost(postID int64, page int) (reactionsOnPost []reactionOnPos
 		reactionOnPost := reactionOnPostAPI{}
 		if err := rows.Scan(
 			&reactionOnPost.PostID,
-			&reactionOnPost.UserID,
-			&reactionOnPost.Username,
-			&reactionOnPost.Name,
+			&reactionOnPost.User.UserID,
+			&reactionOnPost.User.Username,
+			&reactionOnPost.User.Name,
 			&reactionOnPost.ReactionID,
 			&reactionOnPost.Createtime,
 		); err != nil {
@@ -491,9 +497,9 @@ func getReactionsByComment(commentID int64, page int) (reactionsOnComment []reac
 		reactionOnComment := reactionOnCommentAPI{}
 		if err := rows.Scan(
 			&reactionOnComment.CommentID,
-			&reactionOnComment.UserID,
-			&reactionOnComment.Username,
-			&reactionOnComment.Name,
+			&reactionOnComment.User.UserID,
+			&reactionOnComment.User.Username,
+			&reactionOnComment.User.Name,
 			&reactionOnComment.ReactionID,
 			&reactionOnComment.Createtime,
 		); err != nil {
@@ -554,16 +560,18 @@ func postInsert(post postAPI) (postID int64, err error) {
 	sqlStr := `
 		INSERT INTO post 
 		(
-			user_id, content, blob_id, type, 
+			user_id, content, blob_id, origin_width, origin_height, type, 
 			like_count, dislike_count, comment_count,
 			country_id, category_id, public, createtime, updatetime
 		) VALUES 
-		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING post_id;
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING post_id;
 	`
 	err = c.db.QueryRow(sqlStr,
-		post.UserID,
+		post.User.UserID,
 		post.Content,
-		post.BlobID,
+		post.Blob.BlobID,
+		post.Blob.OriginWidth,
+		post.Blob.OriginHeight,
 		post.Type,
 		post.LikeCount,
 		post.DislikeCount,
@@ -593,7 +601,7 @@ func postUpdate(post postAPI) (us updateStatusAPI, err error) {
 	`
 	res, err := c.db.Exec(sqlStr,
 		post.Content, post.CountryID, post.CategoryID, post.Updatetime,
-		post.PostID, post.UserID)
+		post.PostID, post.User.UserID)
 	if err != nil {
 		return us, err
 	}
@@ -611,7 +619,7 @@ func postDelete(post postAPI) (us updateStatusAPI, err error) {
 		DELETE FROM post
 		WHERE post_id=$1 AND user_id=$2;
 	`
-	res, err := c.db.Exec(sqlStr, post.PostID, post.UserID)
+	res, err := c.db.Exec(sqlStr, post.PostID, post.User.UserID)
 	if err != nil {
 		return us, err
 	}
@@ -637,7 +645,7 @@ func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
 	`
 	err = c.db.QueryRow(sqlStr,
 		comment.PostID,
-		comment.UserID,
+		comment.User.UserID,
 		comment.Comment,
 		comment.LikeCount,
 		comment.DislikeCount,
@@ -671,7 +679,7 @@ func commentOnPostUpdate(comment commentAPI) (us updateStatusAPI, err error) {
 	`
 	res, err := c.db.Exec(sqlStr,
 		comment.Comment, comment.Updatetime,
-		comment.CommentID, comment.UserID,
+		comment.CommentID, comment.User.UserID,
 	)
 	if err != nil {
 		return us, err
@@ -691,7 +699,7 @@ func commentOnPostDelete(comment commentAPI) (us updateStatusAPI, err error) {
 		WHERE comment_id=$1 AND user_id=$2;
 	`
 	res, err := c.db.Exec(sqlStr,
-		comment.CommentID, comment.UserID)
+		comment.CommentID, comment.User.UserID)
 	if err != nil {
 		return us, err
 	}
@@ -726,7 +734,7 @@ func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, er
 		UPDATE SET post_id=$1, user_id=$2, reaction_id=$3, createtime=$4;
 	`
 	res, err := c.db.Exec(sqlStr,
-		reactionOnPost.PostID, reactionOnPost.UserID, reactionOnPost.ReactionID, reactionOnPost.Createtime)
+		reactionOnPost.PostID, reactionOnPost.User.UserID, reactionOnPost.ReactionID, reactionOnPost.Createtime)
 	if err != nil {
 		return us, err
 	}
@@ -756,7 +764,7 @@ func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI,
 		WHERE post_id=$1 AND user_id=$2;
 	`
 	res, err := c.db.Exec(sqlStr,
-		reactionOnPost.PostID, reactionOnPost.UserID)
+		reactionOnPost.PostID, reactionOnPost.User.UserID)
 	if err != nil {
 		return us, err
 	}
@@ -790,7 +798,7 @@ func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStat
 		UPDATE SET comment_id=$1, user_id=$2, reaction_id=$3, createtime=$4;
 	`
 	res, err := c.db.Exec(sqlStr,
-		reactionOnComment.CommentID, reactionOnComment.UserID, reactionOnComment.ReactionID, reactionOnComment.Createtime)
+		reactionOnComment.CommentID, reactionOnComment.User.UserID, reactionOnComment.ReactionID, reactionOnComment.Createtime)
 	if err != nil {
 		return us, err
 	}
@@ -820,7 +828,7 @@ func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateS
 		WHERE comment_id=$1 AND user_id=$2;
 	`
 	res, err := c.db.Exec(sqlStr,
-		reactionOnComment.CommentID, reactionOnComment.UserID)
+		reactionOnComment.CommentID, reactionOnComment.User.UserID)
 	if err != nil {
 		return us, err
 	}
