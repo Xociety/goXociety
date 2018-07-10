@@ -54,10 +54,17 @@ var (
 	categoryMapID2Name                 = make(map[int]string) // example: [0: "travel"]
 )
 
-// Postgres
+// PostgreSQL
 const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
 
 // const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=mysecretpassword sslmode=disable"
+
+// MongoDB
+const (
+	mongoConStr                = "localhost:30668"
+	mongoDBXociety             = "xociety"
+	mongoCollectionPostPopular = "post_popular"
+)
 
 // GCP
 var clientAuthGCP clientAuthFromServiceAccountFileGCP

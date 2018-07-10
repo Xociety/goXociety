@@ -241,7 +241,58 @@ func makeBlobURL(post postAPI) string {
 	}
 	return url
 }
-func getPostsByRecent(categoryID, page int) (posts []postAPI) {
+func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI) {
+	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		post.post_id,
+		post.user_id, xuser.username, xuser.name,
+		post.content, post.blob_id, post.origin_width, post.origin_height, post.type, 
+		post.like_count, post.dislike_count, post.comment_count, post.country_id, 
+		post.category_id, post.createtime, post.updatetime 
+		FROM post 
+		FULL OUTER JOIN xuser ON xuser.user_id = post.user_id
+		WHERE post.category_id=$1 AND post.createtime>=$2 
+		ORDER BY post.createtime DESC OFFSET $3 LIMIT $4;
+	`
+	rows, err := c.db.Query(sqlStr, categoryID, timestamp, 0, numPost)
+	if err != nil {
+		log.Println("getPostsRecent", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		post := postAPI{}
+		if err := rows.Scan(
+			&post.PostID,
+			&post.User.UserID,
+			&post.User.Username,
+			&post.User.Name,
+			&post.Content,
+			&post.Blob.BlobID,
+			&post.Blob.OriginWidth,
+			&post.Blob.OriginHeight,
+			&post.Type,
+			&post.LikeCount,
+			&post.DislikeCount,
+			&post.CommentCount,
+			&post.CountryID,
+			&post.CategoryID,
+			&post.Createtime,
+			&post.Updatetime,
+		); err != nil {
+			log.Println("errrr", err)
+		}
+		post.Blob.BlobID = makeBlobURL(post)
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+	}
+	return posts
+}
+func getPostsByRecentPage(categoryID, page int) (posts []postAPI) {
 	numPerRequest := 10
 	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
 	c := connectDB(postgresConStr, "PgSQL")

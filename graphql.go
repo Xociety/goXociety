@@ -625,7 +625,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
-					posts := getPostsByRecent(categoryID, page)
+					posts := getPostsByRecentPage(categoryID, page)
 					return posts, nil
 				},
 				Description: "",

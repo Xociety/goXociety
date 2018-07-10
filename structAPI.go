@@ -47,29 +47,29 @@ type userFollowerAPI struct {
 
 // post
 type userBasicAPI struct {
-	UserID   int64  `json:"user_id,omitempty"`
-	Username string `json:"username,omitempty"`
-	Name     string `json:"name,omitempty"`
+	UserID   int64  `json:"user_id,omitempty" bson:"user_id,omitempty"`
+	Username string `json:"username,omitempty" bson:"username,omitempty"`
+	Name     string `json:"name,omitempty" bson:"name,omitempty"`
 }
 type blobAPI struct {
-	BlobID       string `json:"blob_id,omitempty"`
-	OriginWidth  int    `json:"origin_width,omitempty"`
-	OriginHeight int    `json:"origin_height,omitempty"`
+	BlobID       string `json:"blob_id,omitempty" bson:"blob_id,omitempty"`
+	OriginWidth  int    `json:"origin_width,omitempty" bson:"origin_width,omitempty"`
+	OriginHeight int    `json:"origin_height,omitempty" bson:"origin_height,omitempty"`
 }
 type postAPI struct {
-	PostID       int64        `json:"post_id,omitempty"`
-	User         userBasicAPI `json:"user,omitempty"`
-	Content      string       `json:"content,omitempty"`
-	Blob         blobAPI      `json:"blob,omitempty"`
-	Type         int          `json:"type,omitempty"`
-	LikeCount    int64        `json:"like_count,omitempty"`
-	DislikeCount int64        `json:"dislike_count,omitempty"`
-	CommentCount int64        `json:"comment_count,omitempty"`
-	CountryID    int          `json:"country_id,omitempty"`
-	CategoryID   int          `json:"category_id,omitempty"`
-	Public       bool         `json:"public,omitempty"`
-	Createtime   int          `json:"createtime,omitempty"`
-	Updatetime   int          `json:"updatetime,omitempty"`
+	PostID       int64        `json:"post_id,omitempty" bson:"post_id,omitempty"`
+	User         userBasicAPI `json:"user,omitempty" bson:"user,omitempty"`
+	Content      string       `json:"content,omitempty" bson:"content,omitempty"`
+	Blob         blobAPI      `json:"blob,omitempty" bson:"blob,omitempty"`
+	Type         int          `json:"type,omitempty" bson:"type,omitempty"`
+	LikeCount    int64        `json:"like_count,omitempty" bson:"like_count,omitempty"`
+	DislikeCount int64        `json:"dislike_count,omitempty" bson:"dislike_count,omitempty"`
+	CommentCount int64        `json:"comment_count,omitempty" bson:"comment_count,omitempty"`
+	CountryID    int          `json:"country_id,omitempty" bson:"country_id,omitempty"`
+	CategoryID   int          `json:"category_id,omitempty" bson:"category_id,omitempty"`
+	Public       bool         `json:"public,omitempty" bson:"public,omitempty"`
+	Createtime   int          `json:"createtime,omitempty" bson:"createtime,omitempty"`
+	Updatetime   int          `json:"updatetime,omitempty" bson:"updatetime,omitempty"`
 }
 
 // comment
