@@ -12,8 +12,8 @@ import (
 
 // Graphql Server
 const (
-	// hostname = "127.0.0.1"
-	hostname     = "0.0.0.0"
+	hostname = "127.0.0.1"
+	// hostname     = "0.0.0.0"
 	serverPort   = 4000
 	graphqlRoute = "/graphql"
 	graphiql     = true
@@ -27,6 +27,7 @@ var (
 	genderConfigAPI   []genderAPI
 	reactionConfigAPI []reactionAPI
 	postTypeConfigAPI []postTypeAPI
+	categoryConfigAPI []categoryAPI
 )
 
 // application
@@ -50,12 +51,13 @@ var (
 	languageTypeMapID2DisplayLanguage  = make(map[int]string) // example: [0: "Afrikaans"]
 	languageTypeMapID2HlParameterValue = make(map[int]string) // example: [0: "af"]
 	genderTypeMapID2Description        = make(map[int]string) // example: [0: "not known"]
+	categoryMapID2Name                 = make(map[int]string) // example: [0: "travel"]
 )
 
 // Postgres
-// const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
+const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
 
-const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=mysecretpassword sslmode=disable"
+// const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=mysecretpassword sslmode=disable"
 
 // GCP
 var clientAuthGCP clientAuthFromServiceAccountFileGCP
@@ -99,6 +101,7 @@ func init() {
 	loadConfigFromFile("./database/gender.csv", 0, 1, 2, false, genderTypeMapID2Description, nil)
 	loadConfigFromFile("./database/reaction.csv", 0, 1, 2, false, reactionsTypeMapID2Description, nil)
 	loadConfigFromFile("./database/post_type.csv", 0, 1, 2, true, postTypeMapID2Type, postTypeMapType2ID)
+	loadConfigFromFile("./database/category.csv", 0, 1, 2, false, categoryMapID2Name, nil)
 
 	// api
 	for k, v := range countryTypeMapID2Country {
@@ -119,6 +122,12 @@ func init() {
 		genderConfigAPI = append(genderConfigAPI, genderAPI{
 			GenderID: k,
 			Value:    v,
+		})
+	}
+	for k, v := range categoryMapID2Name {
+		categoryConfigAPI = append(categoryConfigAPI, categoryAPI{
+			CategoryID:   k,
+			CategoryName: v,
 		})
 	}
 	for k, v := range reactionsTypeMapID2Description {

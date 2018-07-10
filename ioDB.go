@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 type conn struct {
@@ -514,6 +516,43 @@ func getReactionsByComment(commentID int64, page int) (reactionsOnComment []reac
 }
 
 // mutation
+func userInsert(user userDB) (userID int64, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		INSERT INTO xuser 
+		(
+			username, email, password, name, phone, 
+			gender, bio, credit, photo_url, 
+			language_id, country_id, 
+			timezone, last_ip, createtime, updatetime 
+		) VALUES 
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING user_id;
+	`
+	err = c.db.QueryRow(sqlStr,
+		user.Username,
+		user.Email,
+		user.Password,
+		user.Name,
+		user.Phone,
+		user.Gender,
+		user.Bio,
+		user.Credit,
+		user.PhotoURL,
+		user.LanguageID,
+		user.CountryID,
+		user.Timezone,
+		user.LastIP,
+		user.Createtime,
+		user.Updatetime,
+	).Scan(&userID)
+	if err != nil {
+		// log.Println(err)
+		return userID, err
+	}
+	return userID, err
+}
+
 func follow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -748,9 +787,10 @@ func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, er
 		UPDATE post
 		SET ` + reactionsTypeMapID2Description[reactionOnPost.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM post_reaction
-		WHERE post_reaction.post_id = post.post_id AND post_reaction.post_id = $1) WHERE post_id = $1;
+		WHERE post_reaction.post_id = post.post_id AND post_reaction.post_id = $1
+			AND post_reaction.reaction_id = $2) WHERE post_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, reactionOnPost.PostID)
+	_, err = c.db.Exec(sqlStr, reactionOnPost.PostID, reactionOnPost.ReactionID)
 	if err != nil {
 		return us, err
 	}
@@ -778,9 +818,10 @@ func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI,
 		UPDATE post
 		SET ` + reactionsTypeMapID2Description[reactionOnPost.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM post_reaction
-		WHERE post_reaction.post_id = post.post_id AND post_reaction.post_id = $1) WHERE post_id = $1;
+		WHERE post_reaction.post_id = post.post_id AND post_reaction.post_id = $1
+			AND post_reaction.reaction_id = $2) WHERE post_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, reactionOnPost.PostID)
+	_, err = c.db.Exec(sqlStr, reactionOnPost.PostID, reactionOnPost.ReactionID)
 	if err != nil {
 		return us, err
 	}
@@ -812,9 +853,10 @@ func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStat
 		UPDATE comment
 		SET ` + reactionsTypeMapID2Description[reactionOnComment.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM comment_reaction
-		WHERE comment_reaction.comment_id = comment.comment_id AND comment_reaction.comment_id = $1) WHERE comment_id = $1;
+		WHERE comment_reaction.comment_id = comment.comment_id AND comment_reaction.comment_id = $1
+			AND comment_reaction.reaction_id = $2) WHERE comment_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, reactionOnComment.CommentID)
+	_, err = c.db.Exec(sqlStr, reactionOnComment.CommentID, reactionOnComment.ReactionID)
 	if err != nil {
 		return us, err
 	}
@@ -842,9 +884,10 @@ func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateS
 		UPDATE comment
 		SET ` + reactionsTypeMapID2Description[reactionOnComment.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM comment_reaction
-		WHERE comment_reaction.comment_id = comment.comment_id AND comment_reaction.comment_id = $1) WHERE comment_id = $1;
+		WHERE comment_reaction.comment_id = comment.comment_id AND comment_reaction.comment_id = $1
+			AND comment_reaction.reaction_id = $2) WHERE comment_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, reactionOnComment.CommentID)
+	_, err = c.db.Exec(sqlStr, reactionOnComment.CommentID, reactionOnComment.ReactionID)
 	if err != nil {
 		return us, err
 	}

@@ -1,54 +1,47 @@
 -- check all PRIMARY KEY, FOREIGN KEY, data valid range, Default, CRUD relation, related api, reference sequence, schema
 -- alter table XXX DROP CONTAINT XXX;
 -- alter table post ADD CONSTAINT post_type_fkey FOREIGN KEY (type) REFERENCES post_type(post_type_id) ON DELETE CASCADE ON UPDATE CASCADE;
-
 ------------------------
 CREATE TABLE country (
     country_id          integer PRIMARY KEY NOT NULL,
     country             VARCHAR(200),
     country_code        VARCHAR(2)
 );
-COPY country(country_id, country, country_code) FROM '/var/lib/postgresql/data/pgdata/xsrc/country.csv' DELIMITER ';' CSV; -- HEADER;
-/*
-https://developers.google.com/custom-search/docs/xml_results_appendices#countryCodes
-*/
 ------------------------
 CREATE TABLE language (
     language_id         integer PRIMARY KEY NOT NULL,
     display_language    VARCHAR(200),
     value               VARCHAR(10)
 );
-COPY language(language_id, display_language, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/language.csv' DELIMITER ';' CSV;
-/*
-https://developers.google.com/custom-search/docs/xml_results_appendices#interfaceLanguages
-*/
 ------------------------
 CREATE TABLE reaction (
     reaction_id         integer PRIMARY KEY NOT NULL,
     value               VARCHAR(15)
 );
-COPY reaction(reaction_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/reaction.csv' DELIMITER ';' CSV;
 ------------------------
 CREATE TABLE gender (
     gender_id           integer PRIMARY KEY NOT NULL,
     value               VARCHAR(15)
 );
-COPY gender(gender_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/gender.csv' DELIMITER ';' CSV;
 ------------------------
 CREATE TABLE post_type (
     post_type_id        integer PRIMARY KEY NOT NULL,
     value               VARCHAR(10)
 );
-COPY post_type(post_type_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/post_type.csv' DELIMITER ';' CSV; -- CSV HEADER;
+------------------------
+CREATE TABLE category (
+    category_id     integer PRIMARY KEY NOT NULL,
+    category_name   VARCHAR(30)
+);
 ------------------------
 CREATE TABLE xuser(
     user_id             BIGSERIAL PRIMARY KEY NOT NULL,
     username            VARCHAR(50) UNIQUE NOT NULL, -- [index]
-    email               VARCHAR(50), -- [UNIQUE,index] and format check
-    password            VARCHAR(100) NOT NULL,
+    email               VARCHAR(50) UNIQUE, -- format check
+    password            VARCHAR(100) NOT NULL, -- bcrypt format check
     name                VARCHAR(100) NOT NULL,
-    phone               VARCHAR(30) NOT NULL, -- add country calling code
-    gender              integer, -- 0: not known, 1: male, 2:female
+    phone               VARCHAR(30) NOT NULL, -- add country calling code, UNIQUE?
+    gender              integer references gender(gender_id),
     bio                 VARCHAR(100),
     credit              double precision,
     photo_url           VARCHAR(200),
@@ -60,22 +53,18 @@ CREATE TABLE xuser(
     createtime          integer, -- unix time
     updatetime          integer
 );
-INSERT INTO xuser 
-(username, email, password, name, phone, gender, bio, credit, photo_url, language_id, country_id, timezone, last_ip, createtime, updatetime) 
-VALUES ('jeff', 'jeff@gmail.com', 'salted', 'jeff', '+886-911111111', 1, 'hi', 0, '', 12, 206, 28800, '123.194.188.0', 1527496777, 1527496777),
-('kyler', 'kyler@gmail.com', 'salted', 'kyler', '+886-911111111', 1, 'yo', 0, '', 12, 206, 28800, '123.194.188.0', 1527496777, 1527496777),
-('robby', 'robby@gmail.com', 'salted', 'robby', '+886-911111111', 1, 'man', 0, '', 12, 206, 28800, '123.194.188.0', 1527496777, 1527496777);
--- username, phone + country code, email (lower case) logic check
+CREATE INDEX xuser_createtime ON xuser USING btree (createtime);
 ------------------------
 CREATE TABLE follow (
     following_user_id   bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE, -- a person whom you follow
     follower_user_id    bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE, -- a person who follows you
     valid               boolean, -- update by following_user, block user usage?
-    createtime          integer, -- [index] -- create and delete by follower_user
+    createtime          integer, -- create and delete by follower_user
     updatetime          integer -- update by following_user
-    -- CONSTRAINT target UNIQUE (following_user_id, follower_user_id)
-    -- CONSTRAINT self CHECK (followed_user_id <> follower_user_id) NOT VALID
+    CONSTRAINT follow_user_target UNIQUE (following_user_id, follower_user_id)
+    CONSTRAINT follow_user_self_check CHECK (following_user_id <> follower_user_id) NOT VALID
 );
+CREATE INDEX follow_createtime ON follow USING btree (createtime);
 -- following limit 7500 on Instagram, we might limit following 5000 people
 ------------------------
 CREATE TABLE post (
@@ -85,7 +74,7 @@ CREATE TABLE post (
     blob_id             VARCHAR(200), -- may be foldername
     origin_width        int,
     origin_height       int,
-    -- blob_count       int, -- multiple images, videos
+    -- blob_count       int, -- multiple images, videos, preview image.. multiple size
     type                integer references post_type(post_type_id),
     like_count          bigint,
     dislike_count       bigint,
@@ -94,13 +83,14 @@ CREATE TABLE post (
     country_id          integer references country(country_id),
     category_id         integer, -- references
     public              boolean, -- public post in the future
-    createtime          integer, -- [index] -- timestamp without time zone, unix time || *index
+    createtime          integer, -- timestamp without time zone, unix time
     updatetime          integer
     -- constraint like_count (check (like_count >= 0))
     -- constraint dislike_count (check (dislike_count >= 0))
     -- constraint comment_count (check (dislike_count >= 0))
 );
 --  maximum 30 hashtag
+CREATE INDEX post_createtime ON post USING btree (createtime);
 ------------------------
 CREATE TABLE hashtag(
    hashtag_id           BIGSERIAL PRIMARY KEY,
@@ -120,35 +110,19 @@ CREATE TABLE post_tag_xuser (
     x                   integer, -- percentage 0-99
     y                   integer, -- percentage 0-99
     valid               boolean, -- valid update by xuser
-    createtime          integer, -- [index]
+    createtime          integer,
     updatetime          integer
 );
-------------------------
-INSERT INTO post 
-(user_id, content, blob_id, type, like_count, dislike_count, point, country_id, category_id, public, createtime, updatetime) 
-VALUES 
-(4, 'hello world #happy @jeff', 'sha256 hashed id', 0, 0, 0, point('121.5643,25.0336'), 206, 0, true, 1527498044, 1527498044);
--- UPDATE post SET content='hello world #happy @jeff', blob_id='sha256 hashed id' WHERE post_id = 1;
-INSERT INTO hashtag 
-(name) 
-VALUES ('happy');
-INSERT INTO post_hashtag 
-(post_id, hashtag_id) 
-VALUES (33, 2);
-INSERT INTO post_tag_xuser 
-(post_id, user_id, x, y, valid, createtime, updatetime) 
-VALUES (33, 4, 0, 0, false, 1527498711, 1527498711);
+CREATE INDEX post_tag_xuser_createtime ON post_tag_xuser USING btree (createtime);
 ------------------------
 CREATE TABLE post_reaction (
     post_id             bigint references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [primary key]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     reaction_id         integer references reaction(reaction_id), -- 0: like, 1: dislike
-    createtime          integer, -- [index]
+    createtime          integer,
     CONSTRAINT post_reaction_post_user_unique UNIQUE (post_id, user_id)
 );
-INSERT INTO post_reaction 
-(post_id, user_id, reaction_id, createtime) 
-VALUES (33, 4, 0, 1527498711);
+CREATE INDEX post_reaction_createtime ON post_reaction USING btree (createtime);
 ------------------------
 CREATE TABLE comment (
     comment_id          BIGSERIAL PRIMARY KEY NOT NULL,
@@ -158,49 +132,45 @@ CREATE TABLE comment (
     like_count          bigint,
     dislike_count       bigint,
     comment_count       bigint,
-    createtime          integer, -- [index]
+    createtime          integer,
     updatetime          integer
     -- constraint like_count (check (like_count >= 0))
     -- constraint dislike_count (check (dislike_count >= 0))
     -- constraint comment_count (check (comment_count >= 0))
 );
+CREATE INDEX comment_createtime ON comment USING btree (createtime);
 ------------------------
 CREATE TABLE comment_reaction (
     comment_id          bigint references comment(comment_id), -- [PRIMARY KEY]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     reaction_id         integer references reaction(reaction_id),
-    createtime          integer, -- [index]
+    createtime          integer,
     CONSTRAINT comment_reaction_comment_user_unique UNIQUE (comment_id, user_id)
 );
-INSERT INTO comment 
-(post_id, user_id, comment, createtime, updatetime) 
-VALUES (33, 4, 'yo', 1527498711, 1527498711);
--- maximum taged user number: 5
-INSERT INTO comment_reaction 
-(comment_id, user_id, reaction_id, createtime) 
-VALUES (2, 4, 0, 1527498711);
-
+CREATE INDEX comment_reaction_createtime ON comment_reaction USING btree (createtime);
 ------------------------
-CREATE TABLE thread (
-    thread_id           PRIMARY KEY BIGSERIAL NOT NULL,
+TABLE reply (
+    reply_id           PRIMARY KEY BIGSERIAL NOT NULL,
     comment_id          bigint references comments(comment_id) ON DELETE CASCADE ON UPDATE CASCADE,
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     comment             VARCHAR(300),
     like_count          bigint,
     dislike_count       bigint,
-    createtime          integer, --[index]
+    createtime          integer,
     updatetime          integer
     -- constraint like_count (check (like_count >= 0))
     -- constraint dislike_count (check (dislike_count >= 0))
 );
+CREATE INDEX reply_createtime ON reply USING btree (createtime);
 ------------------------
-CREATE TABLE thread_reaction (
-    thread_id           bigint references comment_threads(thread_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [PRIMARY KEY]
+TABLE reply_reaction (
+    reply_id           bigint references reply(reply_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [PRIMARY KEY]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     reaction_id         integer reference reaction(reaction_id),
-    createtime          integer, --[index]
-    CONSTRAINT thread_reaction_thread_user_unique UNIQUE (thread_id, user_id)
+    createtime          integer,
+    CONSTRAINT reply_reaction_reply_user_unique UNIQUE (reply_id, user_id)
 );
+CREATE INDEX reply_reaction_createtime ON reply_reaction USING btree (createtime);
 ------------------------
 -- TABLE block ( -- this should be implement in follow valid field
 --     user_id BIGSERIAL references xuser(user_id),
@@ -214,10 +184,6 @@ TABLE report (
     content
     createtime integer
 );
-------------------------
-TABLE category
-------------------------
-TABLE sub_category
 ------------------------
 TABLE saved_post
 ------------------------

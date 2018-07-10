@@ -188,6 +188,17 @@ var postTypeGraphqlType = graphql.NewList(
 		},
 	),
 )
+var categoryGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "category",
+			Fields: graphql.Fields{
+				"category_id":   &graphql.Field{Type: graphql.Int},
+				"category_name": &graphql.Field{Type: graphql.String},
+			},
+		},
+	),
+)
 
 // login
 var loginGraphqlType = graphql.NewObject(
@@ -455,6 +466,13 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
+			"category": &graphql.Field{
+				Type: categoryGraphqlType,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return categoryConfigAPI, nil
+				},
+				Description: "",
+			},
 			"login": &graphql.Field{
 				Type: loginGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -714,7 +732,7 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			// "reationcs_by_thread"
+			// "reationcs_by_reply"
 			"comments_by_post": &graphql.Field{
 				Type: commentsGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -741,7 +759,7 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			// "threads_by_comment"
+			// "replys_by_comment"
 		},
 	})
 var graphqlMutationType = graphql.NewObject(
@@ -1066,8 +1084,8 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			// "reaction_on_thread"
-			// "reaction_on_thread_delete"
+			// "reaction_on_reply"
+			// "reaction_on_reply_delete"
 			"comment_on_post_insert": &graphql.Field{
 				Type: commentGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -1154,9 +1172,9 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			// "thread_on_comment_insert"
-			// "thread_on_comment_update"
-			// "thread_on_comment_delete"
+			// "reply_on_comment_insert"
+			// "reply_on_comment_update"
+			// "reply_on_comment_delete"
 		},
 	},
 )

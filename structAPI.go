@@ -98,8 +98,8 @@ type reactionOnCommentAPI struct {
 	ReactionID int          `json:"reaction_id,omitempty"`
 	Createtime int          `json:"createtime,omitempty"`
 }
-type reactionOnThreadAPI struct {
-	ThreadID   int64        `json:"thread_id,omitempty"`
+type reactionOnReplyAPI struct {
+	ReplyID    int64        `json:"reply_id,omitempty"`
 	User       userBasicAPI `json:"user,omitempty"`
 	ReactionID int          `json:"reaction_id,omitempty"`
 	Createtime int          `json:"createtime,omitempty"`
@@ -128,4 +128,8 @@ type postTypeAPI struct {
 	PostTypeID int      `json:"post_type_id,omitempty"`
 	Value      string   `json:"value,omitempty"`
 	FileFormat []string `json:"file_format,omitempty"`
+}
+type categoryAPI struct {
+	CategoryID   int    `json:"category_id,omitempty"`
+	CategoryName string `json:"category_name,omitempty"`
 }
