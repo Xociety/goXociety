@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	_ "github.com/lib/pq"
 )
 
@@ -241,58 +243,7 @@ func makeBlobURL(post postAPI) string {
 	}
 	return url
 }
-func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI) {
-	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
-	c := connectDB(postgresConStr, "PgSQL")
-	defer c.db.Close()
-	sqlStr := `
-		SELECT 
-		post.post_id,
-		post.user_id, xuser.username, xuser.name,
-		post.content, post.blob_id, post.origin_width, post.origin_height, post.type, 
-		post.like_count, post.dislike_count, post.comment_count, post.country_id, 
-		post.category_id, post.createtime, post.updatetime 
-		FROM post 
-		FULL OUTER JOIN xuser ON xuser.user_id = post.user_id
-		WHERE post.category_id=$1 AND post.createtime>=$2 
-		ORDER BY post.createtime DESC OFFSET $3 LIMIT $4;
-	`
-	rows, err := c.db.Query(sqlStr, categoryID, timestamp, 0, numPost)
-	if err != nil {
-		log.Println("getPostsRecent", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		post := postAPI{}
-		if err := rows.Scan(
-			&post.PostID,
-			&post.User.UserID,
-			&post.User.Username,
-			&post.User.Name,
-			&post.Content,
-			&post.Blob.BlobID,
-			&post.Blob.OriginWidth,
-			&post.Blob.OriginHeight,
-			&post.Type,
-			&post.LikeCount,
-			&post.DislikeCount,
-			&post.CommentCount,
-			&post.CountryID,
-			&post.CategoryID,
-			&post.Createtime,
-			&post.Updatetime,
-		); err != nil {
-			log.Println("errrr", err)
-		}
-		post.Blob.BlobID = makeBlobURL(post)
-		posts = append(posts, post)
-	}
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-	}
-	return posts
-}
-func getPostsByRecentPage(categoryID, page int) (posts []postAPI) {
+func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 	numPerRequest := 10
 	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
 	c := connectDB(postgresConStr, "PgSQL")
@@ -312,6 +263,7 @@ func getPostsByRecentPage(categoryID, page int) (posts []postAPI) {
 	rows, err := c.db.Query(sqlStr, categoryID, timestamp, page*numPerRequest, numPerRequest)
 	if err != nil {
 		log.Println("getPostsRecent", err)
+		return posts, err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -335,16 +287,18 @@ func getPostsByRecentPage(categoryID, page int) (posts []postAPI) {
 			&post.Updatetime,
 		); err != nil {
 			log.Println("errrr", err)
+			return posts, err
 		}
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
+		return posts, err
 	}
-	return posts
+	return posts, err
 }
-func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI) { // not done yet
+func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -365,6 +319,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI) { // not
 	rows, err := c.db.Query(sqlStr, userID, page*numPerRequest, numPerRequest)
 	if err != nil {
 		log.Println("getPostsFollowing", err)
+		return posts, err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -388,17 +343,19 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI) { // not
 			&post.Updatetime,
 		); err != nil {
 			log.Println(err)
+			return posts, err
 		}
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
+		return posts, err
 	}
 	// log.Println("posts", posts)
-	return posts
+	return posts, nil
 }
-func getPostsByUser(userID int64, page int) (posts []postAPI) { // not done yet
+func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	c := connectDB(postgresConStr, "PgSQL")
 	defer c.db.Close()
@@ -418,6 +375,7 @@ func getPostsByUser(userID int64, page int) (posts []postAPI) { // not done yet
 	rows, err := c.db.Query(sqlStr, userID, page*numPerRequest, numPerRequest)
 	if err != nil {
 		log.Println("getPostsUser", err)
+		return posts, err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -441,15 +399,41 @@ func getPostsByUser(userID int64, page int) (posts []postAPI) { // not done yet
 			&post.Updatetime,
 		); err != nil {
 			log.Println(err)
+			return posts, err
 		}
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
+		return posts, err
 	}
 	// log.Println("posts", posts)
-	return posts
+	return posts, nil
+}
+
+func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
+	numPerRequest := 10
+	session, err := mgo.Dial(mongoConStr)
+	defer session.Close()
+	if err != nil {
+		log.Printf("mongo connection lost ..\n")
+		return posts, err
+	}
+	c := session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
+	u := userPostPopular{}
+	if err := c.Find(bson.M{"user_id": userID}).One(&u); err != nil {
+		log.Println("getPostsByPopular", err)
+		return posts, err
+	}
+	// fake page because there's no appropriate query in mongo
+	for i := 0; i < len(u.Posts); i++ {
+		if i >= numPerRequest {
+			break
+		}
+		posts = append(posts, u.Posts[i])
+	}
+	return posts, nil
 }
 
 func getCommentsByPost(postID int64, page int) (comments []commentAPI, err error) {
@@ -720,6 +704,49 @@ func postDelete(post postAPI) (us updateStatusAPI, err error) {
 	us.RowsAffected = int(count)
 	return us, nil
 }
+func postPopularRead(categoryID, indexRead int, userID int64) (posts []postAPI, err error) {
+	// you can wrap func as a transaction
+	numPerRequest := 10
+	lastIndexNextList := indexRead + numPerRequest
+	session, err := mgo.Dial(mongoConStr)
+	defer session.Close()
+	if err != nil {
+		log.Printf("mongo connection lost ..\n")
+		return posts, err
+	}
+	c := session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
+	u := userPostPopular{}
+	if err := c.Find(bson.M{"user_id": userID, "category_id": categoryID}).One(&u); err != nil {
+		log.Println("postPopularRead", err)
+		return posts, err
+	}
+	// fake page because there's no appropriate query in mongo
+	weekTimestamp := getNowUnixWeekTimestamp()
+	postsRead := []int64{}
+	postsPopular := []postAPI{}
+	for i := 0; i < len(u.Posts); i++ {
+		if i <= indexRead {
+			postsRead = append(postsRead, u.Posts[i].PostID) // for record read post
+		} else {
+			if i <= lastIndexNextList {
+				posts = append(posts, u.Posts[i]) // for current query popular postlist
+			}
+			postsPopular = append(postsPopular, u.Posts[i])
+		}
+	}
+	c2 := session.DB(mongoDBXociety).C(mongoCollectionPostRead)
+	if _, err := c2.Upsert(
+		bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp},
+		bson.M{"$addToSet": bson.M{"posts": bson.M{"$each": postsRead}}}); err != nil {
+		log.Println("upsert", err)
+	}
+	if _, err := c.Upsert(
+		bson.M{"user_id": userID, "category_id": categoryID},
+		bson.M{"$set": bson.M{"posts": postsPopular}}); err != nil {
+		log.Println("upsert", err)
+	}
+	return posts, nil
+}
 
 func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
 	c := connectDB(postgresConStr, "PgSQL")
@@ -836,7 +863,7 @@ func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, er
 	// update post.like_count || post.dislike_count
 	sqlStr = `
 		UPDATE post
-		SET ` + reactionsTypeMapID2Description[reactionOnPost.ReactionID] + `_count =
+		SET ` + reactionsMapID2Description[reactionOnPost.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM post_reaction
 		WHERE post_reaction.post_id = post.post_id AND post_reaction.post_id = $1
 			AND post_reaction.reaction_id = $2) WHERE post_id = $1;
@@ -867,7 +894,7 @@ func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI,
 	// update post.like_count || post.dislike_count
 	sqlStr = `
 		UPDATE post
-		SET ` + reactionsTypeMapID2Description[reactionOnPost.ReactionID] + `_count =
+		SET ` + reactionsMapID2Description[reactionOnPost.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM post_reaction
 		WHERE post_reaction.post_id = post.post_id AND post_reaction.post_id = $1
 			AND post_reaction.reaction_id = $2) WHERE post_id = $1;
@@ -902,7 +929,7 @@ func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStat
 	// update comment.like_count || comment.dislike_count
 	sqlStr = `
 		UPDATE comment
-		SET ` + reactionsTypeMapID2Description[reactionOnComment.ReactionID] + `_count =
+		SET ` + reactionsMapID2Description[reactionOnComment.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM comment_reaction
 		WHERE comment_reaction.comment_id = comment.comment_id AND comment_reaction.comment_id = $1
 			AND comment_reaction.reaction_id = $2) WHERE comment_id = $1;
@@ -933,7 +960,7 @@ func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateS
 	// update comment.like_count || comment.dislike_count
 	sqlStr = `
 		UPDATE comment
-		SET ` + reactionsTypeMapID2Description[reactionOnComment.ReactionID] + `_count =
+		SET ` + reactionsMapID2Description[reactionOnComment.ReactionID] + `_count =
 		(SELECT COUNT(*) FROM comment_reaction
 		WHERE comment_reaction.comment_id = comment.comment_id AND comment_reaction.comment_id = $1
 			AND comment_reaction.reaction_id = $2) WHERE comment_id = $1;
@@ -943,4 +970,136 @@ func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateS
 		return us, err
 	}
 	return us, nil
+}
+
+// cronjob
+func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
+	// combine this with func getPostsByRecentPage
+	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		post.post_id,
+		post.user_id, xuser.username, xuser.name,
+		post.content, post.blob_id, post.origin_width, post.origin_height, post.type, 
+		post.like_count, post.dislike_count, post.comment_count, post.country_id, 
+		post.category_id, post.createtime, post.updatetime 
+		FROM post 
+		FULL OUTER JOIN xuser ON xuser.user_id = post.user_id
+		WHERE post.category_id=$1 AND post.createtime>=$2 
+		ORDER BY post.createtime DESC OFFSET $3 LIMIT $4;
+	`
+	rows, err := c.db.Query(sqlStr, categoryID, timestamp, 0, numPost)
+	if err != nil {
+		log.Println("getPostsRecent", err)
+		return posts, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		post := postAPI{}
+		if err := rows.Scan(
+			&post.PostID,
+			&post.User.UserID,
+			&post.User.Username,
+			&post.User.Name,
+			&post.Content,
+			&post.Blob.BlobID,
+			&post.Blob.OriginWidth,
+			&post.Blob.OriginHeight,
+			&post.Type,
+			&post.LikeCount,
+			&post.DislikeCount,
+			&post.CommentCount,
+			&post.CountryID,
+			&post.CategoryID,
+			&post.Createtime,
+			&post.Updatetime,
+		); err != nil {
+			log.Println("errrr", err)
+			return posts, err
+		}
+		post.Blob.BlobID = makeBlobURL(post)
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return posts, err
+	}
+	return posts, nil
+}
+func getAllUserID() (users []xuserAPI, err error) {
+	c := connectDB(postgresConStr, "PgSQL")
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		user_id 
+		FROM xuser
+		ORDER BY createtime ASC;
+	`
+	rows, err := c.db.Query(sqlStr)
+	if err != nil {
+		log.Println("getAllUserID", err)
+		return users, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		user := xuserAPI{}
+		if err := rows.Scan(
+			&user.UserID,
+		); err != nil {
+			log.Println("err", err)
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("getAllUserID2", err)
+		return users, err
+	}
+	return users, nil
+}
+func getPostsReadByUser(categoryID, weekTimestamp int, userID int64) (posts []int64, err error) {
+	session, err := mgo.Dial(mongoConStr)
+	defer session.Close()
+	if err != nil {
+		log.Println("mongo session", err)
+		return posts, err
+	}
+	c := session.DB(mongoDBXociety).C(mongoCollectionPostRead)
+	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
+		u := userPostPopularRead{}
+		if err := c.Find(bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}).One(&u); err == nil {
+			posts = append(posts, u.Posts...)
+		}
+	}
+	return posts, nil
+}
+func filterReadedPost(postsRead []int64, posts []postAPI) (filteredPost []postAPI) {
+	for i := 0; i < len(posts); i++ {
+		isRead := false
+		for j := 0; j < len(postsRead); j++ {
+			if posts[i].PostID == postsRead[j] {
+				isRead = true
+				break
+			}
+		}
+		if !isRead {
+			filteredPost = append(filteredPost, posts[i])
+		}
+	}
+	return filteredPost
+}
+func upsertPostPopular(categoryID int, userID int64, posts []postAPI) (err error) {
+	session, err := mgo.Dial(mongoConStr)
+	defer session.Close()
+	if err != nil {
+		log.Println("mongo session", err)
+	}
+	c := session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
+	selector := bson.M{"user_id": userID, "category_id": categoryID}
+	if _, err := c.Upsert(selector, bson.M{"$set": bson.M{"posts": posts}}); err != nil {
+		log.Println("upsertPostPopular", err)
+		return err
+	}
+	return nil
 }

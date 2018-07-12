@@ -1,5 +1,7 @@
 package main
 
+import "github.com/globalsign/mgo/bson"
+
 // common
 type updateStatusAPI struct {
 	RowsAffected int `json:"rows_affected,omitempty"`
@@ -47,29 +49,29 @@ type userFollowerAPI struct {
 
 // post
 type userBasicAPI struct {
-	UserID   int64  `json:"user_id,omitempty" bson:"user_id,omitempty"`
-	Username string `json:"username,omitempty" bson:"username,omitempty"`
-	Name     string `json:"name,omitempty" bson:"name,omitempty"`
+	UserID   int64  `json:"user_id,omitempty" bson:"user_id"`
+	Username string `json:"username,omitempty" bson:"username"`
+	Name     string `json:"name,omitempty" bson:"name"`
 }
 type blobAPI struct {
-	BlobID       string `json:"blob_id,omitempty" bson:"blob_id,omitempty"`
-	OriginWidth  int    `json:"origin_width,omitempty" bson:"origin_width,omitempty"`
-	OriginHeight int    `json:"origin_height,omitempty" bson:"origin_height,omitempty"`
+	BlobID       string `json:"blob_id,omitempty" bson:"blob_id"`
+	OriginWidth  int    `json:"origin_width,omitempty" bson:"origin_width"`
+	OriginHeight int    `json:"origin_height,omitempty" bson:"origin_height"`
 }
 type postAPI struct {
-	PostID       int64        `json:"post_id,omitempty" bson:"post_id,omitempty"`
-	User         userBasicAPI `json:"user,omitempty" bson:"user,omitempty"`
-	Content      string       `json:"content,omitempty" bson:"content,omitempty"`
-	Blob         blobAPI      `json:"blob,omitempty" bson:"blob,omitempty"`
-	Type         int          `json:"type,omitempty" bson:"type,omitempty"`
-	LikeCount    int64        `json:"like_count,omitempty" bson:"like_count,omitempty"`
-	DislikeCount int64        `json:"dislike_count,omitempty" bson:"dislike_count,omitempty"`
-	CommentCount int64        `json:"comment_count,omitempty" bson:"comment_count,omitempty"`
-	CountryID    int          `json:"country_id,omitempty" bson:"country_id,omitempty"`
-	CategoryID   int          `json:"category_id,omitempty" bson:"category_id,omitempty"`
-	Public       bool         `json:"public,omitempty" bson:"public,omitempty"`
-	Createtime   int          `json:"createtime,omitempty" bson:"createtime,omitempty"`
-	Updatetime   int          `json:"updatetime,omitempty" bson:"updatetime,omitempty"`
+	PostID       int64        `json:"post_id,omitempty" bson:"post_id"`
+	User         userBasicAPI `json:"user,omitempty" bson:"user"`
+	Content      string       `json:"content,omitempty" bson:"content"`
+	Blob         blobAPI      `json:"blob,omitempty" bson:"blob"`
+	Type         int          `json:"type,omitempty" bson:"type"`
+	LikeCount    int64        `json:"like_count,omitempty" bson:"like_count"`
+	DislikeCount int64        `json:"dislike_count,omitempty" bson:"dislike_count"`
+	CommentCount int64        `json:"comment_count,omitempty" bson:"comment_count"`
+	CountryID    int          `json:"country_id,omitempty" bson:"country_id"`
+	CategoryID   int          `json:"category_id,omitempty" bson:"category_id"`
+	Public       bool         `json:"public,omitempty" bson:"public"`
+	Createtime   int          `json:"createtime,omitempty" bson:"createtime"`
+	Updatetime   int          `json:"updatetime,omitempty" bson:"updatetime"`
 }
 
 // comment
@@ -132,4 +134,20 @@ type postTypeAPI struct {
 type categoryAPI struct {
 	CategoryID   int    `json:"category_id,omitempty"`
 	CategoryName string `json:"category_name,omitempty"`
+}
+
+// cronjob
+type userPostPopular struct {
+	ID         bson.ObjectId `bson:"_id"`
+	UserID     int64         `bson:"user_id"`
+	CategoryID int           `bson:"category_id"`
+	Posts      []postAPI     `bson:"posts"`
+}
+
+type userPostPopularRead struct {
+	ID            bson.ObjectId `bson:"_id"`
+	UserID        int64         `bson:"user_id"`
+	CategoryID    int           `bson:"category_id"`
+	WeekTimestamp int           `bson:"week_timestamp"`
+	Posts         []int64       `bson:"posts"`
 }

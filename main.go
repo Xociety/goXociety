@@ -32,39 +32,45 @@ var (
 
 // application
 const (
-	sixHoursInSecond        = 6 * 3600
-	twelveHoursInSecond     = 12 * 3600
-	twentyFourHoursInSecond = 24 * 3600
-	sevenDaysInSecond       = 7 * 24 * 3600
-	twoMonthsInSecond       = 2 * 30 * 24 * 3600
+	sixHoursInSecond        = 6 * 60 * 60
+	twelveHoursInSecond     = 12 * 60 * 60
+	twentyFourHoursInSecond = 24 * 60 * 60
+	sevenDaysInSecond       = 7 * 24 * 60 * 60
+	twoMonthsInSecond       = 2 * 30 * 24 * 60 * 60
 )
 
 type forwardLookupMap map[int]string
 type reverseLookupMap map[string]int
 
 var (
-	postTypeMapID2Type                 = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
-	postTypeMapType2ID                 = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
-	reactionsTypeMapID2Description     = make(map[int]string) // example: [0: "like", 1: "dislike"]
-	countryTypeMapID2Country           = make(map[int]string) // example: [0: "Afghanistan"]
-	countryTypeMapID2CountryCode       = make(map[int]string) // example: [0: "af"]
-	languageTypeMapID2DisplayLanguage  = make(map[int]string) // example: [0: "Afrikaans"]
-	languageTypeMapID2HlParameterValue = make(map[int]string) // example: [0: "af"]
-	genderTypeMapID2Description        = make(map[int]string) // example: [0: "not known"]
-	categoryMapID2Name                 = make(map[int]string) // example: [0: "travel"]
+	postTypeMapID2Type             = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
+	postTypeMapType2ID             = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
+	reactionsMapID2Description     = make(map[int]string) // example: [0: "like", 1: "dislike"]
+	countryMapID2Country           = make(map[int]string) // example: [0: "Afghanistan"]
+	countryMapID2CountryCode       = make(map[int]string) // example: [0: "af"]
+	languageMapID2DisplayLanguage  = make(map[int]string) // example: [0: "Afrikaans"]
+	languageMapID2HlParameterValue = make(map[int]string) // example: [0: "af"]
+	genderMapID2Description        = make(map[int]string) // example: [0: "not known"]
+	categoryMapID2Name             = make(map[int]string) // example: [0: "travel"]
 )
 
 // PostgreSQL
-const postgresConStr = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
+const (
+	postgresConStr     = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
+	dbFilePathPostgres = "./database/postgres/"
 
 // const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=mysecretpassword sslmode=disable"
+)
 
 // MongoDB
 const (
 	mongoConStr                = "localhost:30668"
 	mongoDBXociety             = "xociety"
 	mongoCollectionPostPopular = "post_popular"
+	mongoCollectionPostRead    = "post_read"
 )
+
+const numPopularPostPerRefresh = 10000
 
 // GCP
 var clientAuthGCP clientAuthFromServiceAccountFileGCP
@@ -101,31 +107,31 @@ func init() {
 	clientOptionGoogleAPI = option.WithServiceAccountFile(clientAuthGCPFilePath)
 
 	// config
-	loadConfigFromFile("./database/country.csv", 0, 1, 3, false, countryTypeMapID2Country, nil)
-	loadConfigFromFile("./database/country.csv", 0, 2, 3, false, countryTypeMapID2CountryCode, nil)
-	loadConfigFromFile("./database/language.csv", 0, 1, 3, false, languageTypeMapID2DisplayLanguage, nil)
-	loadConfigFromFile("./database/language.csv", 0, 2, 3, false, languageTypeMapID2HlParameterValue, nil)
-	loadConfigFromFile("./database/gender.csv", 0, 1, 2, false, genderTypeMapID2Description, nil)
-	loadConfigFromFile("./database/reaction.csv", 0, 1, 2, false, reactionsTypeMapID2Description, nil)
-	loadConfigFromFile("./database/post_type.csv", 0, 1, 2, true, postTypeMapID2Type, postTypeMapType2ID)
-	loadConfigFromFile("./database/category.csv", 0, 1, 2, false, categoryMapID2Name, nil)
+	loadConfigFromFile(dbFilePathPostgres+"country.csv", 0, 1, 3, false, countryMapID2Country, nil)
+	loadConfigFromFile(dbFilePathPostgres+"country.csv", 0, 2, 3, false, countryMapID2CountryCode, nil)
+	loadConfigFromFile(dbFilePathPostgres+"language.csv", 0, 1, 3, false, languageMapID2DisplayLanguage, nil)
+	loadConfigFromFile(dbFilePathPostgres+"language.csv", 0, 2, 3, false, languageMapID2HlParameterValue, nil)
+	loadConfigFromFile(dbFilePathPostgres+"gender.csv", 0, 1, 2, false, genderMapID2Description, nil)
+	loadConfigFromFile(dbFilePathPostgres+"reaction.csv", 0, 1, 2, false, reactionsMapID2Description, nil)
+	loadConfigFromFile(dbFilePathPostgres+"post_type.csv", 0, 1, 2, true, postTypeMapID2Type, postTypeMapType2ID)
+	loadConfigFromFile(dbFilePathPostgres+"category.csv", 0, 1, 2, false, categoryMapID2Name, nil)
 
 	// api
-	for k, v := range countryTypeMapID2Country {
+	for k, v := range countryMapID2Country {
 		countryConfigAPI = append(countryConfigAPI, countryAPI{
 			CountryID:   k,
 			Country:     v,
-			CountryCode: countryTypeMapID2CountryCode[k],
+			CountryCode: countryMapID2CountryCode[k],
 		})
 	}
-	for k, v := range languageTypeMapID2DisplayLanguage {
+	for k, v := range languageMapID2DisplayLanguage {
 		languageConfigAPI = append(languageConfigAPI, languageAPI{
 			LanguageID:      k,
 			DisplayLanguage: v,
-			Value:           languageTypeMapID2HlParameterValue[k],
+			Value:           languageMapID2HlParameterValue[k],
 		})
 	}
-	for k, v := range genderTypeMapID2Description {
+	for k, v := range genderMapID2Description {
 		genderConfigAPI = append(genderConfigAPI, genderAPI{
 			GenderID: k,
 			Value:    v,
@@ -137,7 +143,7 @@ func init() {
 			CategoryName: v,
 		})
 	}
-	for k, v := range reactionsTypeMapID2Description {
+	for k, v := range reactionsMapID2Description {
 		reactionConfigAPI = append(reactionConfigAPI, reactionAPI{
 			ReactionID: k,
 			Value:      v,

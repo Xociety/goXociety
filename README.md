@@ -1,7 +1,7 @@
 # goXociety
 
 
-## dependency
+## golang dependency
 
 `go get github.com/manveru/faker`
 
@@ -24,6 +24,12 @@
 ## config
 
 reaction.csv, post_type.csv
+
+## database
+
+postgres 9.6 at least: user, post, config ...etc.
+
+mongo 4.0: popular post, popular post read.
 
 ## image, video
 

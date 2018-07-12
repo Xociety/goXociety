@@ -5,10 +5,7 @@ import (
 	"math/rand"
 	"sort"
 	"testing"
-	"time"
 
-	mgo "github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/manveru/faker"
 
 	_ "github.com/lib/pq"
@@ -142,54 +139,25 @@ func TestStartInsertXuserfaker(t *testing.T) {
 	// }
 }
 
-type PostByPopular []postAPI
-
-func (p PostByPopular) Len() int      { return len(p) }
-func (p PostByPopular) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
-func (p PostByPopular) Less(i, j int) bool {
-	return p[i].LikeCount+p[i].DislikeCount+p[i].CommentCount > p[j].LikeCount+p[j].DislikeCount+p[j].CommentCount
-}
 func TestSortPostPopular(t *testing.T) {
-	posts := getPostsByRecentNum(0, 15)
-	sort.Sort(PostByPopular(posts))
-	session, err := mgo.Dial(mongoConStr)
+	users, err := getAllUserID()
 	if err != nil {
-		log.Println("session", err)
-		return
+		log.Println("user", err)
 	}
-	c := session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
-	for i := 0; i < len(posts); i++ {
-		data, err := bson.Marshal(posts[i])
+	for categoryID := range categoryMapID2Name {
+		posts, err := getPostsByRecentNum(categoryID, numPopularPostPerRefresh)
 		if err != nil {
-			log.Println("data", err)
+			log.Println("post", err)
 		}
-		update := bson.M{}
-		err = bson.Unmarshal(data, update)
-		if err != nil {
-			log.Println("update", err)
-		}
-		selector := bson.M{"post_id": posts[i].PostID}
-		if _, err := c.Upsert(selector, bson.M{"$set": update}); err != nil {
-			log.Println("upsert", err)
+		sort.Sort(postByPopular(posts))
+		for i := 0; i < len(users); i++ {
+			weekTimestamp := getNowUnixWeekTimestamp()
+			if postsRead, err := getPostsReadByUser(categoryID, weekTimestamp, users[i].UserID); err == nil {
+				filteredPosts := filterReadedPost(postsRead, posts)
+				if err := upsertPostPopular(categoryID, users[i].UserID, filteredPosts); err != nil {
+					log.Println(err)
+				}
+			}
 		}
 	}
-}
-
-func TestQueryPostPopular(t *testing.T) {
-	session, err := mgo.Dial(mongoConStr)
-	defer session.Close()
-	if err != nil {
-		log.Printf("mongo connection lost ..\n")
-		// return err
-	}
-	session.SetMode(mgo.Monotonic, true)
-	session.SetSocketTimeout(3 * time.Minute)
-	c := session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
-	posts := []postAPI{}
-	if err := c.Find(bson.M{}).All(&posts); err != nil {
-		log.Println(err)
-		// return err
-	}
-	log.Println(posts)
-	// return err
 }

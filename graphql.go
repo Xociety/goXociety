@@ -625,8 +625,8 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
-					posts := getPostsByRecentPage(categoryID, page)
-					return posts, nil
+					posts, err := getPostsByRecentPage(categoryID, page)
+					return posts, err
 				},
 				Description: "",
 			},
@@ -648,8 +648,8 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts := getPostsByFollowingUsers(user.UserID, page)
-					return posts, nil
+					posts, err := getPostsByFollowingUsers(user.UserID, page)
+					return posts, err
 				},
 				Description: "",
 			},
@@ -675,8 +675,39 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts := getPostsByUser(userID, page)
-					return posts, nil
+					posts, err := getPostsByUser(userID, page)
+					return posts, err
+				},
+				Description: "",
+			},
+			"posts_by_popular": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByPopular(user.UserID, categoryID, page)
+					return posts, err
 				},
 				Description: "",
 			},
@@ -954,6 +985,36 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Description: "",
 			},
+			"post_popular_read": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"index_read": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "index_read",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
+					indexRead, isOK := p.Args["index_read"].(int)
+					if !isOK {
+						return nil, errors.New("index_read format")
+					}
+					posts, err := postPopularRead(categoryID, indexRead, user.UserID)
+					return posts, err
+				},
+				Description: "",
+			},
 			"reaction_on_post": &graphql.Field{
 				Type: updateStatusGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -979,7 +1040,7 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("reaction_id format")
 					}
-					if reactionsTypeMapID2Description[reactionID] == "" {
+					if reactionsMapID2Description[reactionID] == "" {
 						return nil, errors.New("reaction_id format")
 					}
 					reactionOnPost := reactionOnPostAPI{
@@ -1044,7 +1105,7 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("reaction_id format")
 					}
-					if reactionsTypeMapID2Description[reactionID] == "" {
+					if reactionsMapID2Description[reactionID] == "" {
 						return nil, errors.New("reaction_id format")
 					}
 					reactionOnComment := reactionOnCommentAPI{
