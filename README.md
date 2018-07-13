@@ -15,6 +15,8 @@
 
 `go get firebase.google.com/go`
 
+`go get github.com/globalsign/mgo`
+
 <!-- `go get github.com/dhowden/tag` -->
 
 <!-- `go get github.com/grafov/m3u8` -->

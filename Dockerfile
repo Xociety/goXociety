@@ -8,6 +8,7 @@ RUN go get github.com/chienfuchen32/goXHandler
 RUN go get -u cloud.google.com/go/storage
 RUN go get firebase.google.com/go
 RUN go get github.com/graphql-go/graphql
+RUN go get github.com/globalsign/mgo
 WORKDIR /goXociety
 ADD . .
 RUN go build
