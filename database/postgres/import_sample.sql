@@ -1,15 +1,19 @@
 COPY country(country_id, country, country_code) FROM '/var/lib/postgresql/data/pgdata/xsrc/country.csv' DELIMITER ';' CSV; -- HEADER;
 /*
-https://developers.google.com/custom-search/docs/xml_results_appendices#countryCodes
+data source: https://developers.google.com/custom-search/docs/xml_results_appendices#countryCodes
+updated id by ./id_generator.sh
 */
+------------------------
 COPY language(language_id, display_language, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/language.csv' DELIMITER ';' CSV;
 /*
-https://developers.google.com/custom-search/docs/xml_results_appendices#interfaceLanguages
+data source: https://developers.google.com/custom-search/docs/xml_results_appendices#interfaceLanguages
+updated id by ./id_generator.sh
 */
 ------------------------
 COPY reaction(reaction_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/reaction.csv' DELIMITER ';' CSV;
 ------------------------
 COPY gender(gender_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/gender.csv' DELIMITER ';' CSV;
+-- data source: https://en.wikipedia.org/wiki/ISO/IEC_5218
 ------------------------
 COPY post_type(post_type_id, value) FROM '/var/lib/postgresql/data/pgdata/xsrc/post_type.csv' DELIMITER ';' CSV; -- CSV HEADER;
 ------------------------
@@ -51,3 +55,9 @@ VALUES (33, 4, 'yo', 1527498711, 1527498711);
 INSERT INTO comment_reaction 
 (comment_id, user_id, reaction_id, createtime) 
 VALUES (2, 4, 0, 1527498711);
+------------------------
+COPY city(category_id, category_name) FROM '/var/lib/postgresql/data/pgdata/xsrc/city.csv' DELIMITER ';' CSV; -- CSV HEADER;
+/*
+data source: https://dev.maxmind.com/geoip/geoip2/geolite2/, http://geolite.maxmind.com/download/geoip/database/GeoLite2-City-CSV.zip, data updated
+./city_origin.csv modified data as ./city.csv
+*/

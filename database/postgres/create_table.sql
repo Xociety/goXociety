@@ -79,7 +79,7 @@ CREATE TABLE post (
     like_count          bigint,
     dislike_count       bigint,
     comment_count       bigint,
-    point               point,
+    place_id            bigint references place(place_id),
     country_id          integer references country(country_id),
     category_id         integer, -- references
     public              boolean, -- public post in the future
@@ -185,9 +185,21 @@ TABLE report (
     createtime integer
 );
 ------------------------
-TABLE saved_post
+TABLE saved_post(
+    user_id
+    post_id
+    createtime
+)
 ------------------------
-TABLE cities
+TABLE city
+------------------------
+CREATE TABLE place (
+    place_id    BIGSERIAL PRIMARY KEY NOT NULL,
+    position    point,
+    name        VARCHAR(50),
+    check_count bigint
+    -- CONSTRAINT position_point_name_unique UNIQUE (position, name) [ERROR:  data type point has no default operator class for access method "btree", HINT:  You must specify an operator class for the index or define a default operator class for the data type.]
+);
 ------------------------
 TABLE notice (
     user_id

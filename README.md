@@ -41,3 +41,12 @@ currently using cloudflare orgin ssl
 
 `env=development go run $(ls -1 *.go | grep -v _test.go)`
 
+## deploy
+
+local: 
+
+`sh build.sh`
+
+gcp:
+
+`gcloud container builds submit --config cloudbuild.yaml .`

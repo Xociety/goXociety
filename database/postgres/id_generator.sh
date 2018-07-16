@@ -1,1 +1,2 @@
+# row: id
 awk -F ';' '{print NR-1";"$2";"$3}' language.csv > out.csv

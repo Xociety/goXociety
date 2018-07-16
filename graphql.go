@@ -904,8 +904,8 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return post, err
 					}
-					// tag check
 					// place check
+					// tag check
 					// hashtag check
 					// file size check
 					err = untarFileAndUpload(post, file)
@@ -957,6 +957,9 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return post, err
 					}
+					// place check
+					// tag check
+					// hashtag check
 					us, err := postUpdate(post)
 					return us, err
 				},

@@ -181,11 +181,11 @@ func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingA
 		return users, errors.New("db connection")
 	}
 	sqlStr := `
-	SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
-	FROM follow 
-	FULL OUTER JOIN xuser ON follow.following_user_id = xuser.user_id
-	WHERE follow.follower_user_id=$1 AND follow.valid=true 
-	ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
+		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
+		FROM follow 
+		FULL OUTER JOIN xuser ON follow.following_user_id = xuser.user_id
+		WHERE follow.follower_user_id=$1 AND follow.valid=true 
+		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
 	`
 	rows, err := c.db.Query(sqlStr, followerUserID, page*numPerRequest, numPerRequest)
 	if err != nil {
@@ -221,11 +221,11 @@ func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI
 		return users, errors.New("db connection")
 	}
 	sqlStr := `
-	SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
-	FROM follow 
-	FULL OUTER JOIN xuser ON follow.follower_user_id = xuser.user_id
-	WHERE follow.following_user_id=$1 AND follow.valid=true 
-	ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
+		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
+		FROM follow 
+		FULL OUTER JOIN xuser ON follow.follower_user_id = xuser.user_id
+		WHERE follow.following_user_id=$1 AND follow.valid=true 
+		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
 	`
 	rows, err := c.db.Query(sqlStr, followerUserID, page*numPerRequest, numPerRequest)
 	if err != nil {
