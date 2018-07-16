@@ -17,12 +17,6 @@
 
 `go get github.com/globalsign/mgo`
 
-<!-- `go get github.com/dhowden/tag` -->
-
-<!-- `go get github.com/grafov/m3u8` -->
-
-<!-- `go get github.com/mholt/archiver` -->
-
 ## config
 
 reaction.csv, post_type.csv
@@ -43,6 +37,7 @@ sample [resource](https://videos.pexels.com/)
 
 currently using cloudflare orgin ssl
 
-## start this repo
+## start develope this repo
 
-`go build; ./goXociety`
+`env=development go run $(ls -1 *.go | grep -v _test.go)`
+

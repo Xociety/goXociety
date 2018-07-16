@@ -149,5 +149,5 @@ type userPostPopularRead struct {
 	UserID        int64         `bson:"user_id"`
 	CategoryID    int           `bson:"category_id"`
 	WeekTimestamp int           `bson:"week_timestamp"`
-	Posts         []int64       `bson:"posts"`
+	Posts         map[int64]int `bson:"posts"` // k: PostID, v: timestamp
 }

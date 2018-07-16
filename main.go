@@ -6,15 +6,16 @@ import (
 	_ "image/png"
 	"io/ioutil"
 	"log"
+	"os"
 
 	"google.golang.org/api/option"
 )
 
+var globalConfig map[string]config
+var env string
+
 // Graphql Server
 const (
-	hostname = "127.0.0.1"
-	// hostname     = "0.0.0.0"
-	serverPort   = 4000
 	graphqlRoute = "/graphql"
 	graphiql     = true
 	// numPerRequest := 10
@@ -56,15 +57,11 @@ var (
 
 // PostgreSQL
 const (
-	postgresConStr     = "host=localhost port=30749 user=postgres password=mysecretpassword sslmode=disable"
 	dbFilePathPostgres = "./database/postgres/"
-
-// const postgresConStr = "host=my-release-postgresql port=5432 user=postgres password=mysecretpassword sslmode=disable"
 )
 
 // MongoDB
 const (
-	mongoConStr                = "localhost:30668"
 	mongoDBXociety             = "xociety"
 	mongoCollectionPostPopular = "post_popular"
 	mongoCollectionPostRead    = "post_read"
@@ -75,7 +72,7 @@ const numPopularPostPerRefresh = 10000
 // GCP
 var clientAuthGCP clientAuthFromServiceAccountFileGCP
 
-const clientAuthGCPFilePath = "./keyfileGCP.json"
+const clientAuthGCPFile = "keyfileGCP.json"
 
 // GCP cloud storage
 var clientOptionGoogleAPI option.ClientOption
@@ -94,9 +91,24 @@ const (
 )
 
 func init() {
-
+	// env variable
+	configFolerPath := ""
+	env = os.Getenv("env")
+	switch env {
+	case "development":
+		configFolerPath = "./config"
+	case "production":
+		configFolerPath = "/etc/xsecret"
+	}
+	if file, err := ioutil.ReadFile(configFolerPath + "/xocietyConfig.json"); err != nil {
+		log.Panicln("xociety config file miss", err)
+	} else {
+		if err := json.Unmarshal(file, &globalConfig); err != nil {
+			log.Panicln("xociety config file parse fail", err)
+		}
+	}
 	// GCP
-	if file, err := ioutil.ReadFile(clientAuthGCPFilePath); err != nil {
+	if file, err := ioutil.ReadFile(globalConfig[env].ClientAuthGCPFolderPath + "/" + clientAuthGCPFile); err != nil {
 		log.Panicln("gcp auth file miss", err)
 	} else {
 		if err := json.Unmarshal(file, &clientAuthGCP); err != nil {
@@ -104,7 +116,7 @@ func init() {
 		}
 	}
 	// cloud storage
-	clientOptionGoogleAPI = option.WithServiceAccountFile(clientAuthGCPFilePath)
+	clientOptionGoogleAPI = option.WithServiceAccountFile(globalConfig[env].ClientAuthGCPFolderPath + "/" + clientAuthGCPFile)
 
 	// config
 	loadConfigFromFile(dbFilePathPostgres+"country.csv", 0, 1, 3, false, countryMapID2Country, nil)

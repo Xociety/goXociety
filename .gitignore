@@ -1,5 +1,6 @@
 goXociety
+.vscode/
+debug
+debug.test
 development/
-keyfileGCP.json
-server.key
-server.cert
+config/

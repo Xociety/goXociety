@@ -47,7 +47,7 @@ func startServer() {
 	}))
 	http.Handle(graphqlRoute, h)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "index.html")
+		http.ServeFile(w, r, "./view/index.html")
 	})
 	http.HandleFunc("/upload/sample/image.tar.gz", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./development/upload/sample/image.tar.gz")
@@ -56,11 +56,11 @@ func startServer() {
 		http.ServeFile(w, r, "./development/upload/sample/playlist.tar.gz")
 	})
 	server := &http.Server{
-		Addr:           hostname + ":" + strconv.Itoa(serverPort),
+		Addr:           globalConfig[env].ServerAddrBind + ":" + strconv.Itoa(globalConfig[env].ServerPort),
 		ReadTimeout:    5 * time.Minute,
 		WriteTimeout:   5 * time.Minute,
 		MaxHeaderBytes: 1 << 20,
 	}
-	log.Println("xcociety graphql api server " + hostname + ":" + strconv.Itoa(serverPort))
-	log.Fatal(server.ListenAndServeTLS("./server.cert", "./server.key"))
+	log.Println("xcociety graphql api server " + globalConfig[env].ServerAddrBind + ":" + strconv.Itoa(globalConfig[env].ServerPort))
+	log.Fatal(server.ListenAndServeTLS(globalConfig[env].ServerCertFolderPath+"/server.cert", globalConfig[env].ServerCertFolderPath+"/server.key"))
 }

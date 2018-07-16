@@ -1,0 +1,10 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/genial-analyzer-205002/go-xociety:v0.0.17', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/genial-analyzer-205002/go-xociety:v0.0.17']
+- name: 'gcr.io/cloud-builders/kubectl'
+  args: ['set', 'image', 'deployment/go-xociety', 'go-xociety=gcr.io/genial-analyzer-205002/go-xociety:v0.0.17']
+  env:
+  - 'CLOUDSDK_COMPUTE_ZONE=us-central1-f'
+  - 'CLOUDSDK_CONTAINER_CLUSTER=cluster-1'
