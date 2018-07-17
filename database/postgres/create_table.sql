@@ -34,6 +34,8 @@ CREATE TABLE category (
     category_name   VARCHAR(30)
 );
 ------------------------
+TABLE city
+------------------------
 CREATE TABLE xuser(
     user_id             BIGSERIAL PRIMARY KEY NOT NULL,
     username            VARCHAR(50) UNIQUE NOT NULL, -- [index]
@@ -93,20 +95,21 @@ CREATE TABLE post (
 CREATE INDEX post_createtime ON post USING btree (createtime);
 ------------------------
 CREATE TABLE hashtag(
-   hashtag_id           BIGSERIAL PRIMARY KEY,
-   value                VARCHAR(100) UNIQUE NOT NULL,
-   count                bigint
+    hashtag_id  BIGSERIAL PRIMARY KEY,
+    value       VARCHAR(100) UNIQUE NOT NULL,
+    count       bigint
 );
 -- define hashtag length, space check
 ------------------------
 CREATE TABLE post_hashtag(
-   hashtag_id           bigint NOT NULL references hashtag(hashtag_id), -- [primary key or index]?
-   post_id              bigint NOT NULL references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE
+    hashtag_id           bigint NOT NULL references hashtag(hashtag_id),
+    post_id              bigint NOT NULL references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT post_hashtag_hashtag_post_unique UNIQUE (hashtag_id, post_id)
  );
 ------------------------
 CREATE TABLE post_tag_xuser (
-    post_id             bigint references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [primary key]
-    user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    post_id             bigint references post(post_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [primary key?]
+    user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [index?]
     x                   integer, -- percentage 0-99
     y                   integer, -- percentage 0-99
     valid               boolean, -- valid update by xuser
@@ -131,12 +134,12 @@ CREATE TABLE comment (
     comment             VARCHAR(300),
     like_count          bigint,
     dislike_count       bigint,
-    comment_count       bigint,
+    reply_count         bigint,
     createtime          integer,
     updatetime          integer
     -- constraint like_count (check (like_count >= 0))
     -- constraint dislike_count (check (dislike_count >= 0))
-    -- constraint comment_count (check (comment_count >= 0))
+    -- constraint reply_count (check (reply_count >= 0))
 );
 CREATE INDEX comment_createtime ON comment USING btree (createtime);
 ------------------------
@@ -149,11 +152,11 @@ CREATE TABLE comment_reaction (
 );
 CREATE INDEX comment_reaction_createtime ON comment_reaction USING btree (createtime);
 ------------------------
-TABLE reply (
-    reply_id           PRIMARY KEY BIGSERIAL NOT NULL,
-    comment_id          bigint references comments(comment_id) ON DELETE CASCADE ON UPDATE CASCADE,
+CREATE TABLE reply (
+    reply_id            BIGSERIAL PRIMARY KEY NOT NULL,
+    comment_id          bigint references comment(comment_id) ON DELETE CASCADE ON UPDATE CASCADE,
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    comment             VARCHAR(300),
+    reply               VARCHAR(300),
     like_count          bigint,
     dislike_count       bigint,
     createtime          integer,
@@ -163,10 +166,10 @@ TABLE reply (
 );
 CREATE INDEX reply_createtime ON reply USING btree (createtime);
 ------------------------
-TABLE reply_reaction (
-    reply_id           bigint references reply(reply_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [PRIMARY KEY]
+CREATE TABLE reply_reaction (
+    reply_id            bigint references reply(reply_id) ON DELETE CASCADE ON UPDATE CASCADE, -- [PRIMARY KEY]
     user_id             bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    reaction_id         integer reference reaction(reaction_id),
+    reaction_id         integer references reaction(reaction_id),
     createtime          integer,
     CONSTRAINT reply_reaction_reply_user_unique UNIQUE (reply_id, user_id)
 );
@@ -189,12 +192,11 @@ TABLE saved_post(
     user_id
     post_id
     createtime
-)
-------------------------
-TABLE city
+);
 ------------------------
 CREATE TABLE place (
     place_id    BIGSERIAL PRIMARY KEY NOT NULL,
+    -- city_id
     position    point,
     name        VARCHAR(50),
     check_count bigint

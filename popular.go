@@ -15,6 +15,9 @@ func (p postByPopular) Less(i, j int) bool {
 }
 
 func parsePopularPostReadObjectMongo(posts map[int64]int) bson.M {
+	/* for update mutiple object in one submmit, to generate bson.M like:
+	bson.M{"post.1": 1,"post.2": 2}
+	*/
 	m := make(bson.M)
 	for k, v := range posts {
 		m["posts."+strconv.FormatInt(k, 10)] = v

@@ -82,7 +82,19 @@ type commentAPI struct {
 	Comment      string       `json:"comment,omitempty"`
 	LikeCount    int64        `json:"like_count,omitempty"`
 	DislikeCount int64        `json:"dislike_count,omitempty"`
-	CommentCount int64        `json:"comment_count,omitempty"`
+	ReplyCount   int64        `json:"reply_count,omitempty"`
+	Createtime   int          `json:"createtime,omitempty"`
+	Updatetime   int          `json:"updatetime,omitempty"`
+}
+
+// reply
+type replyAPI struct {
+	ReplyID      int64        `json:"reply_id,omitempty"`
+	CommentID    int64        `json:"comment_id,omitempty"`
+	User         userBasicAPI `json:"user,omitempty"`
+	Reply        string       `json:"reply,omitempty"`
+	LikeCount    int64        `json:"like_count,omitempty"`
+	DislikeCount int64        `json:"dislike_count,omitempty"`
 	Createtime   int          `json:"createtime,omitempty"`
 	Updatetime   int          `json:"updatetime,omitempty"`
 }
