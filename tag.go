@@ -8,7 +8,7 @@ import (
 const punctuationHashtag = "#"
 
 // there's no method in package unicode to escape this, even this not cover all test case
-const charNotValidHashtag = "`~$^+|><=¦⹋±∓№×°⋯ฯ⧸⁄÷ºª−"
+const charNotValidHashtag = "`~$^+|><=" + "¦⹋±∓№×°⋯⧸⁄÷−"
 
 func checkMention(content string) (hashtags []string, tags []string) {
 	rContent := []rune(content)
@@ -33,8 +33,15 @@ func checkMention(content string) (hashtags []string, tags []string) {
 				}
 			}
 		}
-		if !strings.ContainsAny(charNotValidHashtag, char) {
-			if isAddHashtagStr {
+		if isAddHashtagStr {
+			checkValid := false
+			if unicode.IsLetter(rContent[i]) || unicode.IsNumber(rContent[i]) { // for speedup check
+				checkValid = true
+			} else if !strings.ContainsAny(charNotValidHashtag, char) {
+				// you can't use unicode.IsSymbol because these [😘, 🉑] are exception
+				checkValid = true
+			}
+			if checkValid {
 				hashtag += char
 			}
 		}

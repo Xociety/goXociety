@@ -48,13 +48,13 @@ func Test_checkMention(t *testing.T) {
 				tags:     []string{},
 			},
 		},
-		{ // Punctuation ref: https://en.wikipedia.org/wiki/Punctuation
+		{ // Punctuation ref: https://en.wikipedia.org/wiki/Punctuation ("ฯ", "º", "ª" are letters)
 			in: input{
 				target: "punctuation",
 				content: `#’ # #' #[ #] #( #) #{ #} #⟨ #⟩
-				#: #, #، #、 #‒ #– #— #― #… #... #⋯ #᠁ #ฯ #! #. #‹ #› #« #» #‐ #- #?
+				#: #, #، #、 #‒ #– #— #― #… #... #⋯ #᠁ #! #. #‹ #› #« #» #‐ #- #?
 				#‘ #’ #“ #” #' #' #" #" #; #/ #⧸ #⁄ #· #& #* #@ #\ #‱ #• #^ #† #‡ #⹋ #°
-				#” #= #¡ #¿ #※ #× ## #№ #÷ #º #ª #% #‰ #+ #− #± #∓ #′ #″ #‴ #§ #~ #¶ #| #‖ #¦`,
+				#” #= #¡ #¿ #※ #× ## #№ #÷ #% #‰ #+ #− #± #∓ #′ #″ #‴ #§ #~ #¶ #| #‖ #¦`,
 			},
 			want: want{
 				hashtags: []string{},
