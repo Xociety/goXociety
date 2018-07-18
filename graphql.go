@@ -1003,7 +1003,7 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					// place check[lat lon check]
 					// tag check[max]
-					// hashtag check[max]
+					// hashtag check[max, rule]
 					// file size check
 					err = untarFileAndUpload(post, file)
 					if err != nil {
@@ -1056,7 +1056,7 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					// place check[lat lon check]
 					// tag check[max]
-					// hashtag check[max]
+					// hashtag check[max, rule]
 					us, err := postUpdate(post)
 					return us, err
 				},

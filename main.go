@@ -12,7 +12,7 @@ import (
 )
 
 var globalConfig map[string]config
-var env string
+var env = "development"
 
 // Graphql Server
 const (
@@ -92,12 +92,12 @@ const (
 
 func init() {
 	// env variable
-	configFolerPath := ""
-	env = os.Getenv("env")
-	switch env {
+	configFolerPath := "./config"
+	switch os.Getenv("env") {
 	case "development":
-		configFolerPath = "./config"
+		// default env, configFolerPath
 	case "production":
+		env = os.Getenv("env")
 		configFolerPath = "/etc/xsecret"
 	}
 	if file, err := ioutil.ReadFile(configFolerPath + "/xocietyConfig.json"); err != nil {

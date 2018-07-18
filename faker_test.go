@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"math/rand"
+	"os"
 	"sort"
 	"testing"
 
@@ -85,7 +86,7 @@ func genPostCommentFaker(postID, userID int64, faker *faker.Faker, r *rand.Rand)
 		Comment:      faker.Sentence(10, true),
 		LikeCount:    0,
 		DislikeCount: 0,
-		CommentCount: 0,
+		ReplyCount:   0,
 		Createtime:   timestamp,
 		Updatetime:   timestamp,
 	}
@@ -140,6 +141,9 @@ func TestStartInsertXuserfaker(t *testing.T) {
 }
 
 func TestSortPostPopular(t *testing.T) {
+	if os.Getenv("test_io") == "" {
+		t.Skip("skip TestSortPostPopular")
+	}
 	users, err := getAllUserID()
 	if err != nil {
 		log.Println("user", err)
