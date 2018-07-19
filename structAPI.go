@@ -74,6 +74,17 @@ type postAPI struct {
 	Updatetime   int          `json:"updatetime,omitempty" bson:"updatetime"`
 }
 
+// hashtag
+type hashtagAPI struct {
+	HashtagID int64  `json:"hashtag_id,omitempty"`
+	Value     string `json:"value,omitempty"`
+	Count     int64  `json:"count,omitempty"`
+}
+type hashtagOnPostAPI struct {
+	PostID    int64 `json:"post_id,omitempty"`
+	HashtagID int64 `json:"hashtag_id,omitempty"`
+}
+
 // comment
 type commentAPI struct {
 	CommentID    int64        `json:"comment_id,omitempty"`

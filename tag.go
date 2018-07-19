@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -52,37 +53,39 @@ func checkMention(content string) (hashtags []string, tags []string) {
 	return
 }
 
-func checkMentionBK(content string) (hashtags []string, tags []string) {
-	rContent := []rune(content)
-	hashtag := ""
-	isAddHashtagStr := false
-	for i := 0; i < len(rContent); i++ {
-		char := string(rContent[i])
-		if unicode.IsPunct(rContent[i]) || unicode.IsSpace(rContent[i]) {
-			switch char {
-			case "_":
-			case punctuationHashtag:
-				if isAddHashtagStr && len(hashtag) > 0 {
-					hashtags = append(hashtags, hashtag)
-				}
-				hashtag = ""
-				isAddHashtagStr = true
-				continue // for loop
-			default:
-				if isAddHashtagStr && len(hashtag) > 0 {
-					hashtags = append(hashtags, hashtag)
-				}
-				isAddHashtagStr = false
-				hashtag = ""
-			}
+func parsehashtagOnPostSQL(postID int64, hashtagsID []int64) (sqlStrInsert, sqlStrDelete string, args []interface{}) {
+	/*
+		in order to insert multiple hashtag on post in one sql command, this func parse the command and parameters
+		basic insert:
+		sqlStr := `
+			INSERT INTO post_hashtag (
+				hashtag_id, post_id
+			)
+			VALUES($1,$2);
+		`
+	*/
+	sqlStrInsert = `
+		INSERT INTO post_hashtag (
+			hashtag_id, post_id
+		) 
+		VALUES 
+	`
+	sqlStrDelete = `
+		DELETE FROM post_hashtag WHERE post_id = $1 AND hashtag_id NOT IN (
+	`
+	args = append(args, postID)
+	indexArg := 2
+	for i := 0; i < len(hashtagsID); i++ {
+		if i != 0 {
+			sqlStrInsert += `, `
+			sqlStrDelete += `, `
 		}
-		if isAddHashtagStr {
-			hashtag += char
-		}
+		sqlStrInsert += `($` + strconv.Itoa(indexArg) + `,$1)`
+		sqlStrDelete += `$` + strconv.Itoa(indexArg)
+		args = append(args, hashtagsID[i])
+		indexArg++
 	}
-	if isAddHashtagStr && len(hashtag) > 0 {
-		hashtags = append(hashtags, hashtag)
-		isAddHashtagStr = false
-	}
+	sqlStrInsert += `ON CONFLICT ON CONSTRAINT post_hashtag_hashtag_post_unique DO NOTHING;`
+	sqlStrDelete += `);`
 	return
 }

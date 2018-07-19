@@ -11,8 +11,13 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// net
 type connPostgres struct {
 	db *sql.DB
+}
+
+type connMongo struct {
+	session *mgo.Session
 }
 
 func connectPostgres(dbinfo string) (connPostgres, error) {
@@ -25,11 +30,6 @@ func connectPostgres(dbinfo string) (connPostgres, error) {
 	}
 	return c, nil
 }
-
-type connMongo struct {
-	session *mgo.Session
-}
-
 func connectMongoDB(dbinfo string) (connMongo, error) {
 	var err error
 	c := connMongo{}
@@ -97,6 +97,7 @@ func login(email, password string) (lc loginAPI, err error) {
 	return lc, nil
 }
 
+// user
 func getUserByUserID(userID int64) (user xuserAPI, err error) {
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()
@@ -134,7 +135,6 @@ func getUserByUserID(userID int64) (user xuserAPI, err error) {
 	}
 	return user, nil
 }
-
 func getUserByUsername(username string) (user xuserAPI, err error) {
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()
@@ -173,6 +173,7 @@ func getUserByUsername(username string) (user xuserAPI, err error) {
 	return user, nil
 }
 
+// follow
 func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
@@ -212,7 +213,6 @@ func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingA
 	}
 	return users, nil
 }
-
 func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
@@ -252,7 +252,6 @@ func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI
 	}
 	return users, nil
 }
-
 func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bool, err error) {
 	count := 0
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
@@ -268,17 +267,7 @@ func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bo
 	return count == 1, err
 }
 
-func makeBlobURL(post postAPI) string {
-	// restore url
-	url := "http://" + bucketRootCloudStorage + "/" + makeBucketFolderName(post.Type, post.Blob.BlobID)
-	switch postTypeMapID2Type[post.Type] {
-	case mediaFormatJPG:
-		url += "0." + mediaFormatJPG
-	case mediaFormatHLS:
-		url += "0." + mediaFormatM3U8
-	}
-	return url
-}
+// post
 func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 	numPerRequest := 10
 	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
@@ -456,7 +445,6 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 	// log.Println("posts", posts)
 	return posts, nil
 }
-
 func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
@@ -481,6 +469,109 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	return posts, nil
 }
 
+// hashtags
+func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) { // not done yet
+	numPerRequest := 10
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return hashtags, errors.New("db connection")
+	}
+	sqlStr := `
+		SELECT 
+		hashtag_id, value, count
+		FROM hashtag
+		WHERE value LIKE $1
+		ORDER BY hashtag.count
+		DESC OFFSET $2 LIMIT $3;
+	`
+	rows, err := c.db.Query(sqlStr, value+"%", page*numPerRequest, numPerRequest)
+	if err != nil {
+		log.Println("getPostsUser", err)
+		return hashtags, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		hashtag := hashtagAPI{}
+		if err := rows.Scan(
+			&hashtag.HashtagID,
+			&hashtag.Value,
+			&hashtag.Count,
+		); err != nil {
+			log.Println(err)
+			return hashtags, err
+		}
+		hashtags = append(hashtags, hashtag)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return hashtags, err
+	}
+	// log.Println("hashtags", hashtags)
+	return hashtags, nil
+}
+func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) { // not done yet
+	numPerRequest := 10
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return posts, errors.New("db connection")
+	}
+	sqlStr := `
+		SELECT 
+		post.post_id, 
+		post.user_id, xuser.username, xuser.name,
+		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
+		post.like_count, post.dislike_count, post.comment_count,
+		post.country_id, post.category_id, post.createtime, post.updatetime 
+		FROM post
+		INNER JOIN xuser ON xuser.user_id = post.user_id
+		INNER JOIN post_hashtag ON post_hashtag.post_id = post.post_id
+		WHERE post_hashtag.hashtag_id= $1
+		ORDER BY post.createtime
+		DESC OFFSET $2 LIMIT $3;
+	`
+	rows, err := c.db.Query(sqlStr, hashtagID, page*numPerRequest, numPerRequest)
+	if err != nil {
+		log.Println("getPostsByHashtag", err)
+		return posts, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		post := postAPI{}
+		if err := rows.Scan(
+			&post.PostID,
+			&post.User.UserID,
+			&post.User.Username,
+			&post.User.Name,
+			&post.Content,
+			&post.Blob.BlobID,
+			&post.Blob.OriginWidth,
+			&post.Blob.OriginHeight,
+			&post.Type,
+			&post.LikeCount,
+			&post.DislikeCount,
+			&post.CommentCount,
+			&post.CountryID,
+			&post.CategoryID,
+			&post.Createtime,
+			&post.Updatetime,
+		); err != nil {
+			log.Println(err)
+			return posts, err
+		}
+		post.Blob.BlobID = makeBlobURL(post)
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return posts, err
+	}
+	// log.Println("posts", posts)
+	return posts, nil
+}
+
+// comment
 func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
@@ -529,6 +620,7 @@ func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error
 	return comments, nil
 }
 
+// reply
 func getRepliesOnComment(commentID int64, page int) (replies []replyAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
@@ -576,6 +668,7 @@ func getRepliesOnComment(commentID int64, page int) (replies []replyAPI, err err
 	return replies, nil
 }
 
+// reaction
 func getReactionsOnPost(postID int64, page int) (reactionsOnPost []reactionOnPostAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
@@ -738,6 +831,7 @@ func userInsert(user userDB) (userID int64, err error) {
 	return userID, err
 }
 
+// follow
 func follow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()
@@ -784,6 +878,7 @@ func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err er
 	return us, nil
 }
 
+// post
 func postInsert(post postAPI) (postID int64, err error) {
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()
@@ -914,6 +1009,64 @@ func postPopularRead(categoryID, indexRead int, userID int64) (posts []postAPI, 
 	return posts, nil
 }
 
+// hashtags
+func hashtagInsert(hashtags []string) (hashtagsID []int64, err error) {
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return hashtagsID, errors.New("db connection")
+	}
+	for i := 0; i < len(hashtags); i++ {
+		hashtagID := int64(0)
+		sqlStr := `
+			UPDATE hashtag SET count = hashtag.count + 1 WHERE hashtag.value=$1 RETURNING hashtag_id
+		`
+		_ = c.db.QueryRow(sqlStr,
+			hashtags[i],
+		).Scan(&hashtagID)
+		// if err != nil {
+		// 	log.Println("this part means that hashtag value's not existed", err)
+		// }
+		if hashtagID == 0 {
+			sqlStr = `
+				INSERT INTO hashtag (value, count) VALUES($1, 1) RETURNING hashtag_id
+			`
+			err = c.db.QueryRow(sqlStr,
+				hashtags[i],
+			).Scan(&hashtagID)
+			if err != nil {
+				return hashtagsID, err
+			}
+		}
+		hashtagsID = append(hashtagsID, hashtagID)
+	}
+	return hashtagsID, err
+}
+func hashtagOnPostSet(postID int64, hashtagsID []int64) (us updateStatusAPI, err error) {
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return us, errors.New("db connection")
+	}
+	sqlStrInsert, sqlStrDelete, args := parsehashtagOnPostSQL(postID, hashtagsID)
+	res, err := c.db.Exec(sqlStrInsert, args...)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	// delete not current use
+	_, err = c.db.Exec(sqlStrDelete, args...)
+	if err != nil {
+		return us, err
+	}
+	return us, nil
+}
+
+// comment
 func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()
@@ -1014,6 +1167,7 @@ func commentOnPostDelete(comment commentAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 
+// reply
 func replyOnCommentInsert(reply replyAPI) (replyID int64, err error) {
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()
@@ -1113,6 +1267,7 @@ func replyOnCommentDelete(reply replyAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 
+// reaction
 func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()

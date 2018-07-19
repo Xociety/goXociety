@@ -310,6 +310,19 @@ var postGraphqlType = graphql.NewObject(
 )
 var postsGraphqlType = graphql.NewList(postGraphqlType)
 
+// hashtags
+var hashtagGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "hashtag",
+		Fields: graphql.Fields{
+			"hashtag_id": &graphql.Field{Type: int64GraphqlScalar},
+			"value":      &graphql.Field{Type: graphql.String},
+			"count":      &graphql.Field{Type: int64GraphqlScalar},
+		},
+	},
+)
+var hashtagsGraphqlType = graphql.NewList(hashtagGraphqlType)
+
 // comment
 var commentGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
@@ -758,6 +771,59 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
+			"posts_by_hashtag": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"hashtag_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "hashtag_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					hashtagID, isOK := p.Args["hashtag_id"].(int64)
+					if !isOK {
+						return nil, errors.New("hashtag_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByHashtag(hashtagID, page)
+					return posts, err
+				},
+				Description: "",
+			},
+			"hashtags": &graphql.Field{
+				Type: hashtagsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"value": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "value",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					value, isOK := p.Args["value"].(string)
+					if !isOK {
+						return nil, errors.New("value format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					hashtags, err := getHashtags(value, page)
+					return hashtags, err
+				},
+				Description: "",
+			},
 			"reactions_on_post": &graphql.Field{
 				Type: postReactionGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -1004,12 +1070,26 @@ var graphqlMutationType = graphql.NewObject(
 					// place check[lat lon check]
 					// tag check[max]
 					// hashtag check[max, rule]
+					hashtags, _ := checkMention(post.Content)
+
 					// file size check
 					err = untarFileAndUpload(post, file)
 					if err != nil {
 						return nil, err
 					}
 					post.PostID, err = postInsert(post)
+					if err != nil {
+						return post, err
+					}
+					if len(hashtags) > 0 {
+						hashtagsID, err := hashtagInsert(hashtags)
+						if err != nil {
+							return post, err
+						}
+						if post.PostID != 0 {
+							_, err = hashtagOnPostSet(post.PostID, hashtagsID)
+						}
+					}
 					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
 					return post, err
 				},
@@ -1057,7 +1137,20 @@ var graphqlMutationType = graphql.NewObject(
 					// place check[lat lon check]
 					// tag check[max]
 					// hashtag check[max, rule]
+					hashtags, _ := checkMention(post.Content)
 					us, err := postUpdate(post)
+					if err != nil {
+						return us, err
+					}
+					if len(hashtags) > 0 {
+						hashtagsID, err := hashtagInsert(hashtags)
+						if err != nil {
+							return post, err
+						}
+						if post.PostID != 0 {
+							_, err = hashtagOnPostSet(post.PostID, hashtagsID)
+						}
+					}
 					return us, err
 				},
 				Description: "",

@@ -96,9 +96,10 @@ CREATE INDEX post_createtime ON post USING btree (createtime);
 ------------------------
 CREATE TABLE hashtag(
     hashtag_id  BIGSERIAL PRIMARY KEY,
-    value       VARCHAR(100) UNIQUE NOT NULL,
+    value       VARCHAR(100) UNIQUE NOT NULL, -- lower case
     count       bigint
 );
+CREATE INDEX hashtag_count ON hashtag USING btree (count);
 -- define hashtag length, space check
 ------------------------
 CREATE TABLE post_hashtag(

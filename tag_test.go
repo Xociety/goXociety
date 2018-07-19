@@ -41,10 +41,10 @@ func Test_checkMention(t *testing.T) {
 		{
 			in: input{
 				target:  "west case",
-				content: " ＃no #Ἀλέξανδρος #KanJAGfånotan #Facebook #Instagram #Elautobús #Gebäude",
+				content: " ＃no #Ἀλέξανδρος #KanJAGfånotan #Followme #Facebook #Instagram #Elautobús #Gebäude",
 			},
 			want: want{
-				hashtags: []string{"ἀλέξανδρος", "kanjagfånotan", "facebook", "instagram", "elautobús", "gebäude"},
+				hashtags: []string{"ἀλέξανδρος", "kanjagfånotan", "followme", "facebook", "instagram", "elautobús", "gebäude"},
 				tags:     []string{},
 			},
 		},
