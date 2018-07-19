@@ -184,7 +184,7 @@ func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingA
 	sqlStr := `
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
-		FULL OUTER JOIN xuser ON follow.following_user_id = xuser.user_id
+		INNER JOIN xuser ON follow.following_user_id = xuser.user_id
 		WHERE follow.follower_user_id=$1 AND follow.valid=true 
 		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
 	`
@@ -223,7 +223,7 @@ func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI
 	sqlStr := `
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
-		FULL OUTER JOIN xuser ON follow.follower_user_id = xuser.user_id
+		INNER JOIN xuser ON follow.follower_user_id = xuser.user_id
 		WHERE follow.following_user_id=$1 AND follow.valid=true 
 		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
 	`
@@ -284,7 +284,7 @@ func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 		post.like_count, post.dislike_count, post.comment_count, post.country_id, 
 		post.category_id, post.createtime, post.updatetime 
 		FROM post 
-		FULL OUTER JOIN xuser ON xuser.user_id = post.user_id
+		INNER JOIN xuser ON xuser.user_id = post.user_id
 		WHERE post.category_id=$1 AND post.createtime>=$2 
 		ORDER BY post.createtime DESC OFFSET $3 LIMIT $4;
 	`
@@ -341,8 +341,8 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 		post.like_count, post.dislike_count, post.comment_count,
 		post.country_id, post.category_id, post.createtime, post.updatetime 
 		FROM post
-		FULL OUTER JOIN xuser ON xuser.user_id = post.user_id
-		FULL OUTER JOIN follow ON follow.following_user_id = post.user_id
+		INNER JOIN xuser ON xuser.user_id = post.user_id
+		INNER JOIN follow ON follow.following_user_id = post.user_id
 		WHERE follow.follower_user_id= $1
 		ORDER BY post.createtime
 		DESC OFFSET $2 LIMIT $3;
@@ -401,7 +401,7 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 		post.like_count, post.dislike_count, post.comment_count,
 		post.country_id, post.category_id, post.createtime, post.updatetime 
 		FROM post
-		FULL OUTER JOIN xuser ON xuser.user_id = post.user_id
+		INNER JOIN xuser ON xuser.user_id = post.user_id
 		WHERE post.user_id= $1
 		ORDER BY post.createtime
 		DESC OFFSET $2 LIMIT $3;
@@ -470,7 +470,7 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 }
 
 // hashtags
-func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) { // not done yet
+func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()
@@ -487,7 +487,7 @@ func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) { //
 	`
 	rows, err := c.db.Query(sqlStr, value+"%", page*numPerRequest, numPerRequest)
 	if err != nil {
-		log.Println("getPostsUser", err)
+		log.Println("getHashtags", err)
 		return hashtags, err
 	}
 	defer rows.Close()
@@ -571,6 +571,116 @@ func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) {
 	return posts, nil
 }
 
+// tags
+func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
+	numPerRequest := 10
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return posts, errors.New("db connection")
+	}
+	sqlStr := `
+		SELECT 
+		post.post_id, 
+		post.user_id, xuser.username, xuser.name,
+		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
+		post.like_count, post.dislike_count, post.comment_count,
+		post.country_id, post.category_id, post.createtime, post.updatetime 
+		FROM post
+		INNER JOIN xuser ON xuser.user_id = post.user_id
+		INNER JOIN post_tag_xuser ON post_tag_xuser.user_id = xuser.user_id
+		WHERE post_tag_xuser.user_id= $1
+		ORDER BY post.createtime
+		DESC OFFSET $2 LIMIT $3;
+	`
+	rows, err := c.db.Query(sqlStr, userID, page*numPerRequest, numPerRequest)
+	if err != nil {
+		log.Println("getPostsByTag", err)
+		return posts, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		post := postAPI{}
+		if err := rows.Scan(
+			&post.PostID,
+			&post.User.UserID,
+			&post.User.Username,
+			&post.User.Name,
+			&post.Content,
+			&post.Blob.BlobID,
+			&post.Blob.OriginWidth,
+			&post.Blob.OriginHeight,
+			&post.Type,
+			&post.LikeCount,
+			&post.DislikeCount,
+			&post.CommentCount,
+			&post.CountryID,
+			&post.CategoryID,
+			&post.Createtime,
+			&post.Updatetime,
+		); err != nil {
+			log.Println(err)
+			return posts, err
+		}
+		post.Blob.BlobID = makeBlobURL(post)
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return posts, err
+	}
+	// log.Println("posts", posts)
+	return posts, nil
+}
+func getAllTagsByPost(postID int64) (tags []tagOnPostAPI, err error) {
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return tags, errors.New("db connection")
+	}
+	sqlStr := `
+		SELECT 
+		post_tag_xuser.post_id,
+		post_tag_xuser.user_id, xuser.username, xuser.name,
+		post_tag_xuser.x, post_tag_xuser.y,
+		post_tag_xuser.valid,
+		post_tag_xuser.createtime, post_tag_xuser.updatetime
+		FROM post_tag_xuser
+		INNER JOIN xuser ON xuser.user_id = post_tag_xuser.user_id
+		WHERE post_tag_xuser.post_id = $1;
+	`
+	rows, err := c.db.Query(sqlStr, postID)
+	if err != nil {
+		log.Println("getAllTagsByPost", err)
+		return tags, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		tag := tagOnPostAPI{}
+		if err := rows.Scan(
+			&tag.PostID,
+			&tag.User.UserID,
+			&tag.User.Username,
+			&tag.User.Name,
+			&tag.X,
+			&tag.Y,
+			&tag.Valid,
+			&tag.Createtime,
+			&tag.Updatetime,
+		); err != nil {
+			log.Println(err)
+			return tags, err
+		}
+		tags = append(tags, tag)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return tags, err
+	}
+	// log.Println("tags", hashtags)
+	return tags, nil
+}
+
 // comment
 func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error) {
 	numPerRequest := 10
@@ -586,7 +696,7 @@ func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error
 		comment.comment, 
 		comment.like_count, comment.dislike_count, comment.reply_count,
 		comment.createtime, comment.updatetime 
-		FROM comment FULL OUTER JOIN xuser ON comment.user_id = xuser.user_id 
+		FROM comment INNER JOIN xuser ON comment.user_id = xuser.user_id 
 		WHERE post_id=$1 
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
@@ -635,7 +745,7 @@ func getRepliesOnComment(commentID int64, page int) (replies []replyAPI, err err
 		reply.reply, 
 		reply.like_count, reply.dislike_count,
 		reply.createtime, reply.updatetime 
-		FROM reply FULL OUTER JOIN xuser ON reply.user_id = xuser.user_id 
+		FROM reply INNER JOIN xuser ON reply.user_id = xuser.user_id 
 		WHERE comment_id=$1 
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
@@ -681,7 +791,7 @@ func getReactionsOnPost(postID int64, page int) (reactionsOnPost []reactionOnPos
 		post_reaction.post_id, 
 		post_reaction.user_id, xuser.username, xuser.name, 
 		post_reaction.reaction_id, post_reaction.createtime 
-		FROM public.post_reaction FULL OUTER JOIN xuser on post_reaction.user_id = xuser.user_id
+		FROM public.post_reaction INNER JOIN xuser on post_reaction.user_id = xuser.user_id
 		WHERE post_id=$1
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
@@ -721,7 +831,7 @@ func getReactionsOnComment(commentID int64, page int) (reactionsOnComment []reac
 		comment_reaction.comment_id, 
 		comment_reaction.user_id, xuser.username, xuser.name, 
 		comment_reaction.reaction_id, comment_reaction.createtime 
-		FROM public.comment_reaction FULL OUTER JOIN xuser on comment_reaction.user_id = xuser.user_id
+		FROM public.comment_reaction INNER JOIN xuser on comment_reaction.user_id = xuser.user_id
 		WHERE comment_id=$1
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
@@ -761,7 +871,7 @@ func getReactionsOnReply(replyID int64, page int) (reactionsOnReply []reactionOn
 		reply_reaction.reply_id, 
 		reply_reaction.user_id, xuser.username, xuser.name, 
 		reply_reaction.reaction_id, reply_reaction.createtime 
-		FROM public.reply_reaction FULL OUTER JOIN xuser on reply_reaction.user_id = xuser.user_id
+		FROM public.reply_reaction INNER JOIN xuser on reply_reaction.user_id = xuser.user_id
 		WHERE reply_id=$1
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
@@ -1468,7 +1578,7 @@ func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 		post.like_count, post.dislike_count, post.comment_count, post.country_id, 
 		post.category_id, post.createtime, post.updatetime 
 		FROM post 
-		FULL OUTER JOIN xuser ON xuser.user_id = post.user_id
+		INNER JOIN xuser ON xuser.user_id = post.user_id
 		WHERE post.category_id=$1 AND post.createtime>=$2 
 		ORDER BY post.createtime DESC OFFSET $3 LIMIT $4;
 	`

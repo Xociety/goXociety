@@ -323,6 +323,23 @@ var hashtagGraphqlType = graphql.NewObject(
 )
 var hashtagsGraphqlType = graphql.NewList(hashtagGraphqlType)
 
+// tags
+var tagGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "post_tag",
+		Fields: graphql.Fields{
+			"post_id":    &graphql.Field{Type: int64GraphqlScalar},
+			"user":       &graphql.Field{Type: userBasicGraphqlType},
+			"x":          &graphql.Field{Type: graphql.Int},
+			"y":          &graphql.Field{Type: graphql.Int},
+			"valid":      &graphql.Field{Type: graphql.Boolean},
+			"createtime": &graphql.Field{Type: graphql.Int},
+			"updatetime": &graphql.Field{Type: graphql.Int},
+		},
+	},
+)
+var tagsGraphqlType = graphql.NewList(tagGraphqlType)
+
 // comment
 var commentGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
