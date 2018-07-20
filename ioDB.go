@@ -468,6 +468,26 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	}
 	return posts, nil
 }
+func getPostByPostIDUserID(postID, userID int64) (count int, err error) {
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return count, errors.New("db connection")
+	}
+	sqlStr := `
+		SELECT 
+		COUNT(*)
+		FROM post
+		WHERE post_id = $1 AND user_id= $2;
+	`
+	row := c.db.QueryRow(sqlStr, postID, userID)
+	err = row.Scan(&count)
+	if err != nil {
+		log.Println("getPostByPostIDUserID", err)
+		return count, err
+	}
+	return count, err
+}
 
 // hashtags
 func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) {
@@ -586,10 +606,10 @@ func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
 		post.like_count, post.dislike_count, post.comment_count,
 		post.country_id, post.category_id, post.createtime, post.updatetime 
-		FROM post
-		INNER JOIN xuser ON xuser.user_id = post.user_id
-		INNER JOIN post_tag_xuser ON post_tag_xuser.user_id = xuser.user_id
-		WHERE post_tag_xuser.user_id= $1
+		FROM post_tag_xuser
+		JOIN xuser ON xuser.user_id = post_tag_xuser.user_id
+		JOIN post ON post_tag_xuser.post_id = post.post_id
+		WHERE post_tag_xuser.user_id= $1 AND post_tag_xuser.valid = true
 		ORDER BY post.createtime
 		DESC OFFSET $2 LIMIT $3;
 	`
@@ -647,7 +667,7 @@ func getAllTagsByPost(postID int64) (tags []tagOnPostAPI, err error) {
 		post_tag_xuser.createtime, post_tag_xuser.updatetime
 		FROM post_tag_xuser
 		INNER JOIN xuser ON xuser.user_id = post_tag_xuser.user_id
-		WHERE post_tag_xuser.post_id = $1;
+		WHERE post_tag_xuser.post_id = $1 AND post_tag_xuser.valid = true;
 	`
 	rows, err := c.db.Query(sqlStr, postID)
 	if err != nil {
@@ -1170,6 +1190,127 @@ func hashtagOnPostSet(postID int64, hashtagsID []int64) (us updateStatusAPI, err
 	if err != nil {
 		return us, err
 	}
+	return us, nil
+}
+
+// post_tags
+func tagOnPostUpdate(postID int64, tag tagOnPostSetAPI) (us updateStatusAPI, err error) {
+	timestamp := getNowUnixTimestamp()
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return us, errors.New("db connection")
+	}
+	sqlStr := `
+		UPDATE post_tag_xuser 
+		SET
+		x=$1, y=$2,
+		updatetime=$3
+		WHERE post_id=$4 AND user_id=$5;
+	`
+	res, err := c.db.Exec(sqlStr,
+		tag.X, tag.Y,
+		timestamp,
+		postID, tag.UserID,
+	)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	// if err != nil {
+	// 	return us, err
+	// }
+	if count == 0 {
+		sqlStr = `
+			INSERT INTO post_tag_xuser (
+				post_id, user_id,
+				x, y,
+				valid,
+				createtime, updatetime
+			)
+			VALUES ($1,$2,$3,$4,$5,$6,$7);
+		`
+		res, err := c.db.Exec(sqlStr,
+			postID, tag.UserID,
+			tag.X, tag.Y,
+			false,
+			timestamp, timestamp,
+		)
+		if err != nil {
+			return us, err
+		}
+		count, err = res.RowsAffected()
+		if err != nil {
+			return us, err
+		}
+	}
+	us.RowsAffected = int(count)
+	return us, nil
+}
+func tagsOnPostSet(postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, err error) {
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return us, errors.New("db connection")
+	}
+	sqlStr, args := parseTagOnPostInserSQL(postID, tags)
+	res, err := c.db.Exec(sqlStr, args...)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	return us, nil
+}
+func tagOnPostConfirm(postID, userID int64) (us updateStatusAPI, err error) {
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return us, errors.New("db connection")
+	}
+	sqlStr := `
+		UPDATE post_tag_xuser 
+		SET
+		valid=$1 
+		WHERE post_id=$2 AND user_id=$3;
+	`
+	res, err := c.db.Exec(sqlStr,
+		true,
+		postID, userID,
+	)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
+	return us, nil
+}
+func tagOnPostDelete(postID, userID int64) (us updateStatusAPI, err error) {
+	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	defer c.db.Close()
+	if err != nil {
+		return us, errors.New("db connection")
+	}
+	sqlStr := `
+		DELETE FROM post_tag_xuser 
+		WHERE post_id=$1 AND user_id=$2;
+	`
+	res, err := c.db.Exec(sqlStr,
+		postID, userID)
+	if err != nil {
+		return us, err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return us, err
+	}
+	us.RowsAffected = int(count)
 	return us, nil
 }
 

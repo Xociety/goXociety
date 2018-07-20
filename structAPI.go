@@ -86,6 +86,15 @@ type hashtagOnPostAPI struct {
 }
 
 // tag
+type tagOnPostSetAPI struct {
+	PostID     int64 `json:"post_id"`
+	UserID     int64 `json:"user_id"`
+	X          int   `json:"x"`
+	Y          int   `json:"y"`
+	Valid      bool  `json:"valid"`
+	Createtime int   `json:"createtime"`
+	Updatetime int   `json:"updatetime"`
+}
 type tagOnPostAPI struct {
 	PostID     int64        `json:"post_id"`
 	User       userBasicAPI `json:"user"`

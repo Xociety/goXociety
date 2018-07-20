@@ -121,3 +121,43 @@ func parsehashtagOnPostSQL(postID int64, hashtagsID []int64) (sqlStrInsert, sqlS
 	sqlStrDelete += `);`
 	return
 }
+func parseTagOnPostInserSQL(postID int64, tags []tagOnPostSetAPI) (sqlStr string, args []interface{}) {
+	/*
+		in order to insert multiple hashtag on post in one sql command, this func parse the command and parameters
+		basic insert:
+		sqlStr := `
+			INSERT INTO post_tag_xuser (
+				post_id, user_id,
+				x, y,
+				valid,
+				createtime, updatetime
+			)
+			VALUES($1,$2,$3,$4,$5,$6,$7);
+		`
+	*/
+	sqlStr = `
+		INSERT INTO post_tag_xuser (
+			post_id, user_id,
+			x, y,
+			valid,
+			createtime, updatetime
+		)
+		VALUES 
+	`
+	args = append(args, postID)
+	indexArg := 2
+	timestamp := getNowUnixTimestamp()
+	for i := 0; i < len(tags); i++ {
+		if i != 0 {
+			sqlStr += `, `
+		}
+		sqlStr += `($1,$` + strconv.Itoa(indexArg) + `,` +
+			`$` + strconv.Itoa(indexArg+1) + `,` + `$` + strconv.Itoa(indexArg+2) + `,` +
+			`$` + strconv.Itoa(indexArg+3) + `,` +
+			`$` + strconv.Itoa(indexArg+4) + `,` + `$` + strconv.Itoa(indexArg+5) + `)`
+		indexArg += 6
+		args = append(args, tags[i].UserID, tags[i].X, tags[i].Y, false, timestamp, timestamp)
+	}
+	sqlStr += `ON CONFLICT ON CONSTRAINT post_tag_post_id_user_id_unique DO NOTHING;`
+	return
+}

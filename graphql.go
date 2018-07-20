@@ -1,8 +1,8 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
-	"io"
 	"log"
 	"math"
 	"strconv"
@@ -104,6 +104,17 @@ func coerceInt64(value interface{}) interface{} {
 	return nil
 }
 
+func coerceJSON(value interface{}) interface{} {
+	switch value := value.(type) {
+	case string:
+		val := string(value)
+		return coerceJSON(val)
+	case *string:
+		return coerceJSON(*value)
+	}
+	return nil
+}
+
 var int64GraphqlScalar = graphql.NewScalar(graphql.ScalarConfig{
 	Name:        "Int64",
 	Description: "int64",
@@ -114,6 +125,39 @@ var int64GraphqlScalar = graphql.NewScalar(graphql.ScalarConfig{
 		case *ast.IntValue:
 			if intValue, err := strconv.ParseInt(valueAST.Value, 10, 64); err == nil {
 				return intValue
+			}
+		}
+		return nil
+	},
+})
+
+var tagOnPostGraphqlScalar = graphql.NewScalar(graphql.ScalarConfig{
+	Name:        "post_tag_str",
+	Description: `string input sample: post tags => "{\\"user_id\\":1,\\"x\\":40,\\"y\\":50}"`,
+	Serialize:   coerceJSON,
+	ParseValue:  coerceJSON,
+	ParseLiteral: func(valueAST ast.Value) interface{} {
+		switch valueAST := valueAST.(type) {
+		case *ast.StringValue:
+			objectValue := tagOnPostSetAPI{}
+			if err := json.Unmarshal([]byte(valueAST.Value), &objectValue); err == nil {
+				return objectValue
+			}
+		}
+		return nil
+	},
+})
+var tagsOnPostGraphqlScalar = graphql.NewScalar(graphql.ScalarConfig{
+	Name:        "post_tags_str",
+	Description: `string input sample: post tags => "[{\\"user_id\\":1,\\"x\\":40,\\"y\\":50}]", tag no user => "[]"`,
+	Serialize:   coerceJSON,
+	ParseValue:  coerceJSON,
+	ParseLiteral: func(valueAST ast.Value) interface{} {
+		switch valueAST := valueAST.(type) {
+		case *ast.StringValue:
+			objectValue := []tagOnPostSetAPI{}
+			if err := json.Unmarshal([]byte(valueAST.Value), &objectValue); err == nil {
+				return objectValue
 			}
 		}
 		return nil
@@ -326,7 +370,7 @@ var hashtagsGraphqlType = graphql.NewList(hashtagGraphqlType)
 // tags
 var tagGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "post_tag",
+		Name: "post_tags",
 		Fields: graphql.Fields{
 			"post_id":    &graphql.Field{Type: int64GraphqlScalar},
 			"user":       &graphql.Field{Type: userBasicGraphqlType},
@@ -681,6 +725,26 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
+			"taged_users_by_post": &graphql.Field{
+				Type: tagsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					// block check
+					tags, err := getAllTagsByPost(postID)
+					return tags, err
+				},
+				Description: "get all taged user in post",
+			},
+			// post_detail
 			"posts_by_recent": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -811,6 +875,33 @@ var graphqlQueryType = graphql.NewObject(
 					}
 					// block check
 					posts, err := getPostsByHashtag(hashtagID, page)
+					return posts, err
+				},
+				Description: "",
+			},
+			"posts_by_tag": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"user_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "user_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					userID, isOK := p.Args["user_id"].(int64)
+					if !isOK {
+						return nil, errors.New("user_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByTag(userID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1053,6 +1144,10 @@ var graphqlMutationType = graphql.NewObject(
 						Type:        graphql.Int,
 						Description: "origin height",
 					},
+					"tags": &graphql.ArgumentConfig{
+						Type:        tagsOnPostGraphqlScalar,
+						Description: "tags",
+					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					startTime := time.Now()
@@ -1060,13 +1155,13 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return nil, err
 					}
-					file, isOK := p.Context.Value(contextKeyFile).(io.Reader)
-					if !isOK {
-						return nil, errors.New("file format")
-					}
+					// file, isOK := p.Context.Value(contextKeyFile).(io.Reader)
+					// if !isOK {
+					// 	return nil, errors.New("file format")
+					// }
 					// post parameter check
 					postType, isOK := p.Args["type"].(int)
-					if !isOK {
+					if !isOK || postTypeMapID2Type[postType] == "" {
 						return nil, errors.New("type format")
 					}
 					originWidth, isOK := p.Args["origin_width"].(int)
@@ -1077,27 +1172,26 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("origin_height format")
 					}
-					if postTypeMapID2Type[postType] == "" {
-						return nil, errors.New("type format")
+					tags, isOK := p.Args["tags"].([]tagOnPostSetAPI)
+					if !isOK {
+						return nil, errors.New("tags format")
 					}
 					post, err := parsePost(p, 0, user.UserID, postType, originWidth, originHeight)
 					if err != nil {
 						return post, err
 					}
 					// place check[lat lon check]
-					// tag check[max]
-					// hashtag check[max, rule]
-					hashtags, _ := checkMention(post.Content)
-
 					// file size check
-					err = untarFileAndUpload(post, file)
-					if err != nil {
-						return nil, err
-					}
+					// err = untarFileAndUpload(post, file)
+					// if err != nil {
+					// 	return nil, err
+					// }
 					post.PostID, err = postInsert(post)
 					if err != nil {
 						return post, err
 					}
+					// hashtag check[max, rule]
+					hashtags, _ := checkMention(post.Content)
 					if len(hashtags) > 0 {
 						hashtagsID, err := hashtagInsert(hashtags)
 						if err != nil {
@@ -1107,6 +1201,8 @@ var graphqlMutationType = graphql.NewObject(
 							_, err = hashtagOnPostSet(post.PostID, hashtagsID)
 						}
 					}
+					// tag check[max] notification
+					_, err = tagsOnPostSet(post.PostID, tags)
 					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
 					return post, err
 				},
@@ -1128,6 +1224,10 @@ var graphqlMutationType = graphql.NewObject(
 						Type:        graphql.String,
 						Description: "content",
 					},
+					"is_update_content": &graphql.ArgumentConfig{
+						Type:        graphql.Boolean,
+						Description: "is_update_content",
+					},
 					"country_id": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
 						Description: "country_id",
@@ -1146,28 +1246,104 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("post_id format")
 					}
+					isUpdateContent, isOK := p.Args["is_update_content"].(bool)
+					if !isOK {
+						return nil, errors.New("is_update_content format")
+					}
 					// post parameter check
 					post, err := parsePost(p, postID, user.UserID, 0, 0, 0)
 					if err != nil {
 						return post, err
 					}
 					// place check[lat lon check]
-					// tag check[max]
-					// hashtag check[max, rule]
-					hashtags, _ := checkMention(post.Content)
 					us, err := postUpdate(post)
 					if err != nil {
 						return us, err
 					}
-					if len(hashtags) > 0 {
-						hashtagsID, err := hashtagInsert(hashtags)
-						if err != nil {
-							return post, err
-						}
-						if post.PostID != 0 {
-							_, err = hashtagOnPostSet(post.PostID, hashtagsID)
+					if isUpdateContent { // prevent unnecessary process
+						// hashtag check[max, rule]
+						hashtags, _ := checkMention(post.Content)
+						if len(hashtags) > 0 {
+							hashtagsID, err := hashtagInsert(hashtags)
+							if err != nil {
+								return post, err
+							}
+							if post.PostID != 0 {
+								_, err = hashtagOnPostSet(post.PostID, hashtagsID)
+							}
 						}
 					}
+					return us, err
+				},
+				Description: "",
+			},
+			"post_tag_conform": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					us, err := tagOnPostConfirm(postID, user.UserID)
+					return us, err
+				},
+				Description: "user can confirm tag in post",
+			},
+			"post_tag_delete": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					us, err := tagOnPostDelete(postID, user.UserID)
+					return us, err
+				},
+				Description: "user can remove tag in post",
+			},
+			"post_tag_update": &graphql.Field{
+				Type: updateStatusGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "post_id",
+					},
+					"tag": &graphql.ArgumentConfig{
+						Type:        tagOnPostGraphqlScalar,
+						Description: "tag",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					postID, isOK := p.Args["post_id"].(int64)
+					if !isOK {
+						return nil, errors.New("post_id format")
+					}
+					tag, isOK := p.Args["tag"].(tagOnPostSetAPI)
+					if !isOK {
+						return nil, errors.New("tag format")
+					}
+					// tag check[max] notification
+					us, err := tagOnPostUpdate(postID, tag)
 					return us, err
 				},
 				Description: "",
