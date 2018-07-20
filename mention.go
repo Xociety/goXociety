@@ -1,17 +1,21 @@
 package main
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 )
 
 const punctuationHashtag = "#"
+const punctuationTag = "@"
 
 // there's no method in package unicode to escape this, even this not cover all test case
 const charNotValidHashtag = "`~$^+|><=" + "¦⹋±∓№×°⋯⧸⁄÷−"
+const replNotValidTag = "[^a-z0-9_]+"
 
 func checkMention(content string) (hashtags []string, tags []string) {
+	var regTag, _ = regexp.Compile(replNotValidTag)
 	rContent := []rune(content)
 	hashtag := ""
 	isAddHashtagStr := false
@@ -49,6 +53,34 @@ func checkMention(content string) (hashtags []string, tags []string) {
 	}
 	if isAddHashtagStr && len(hashtag) > 0 { // collection rest info
 		hashtags = append(hashtags, strings.ToLower(hashtag))
+	}
+	tag := ""
+	isAddTagStr := false
+	for i := 0; i < len(rContent); i++ {
+		char := string(rContent[i])
+		if char != "_" {
+			if unicode.IsPunct(rContent[i]) ||
+				unicode.IsSpace(rContent[i]) {
+				if isAddTagStr && len(regTag.ReplaceAllString(tag, "")) > 0 {
+					tags = append(tags, strings.ToLower(regTag.ReplaceAllString(tag, "")))
+				}
+				tag = ""
+				switch char {
+				case punctuationTag:
+					isAddTagStr = true
+					continue // for loop
+				default:
+					isAddTagStr = false
+					tag = ""
+				}
+			}
+		}
+		if isAddTagStr {
+			tag += char
+		}
+	}
+	if isAddTagStr && len(regTag.ReplaceAllString(tag, "")) > 0 { // collection rest info
+		tags = append(tags, strings.ToLower(regTag.ReplaceAllString(tag, "")))
 	}
 	return
 }

@@ -1020,9 +1020,6 @@ func postInsert(post postAPI) (postID int64, err error) {
 		post.Createtime,
 		post.Updatetime,
 	).Scan(&postID)
-	// tag
-	// hashtag
-	// post_hashtag
 	if err != nil {
 		// log.Println(err)
 		return postID, err

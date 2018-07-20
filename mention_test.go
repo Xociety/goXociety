@@ -20,7 +20,7 @@ func Test_checkMention(t *testing.T) {
 	}{
 		{
 			in: input{
-				target: "common case",
+				target: "init case",
 				content: "你好123 11dDD	#413123, #_1#r1 #😘 #⑽ # #⓱ #◭ #🉑 #。 #! #_ #666",
 			},
 			want: want{
@@ -61,19 +61,47 @@ func Test_checkMention(t *testing.T) {
 				tags:     []string{},
 			},
 		},
+		{
+			in: input{
+				target:  "combine tag case",
+				content: "@da @1! @2aad~ @#1d21 # @! @ㄎ @} @_ @الجلالة‎",
+			},
+			want: want{
+				hashtags: []string{"1d21"},
+				tags:     []string{"da", "1", "2aad", "_"},
+			},
+		},
+		{
+			in: input{
+				target:  "common case",
+				content: "‎tgif#tgif#happy#快樂#hen棒 thanks@zulu111,@kevin994",
+			},
+			want: want{
+				hashtags: []string{"tgif", "happy", "快樂", "hen棒"},
+				tags:     []string{"zulu111", "kevin994"},
+			},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run("checkMention", func(t *testing.T) {
-			hashtags, _ := checkMention(test.in.content)
-			log.Println("want", test.want.hashtags)
-			log.Println("out", hashtags)
+			hashtags, tags := checkMention(test.in.content)
+			log.Println("want", test.want.hashtags, test.want.tags)
+			log.Println("out", hashtags, tags)
 			if len(hashtags) != len(test.want.hashtags) {
 				t.Errorf("len hashtags() = %v, want %v", len(hashtags), len(test.want.hashtags))
 			}
 			for i := range test.want.hashtags {
 				if hashtags[i] != test.want.hashtags[i] {
 					t.Errorf("hashtags() = %v, want %v", hashtags, test.want.hashtags)
+				}
+			}
+			if len(tags) != len(test.want.tags) {
+				t.Errorf("len tags() = %v, want %v", len(tags), len(test.want.tags))
+			}
+			for i := range test.want.tags {
+				if tags[i] != test.want.tags[i] {
+					t.Errorf("tags() = %v, want %v", hashtags, test.want.tags)
 				}
 			}
 		})
