@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"math"
 	"strconv"
@@ -1155,10 +1156,10 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return nil, err
 					}
-					// file, isOK := p.Context.Value(contextKeyFile).(io.Reader)
-					// if !isOK {
-					// 	return nil, errors.New("file format")
-					// }
+					file, isOK := p.Context.Value(contextKeyFile).(io.Reader)
+					if !isOK {
+						return nil, errors.New("file format")
+					}
 					// post parameter check
 					postType, isOK := p.Args["type"].(int)
 					if !isOK || postTypeMapID2Type[postType] == "" {
@@ -1182,10 +1183,10 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					// place check[lat lon check]
 					// file size check
-					// err = untarFileAndUpload(post, file)
-					// if err != nil {
-					// 	return nil, err
-					// }
+					err = untarFileAndUpload(post, file)
+					if err != nil {
+						return nil, err
+					}
 					post.PostID, err = postInsert(post)
 					if err != nil {
 						return post, err

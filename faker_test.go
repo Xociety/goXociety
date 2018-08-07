@@ -92,56 +92,60 @@ func genPostCommentFaker(postID, userID int64, faker *faker.Faker, r *rand.Rand)
 	}
 }
 
-func TestStartInsertXuserfaker(t *testing.T) {
-	// createtime > 1531187418
-	// totalNumUser := 20
-	// totalNumPost := 100
-	// userIDsNew := []int64{}
-	// fake, err := faker.New("en")
-	// if err != nil {
-	// 	log.Fatalln("faker", err)
-	// }
-	// r := rand.New(rand.NewSource(99))
-	// for i := 0; i < totalNumUser; i++ {
-	// 	user := genXuserFaker(fake, r)
-	// 	userID, err := userInsert(user)
-	// 	if err == nil {
-	// 		userIDsNew = append(userIDsNew, userID)
-	// 	}
-	// 	// log.Println("user", err)
-	// }
-	// for i := 0; i < totalNumPost; i++ {
-	// 	userID := userIDsNew[r.Intn(len(userIDsNew))]
-	// 	post := genPostFaker(userID, fake, r)
-	// 	postID, err := postInsert(post)
-	// 	if err != nil {
-	// 		log.Println("post err", err)
-	// 	}
-	// 	userIDsNewReaction := append([]int64{}, userIDsNew...)
-	// 	totalNumPostReaction := r.Intn(len(userIDsNewReaction))
-	// 	for j := 0; j < totalNumPostReaction; j++ {
-	// 		index := r.Intn(len(userIDsNewReaction))
-	// 		reactionOnPost := genPostReactionFaker(postID, userIDsNewReaction[index], r)
-	// 		if _, err = reactionOnPostSet(reactionOnPost); err != nil {
-	// 			log.Println("reaction err", err)
-	// 		}
-	// 		userIDsNewReaction = append(userIDsNewReaction[:index], userIDsNewReaction[index+1:]...)
-	// 	}
-	// 	userIDsNewComment := append([]int64{}, userIDsNew...)
-	// 	totalNumPostComment := r.Intn(len(userIDsNewComment))
-	// 	for j := 0; j < totalNumPostComment; j++ {
-	// 		index := r.Intn(len(userIDsNewComment))
-	// 		commentOnPost := genPostCommentFaker(postID, userIDsNewComment[index], fake, r)
-	// 		if _, err = commentOnPostInsert(commentOnPost); err != nil {
-	// 			log.Println("comment err", err)
-	// 		}
-	// 		userIDsNewComment = append(userIDsNewComment[:index], userIDsNewComment[index+1:]...)
-	// 	}
-	// }
+func TestFakeData(t *testing.T) {
+	// createtime > 1533631289
+	if os.Getenv("env") != "test_fakedata" {
+		t.Skip("skip TestSortPostPopular")
+	}
+	log.Println("start")
+	totalNumUser := 20
+	totalNumPost := 100
+	userIDsNew := []int64{}
+	fake, err := faker.New("en")
+	if err != nil {
+		log.Fatalln("faker", err)
+	}
+	r := rand.New(rand.NewSource(99))
+	for i := 0; i < totalNumUser; i++ {
+		user := genXuserFaker(fake, r)
+		userID, err := userInsert(user)
+		if err == nil {
+			userIDsNew = append(userIDsNew, userID)
+		}
+		// log.Println("user", err)
+	}
+	for i := 0; i < totalNumPost; i++ {
+		userID := userIDsNew[r.Intn(len(userIDsNew))]
+		post := genPostFaker(userID, fake, r)
+		postID, err := postInsert(post)
+		if err != nil {
+			log.Println("post err", err)
+		}
+		userIDsNewReaction := append([]int64{}, userIDsNew...)
+		totalNumPostReaction := r.Intn(len(userIDsNewReaction))
+		for j := 0; j < totalNumPostReaction; j++ {
+			index := r.Intn(len(userIDsNewReaction))
+			reactionOnPost := genPostReactionFaker(postID, userIDsNewReaction[index], r)
+			if _, err = reactionOnPostSet(reactionOnPost); err != nil {
+				log.Println("reaction err", err)
+			}
+			userIDsNewReaction = append(userIDsNewReaction[:index], userIDsNewReaction[index+1:]...)
+		}
+		userIDsNewComment := append([]int64{}, userIDsNew...)
+		totalNumPostComment := r.Intn(len(userIDsNewComment))
+		for j := 0; j < totalNumPostComment; j++ {
+			index := r.Intn(len(userIDsNewComment))
+			commentOnPost := genPostCommentFaker(postID, userIDsNewComment[index], fake, r)
+			if _, err = commentOnPostInsert(commentOnPost); err != nil {
+				log.Println("comment err", err)
+			}
+			userIDsNewComment = append(userIDsNewComment[:index], userIDsNewComment[index+1:]...)
+		}
+	}
 }
 
-func TestSortPostPopular(t *testing.T) {
-	if os.Getenv("test_io") == "" {
+func TestPopularPostUpsert(t *testing.T) {
+	if os.Getenv("env") != "test_fakedata" {
 		t.Skip("skip TestSortPostPopular")
 	}
 	users, err := getAllUserID()

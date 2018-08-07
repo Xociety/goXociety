@@ -62,12 +62,21 @@ CREATE TABLE follow (
     follower_user_id    bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE, -- a person who follows you
     valid               boolean, -- update by following_user, block user usage?
     createtime          integer, -- create and delete by follower_user
-    updatetime          integer -- update by following_user
-    CONSTRAINT follow_user_target UNIQUE (following_user_id, follower_user_id)
+    updatetime          integer, -- update by following_user
+    CONSTRAINT follow_user_target UNIQUE (following_user_id, follower_user_id),
     CONSTRAINT follow_user_self_check CHECK (following_user_id <> follower_user_id) NOT VALID
 );
 CREATE INDEX follow_createtime ON follow USING btree (createtime);
 -- following limit 7500 on Instagram, we might limit following 5000 people
+------------------------
+CREATE TABLE place (
+    place_id    BIGSERIAL PRIMARY KEY NOT NULL,
+    -- city_id
+    position    point,
+    name        VARCHAR(50),
+    check_count bigint
+    -- CONSTRAINT position_point_name_unique UNIQUE (position, name) [ERROR:  data type point has no default operator class for access method "btree", HINT:  You must specify an operator class for the index or define a default operator class for the data type.]
+);
 ------------------------
 CREATE TABLE post (
     post_id             BIGSERIAL PRIMARY KEY NOT NULL,
@@ -96,7 +105,7 @@ CREATE INDEX post_createtime ON post USING btree (createtime);
 ------------------------
 CREATE TABLE hashtag(
     hashtag_id  BIGSERIAL PRIMARY KEY,
-    value       VARCHAR(100) UNIQUE NOT NULL, -- lower case
+    value       VARCHAR(100) UNIQUE NOT NULL, -- lower case [index]
     count       bigint
 );
 CREATE INDEX hashtag_count ON hashtag USING btree (count);
@@ -193,15 +202,6 @@ TABLE saved_post(
     user_id
     post_id
     createtime
-);
-------------------------
-CREATE TABLE place (
-    place_id    BIGSERIAL PRIMARY KEY NOT NULL,
-    -- city_id
-    position    point,
-    name        VARCHAR(50),
-    check_count bigint
-    -- CONSTRAINT position_point_name_unique UNIQUE (position, name) [ERROR:  data type point has no default operator class for access method "btree", HINT:  You must specify an operator class for the index or define a default operator class for the data type.]
 );
 ------------------------
 TABLE notice (

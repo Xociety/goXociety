@@ -79,7 +79,7 @@ func checkSession(userToken string) (user xuserAPI, err error) {
 	return user, nil
 }
 
-// query
+// [query]
 func login(email, password string) (lc loginAPI, err error) {
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()
@@ -455,7 +455,7 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	}
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
 	u := userPostPopular{}
-	if err := collection.Find(bson.M{"user_id": userID}).One(&u); err != nil {
+	if err := collection.Find(bson.M{"user_id": userID, "category_id": categoryID}).One(&u); err != nil {
 		log.Println("getPostsByPopular", err)
 		return posts, err
 	}
@@ -920,7 +920,7 @@ func getReactionsOnReply(replyID int64, page int) (reactionsOnReply []reactionOn
 	return reactionsOnReply, nil
 }
 
-// mutation
+// [mutation]
 func userInsert(user userDB) (userID int64, err error) {
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()

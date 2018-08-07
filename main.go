@@ -57,7 +57,8 @@ var (
 
 // PostgreSQL
 const (
-	dbFilePathPostgres = "./database/postgres/"
+	dbFilePathPostgres = "./config/postgres/"
+	// all table name
 )
 
 // MongoDB
@@ -78,9 +79,11 @@ const clientAuthGCPFile = "keyfileGCP.json"
 var clientOptionGoogleAPI option.ClientOption
 
 const (
-	bucketRootCloudStorage   = "storage.1mthechildbride.com" // "storagejp.1mthechildbride.com", "storagetw.1mthechildbride.com", "storageasia.1mthechildbride.com"
-	bucketImagesCloudStorage = "images"
-	bucketVideosCloudStorage = "videos"
+	bucketRootCloudStorage   = "storage2.1mthechildbride.com"
+	bucketPostCloudStorage   = "posts"
+	bucketImagesCloudStorage = bucketPostCloudStorage + "/images"
+	bucketVideosCloudStorage = bucketPostCloudStorage + "/videos"
+	bucketUserCloudStorage   = "users"
 )
 
 const (
@@ -96,6 +99,8 @@ func init() {
 	switch os.Getenv("env") {
 	case "development":
 		// default env, configFolerPath
+	case "staging":
+		// undefined
 	case "production":
 		env = os.Getenv("env")
 		configFolerPath = "/etc/xsecret"
