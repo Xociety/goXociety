@@ -1248,6 +1248,9 @@ func tagOnPostUpdate(postID int64, tag tagOnPostSetAPI) (us updateStatusAPI, err
 	return us, nil
 }
 func tagsOnPostSet(postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, err error) {
+	if len(tags) == 0 {
+		return us, nil
+	}
 	c, err := connectPostgres(globalConfig[env].PostgresConStr)
 	defer c.db.Close()
 	if err != nil {
