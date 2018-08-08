@@ -12,6 +12,7 @@ import (
 )
 
 var globalConfig map[string]config
+var globalSecret secret
 var env = "development"
 
 // Graphql Server
@@ -57,8 +58,11 @@ var (
 
 // PostgreSQL
 const (
-	dbFilePathPostgres = "./config/postgres/"
-	// all table name
+// all table name
+)
+
+var (
+	postgresConStr = ""
 )
 
 // MongoDB
@@ -70,16 +74,10 @@ const (
 
 const numPopularPostPerRefresh = 10000
 
-// GCP
-var clientAuthGCP clientAuthFromServiceAccountFileGCP
-
-const clientAuthGCPFile = "keyfileGCP.json"
-
 // GCP cloud storage
 var clientOptionGoogleAPI option.ClientOption
 
 const (
-	bucketRootCloudStorage   = "storage2.1mthechildbride.com"
 	bucketPostCloudStorage   = "posts"
 	bucketImagesCloudStorage = bucketPostCloudStorage + "/images"
 	bucketVideosCloudStorage = bucketPostCloudStorage + "/videos"
@@ -93,47 +91,35 @@ const (
 	mediaFormatTS   = "ts"
 )
 
-func init() {
-	// env variable
-	configFolerPath := "./config"
-	switch os.Getenv("env") {
-	case "development":
-		// default env, configFolerPath
-	case "staging":
-		// undefined
-	case "production":
-		env = os.Getenv("env")
-		configFolerPath = "/etc/xsecret"
-	}
-	if file, err := ioutil.ReadFile(configFolerPath + "/xocietyConfig.json"); err != nil {
-		log.Panicln("xociety config file miss", err)
+func initSecret() {
+	// secret
+	postgresSecret := make(map[string]secretPostgres)
+	if file, err := ioutil.ReadFile(globalConfig[env].PostgresSecretFolderPath + globalConfig[env].PostgresSecretAuthFilename); err != nil {
+		log.Panicln("postgres secret file miss", err)
 	} else {
-		if err := json.Unmarshal(file, &globalConfig); err != nil {
-			log.Panicln("xociety config file parse fail", err)
+		if err := json.Unmarshal(file, &postgresSecret); err != nil {
+			log.Panicln("postgres secret file parse fail", err)
 		}
 	}
+	globalSecret.Postgres = postgresSecret[env]
+	postgresConStr = globalConfig[env].PostgresConStr + " " + globalSecret.Postgres.PostgresAuthStr
+}
+func initGCP() {
 	// GCP
-	if file, err := ioutil.ReadFile(globalConfig[env].ClientAuthGCPFolderPath + "/" + clientAuthGCPFile); err != nil {
-		log.Panicln("gcp auth file miss", err)
-	} else {
-		if err := json.Unmarshal(file, &clientAuthGCP); err != nil {
-			log.Panicln("gcp auth file parse fail", err)
-		}
-	}
 	// cloud storage
-	clientOptionGoogleAPI = option.WithServiceAccountFile(globalConfig[env].ClientAuthGCPFolderPath + "/" + clientAuthGCPFile)
+	clientOptionGoogleAPI = option.WithServiceAccountFile(globalConfig[env].GCPSecretFolderPath + "/" + globalConfig[env].GCPSecretFilename)
+}
+func initData() {
 
-	// config
-	loadConfigFromFile(dbFilePathPostgres+"country.csv", 0, 1, 3, false, countryMapID2Country, nil)
-	loadConfigFromFile(dbFilePathPostgres+"country.csv", 0, 2, 3, false, countryMapID2CountryCode, nil)
-	loadConfigFromFile(dbFilePathPostgres+"language.csv", 0, 1, 3, false, languageMapID2DisplayLanguage, nil)
-	loadConfigFromFile(dbFilePathPostgres+"language.csv", 0, 2, 3, false, languageMapID2HlParameterValue, nil)
-	loadConfigFromFile(dbFilePathPostgres+"gender.csv", 0, 1, 2, false, genderMapID2Description, nil)
-	loadConfigFromFile(dbFilePathPostgres+"reaction.csv", 0, 1, 2, false, reactionsMapID2Description, nil)
-	loadConfigFromFile(dbFilePathPostgres+"post_type.csv", 0, 1, 2, true, postTypeMapID2Type, postTypeMapType2ID)
-	loadConfigFromFile(dbFilePathPostgres+"category.csv", 0, 1, 2, false, categoryMapID2Name, nil)
+	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"country.csv", 0, 1, 3, false, countryMapID2Country, nil)
+	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"country.csv", 0, 2, 3, false, countryMapID2CountryCode, nil)
+	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"language.csv", 0, 1, 3, false, languageMapID2DisplayLanguage, nil)
+	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"language.csv", 0, 2, 3, false, languageMapID2HlParameterValue, nil)
+	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"gender.csv", 0, 1, 2, false, genderMapID2Description, nil)
+	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"reaction.csv", 0, 1, 2, false, reactionsMapID2Description, nil)
+	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"post_type.csv", 0, 1, 2, true, postTypeMapID2Type, postTypeMapType2ID)
+	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"category.csv", 0, 1, 2, false, categoryMapID2Name, nil)
 
-	// api
 	for k, v := range countryMapID2Country {
 		countryConfigAPI = append(countryConfigAPI, countryAPI{
 			CountryID:   k,
@@ -179,6 +165,37 @@ func init() {
 		}
 		postTypeConfigAPI = append(postTypeConfigAPI, postType)
 	}
+}
+
+func init() {
+	/*
+		init steps:
+		* env
+		* config
+		* secret
+		* others
+	*/
+	// config
+	configFolerPath := "./config"
+	switch os.Getenv("env") {
+	case "development":
+		// default env, configFolerPath
+	case "staging":
+		// undefined
+	case "production":
+		env = os.Getenv("env")
+		// configFolerPath = "/etc/xociety/config" // test
+	}
+	if file, err := ioutil.ReadFile(configFolerPath + "/xocietyConfig.json"); err != nil {
+		log.Panicln("xociety config file miss", err)
+	} else {
+		if err := json.Unmarshal(file, &globalConfig); err != nil {
+			log.Panicln("xociety config file parse fail", err)
+		}
+	}
+	initSecret()
+	initGCP()
+	initData()
 }
 
 func main() {

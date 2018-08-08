@@ -101,7 +101,7 @@ func untarFileAndUpload(post postAPI, r io.Reader) error {
 			}
 		}
 		if isUpload {
-			if err := writeAndMakePublicCloudStorageGCP(client, bucketRootCloudStorage, foldername+filename, tr); err != nil {
+			if err := writeAndMakePublicCloudStorageGCP(client, globalConfig[env].GCPBucketRootCloudStorage, foldername+filename, tr); err != nil {
 				log.Println("upload failed: ", err)
 				return errors.New("upload failed")
 			}

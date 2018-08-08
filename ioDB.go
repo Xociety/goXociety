@@ -43,7 +43,7 @@ func connectMongoDB(dbinfo string) (connMongo, error) {
 
 // auth
 func checkSession(userToken string) (user xuserAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return user, errors.New("db connection")
@@ -81,7 +81,7 @@ func checkSession(userToken string) (user xuserAPI, err error) {
 
 // [query]
 func login(email, password string) (lc loginAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return lc, errors.New("db connection")
@@ -99,7 +99,7 @@ func login(email, password string) (lc loginAPI, err error) {
 
 // user
 func getUserByUserID(userID int64) (user xuserAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return user, errors.New("db connection")
@@ -136,7 +136,7 @@ func getUserByUserID(userID int64) (user xuserAPI, err error) {
 	return user, nil
 }
 func getUserByUsername(username string) (user xuserAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return user, errors.New("db connection")
@@ -176,7 +176,7 @@ func getUserByUsername(username string) (user xuserAPI, err error) {
 // follow
 func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingAPI, err error) {
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return users, errors.New("db connection")
@@ -215,7 +215,7 @@ func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingA
 }
 func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI, err error) {
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return users, errors.New("db connection")
@@ -254,7 +254,7 @@ func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI
 }
 func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bool, err error) {
 	count := 0
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return isFollowing, errors.New("db connection")
@@ -271,7 +271,7 @@ func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bo
 func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 	numPerRequest := 10
 	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -328,7 +328,7 @@ func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 }
 func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -388,7 +388,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 }
 func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -469,7 +469,7 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	return posts, nil
 }
 func getPostByPostIDUserID(postID, userID int64) (count int, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return count, errors.New("db connection")
@@ -492,7 +492,7 @@ func getPostByPostIDUserID(postID, userID int64) (count int, err error) {
 // hashtags
 func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) {
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return hashtags, errors.New("db connection")
@@ -532,7 +532,7 @@ func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) {
 }
 func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -594,7 +594,7 @@ func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) {
 // tags
 func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -653,7 +653,7 @@ func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 	return posts, nil
 }
 func getAllTagsByPost(postID int64) (tags []tagOnPostAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return tags, errors.New("db connection")
@@ -704,7 +704,7 @@ func getAllTagsByPost(postID int64) (tags []tagOnPostAPI, err error) {
 // comment
 func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error) {
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return comments, errors.New("db connection")
@@ -753,7 +753,7 @@ func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error
 // reply
 func getRepliesOnComment(commentID int64, page int) (replies []replyAPI, err error) {
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return replies, errors.New("db connection")
@@ -801,7 +801,7 @@ func getRepliesOnComment(commentID int64, page int) (replies []replyAPI, err err
 // reaction
 func getReactionsOnPost(postID int64, page int) (reactionsOnPost []reactionOnPostAPI, err error) {
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return reactionsOnPost, errors.New("db connection")
@@ -841,7 +841,7 @@ func getReactionsOnPost(postID int64, page int) (reactionsOnPost []reactionOnPos
 }
 func getReactionsOnComment(commentID int64, page int) (reactionsOnComment []reactionOnCommentAPI, err error) {
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return reactionsOnComment, errors.New("db connection")
@@ -881,7 +881,7 @@ func getReactionsOnComment(commentID int64, page int) (reactionsOnComment []reac
 }
 func getReactionsOnReply(replyID int64, page int) (reactionsOnReply []reactionOnReplyAPI, err error) {
 	numPerRequest := 10
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return reactionsOnReply, errors.New("db connection")
@@ -922,7 +922,7 @@ func getReactionsOnReply(replyID int64, page int) (reactionsOnReply []reactionOn
 
 // [mutation]
 func userInsert(user userDB) (userID int64, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return userID, errors.New("db connection")
@@ -963,7 +963,7 @@ func userInsert(user userDB) (userID int64, err error) {
 
 // follow
 func follow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -986,7 +986,7 @@ func follow(followingUserID, followerUserID int64) (us updateStatusAPI, err erro
 	return us, nil
 }
 func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1010,7 +1010,7 @@ func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err er
 
 // post
 func postInsert(post postAPI) (postID int64, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return postID, errors.New("db connection")
@@ -1047,7 +1047,7 @@ func postInsert(post postAPI) (postID int64, err error) {
 	return postID, err
 }
 func postUpdate(post postAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1071,7 +1071,7 @@ func postUpdate(post postAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 func postDelete(post postAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1138,7 +1138,7 @@ func postPopularRead(categoryID, indexRead int, userID int64) (posts []postAPI, 
 
 // hashtags
 func hashtagInsert(hashtags []string) (hashtagsID []int64, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return hashtagsID, errors.New("db connection")
@@ -1170,7 +1170,7 @@ func hashtagInsert(hashtags []string) (hashtagsID []int64, err error) {
 	return hashtagsID, err
 }
 func hashtagOnPostSet(postID int64, hashtagsID []int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1196,7 +1196,7 @@ func hashtagOnPostSet(postID int64, hashtagsID []int64) (us updateStatusAPI, err
 // post_tags
 func tagOnPostUpdate(postID int64, tag tagOnPostSetAPI) (us updateStatusAPI, err error) {
 	timestamp := getNowUnixTimestamp()
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1251,7 +1251,7 @@ func tagsOnPostSet(postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, er
 	if len(tags) == 0 {
 		return us, nil
 	}
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1269,7 +1269,7 @@ func tagsOnPostSet(postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, er
 	return us, nil
 }
 func tagOnPostConfirm(postID, userID int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1295,7 +1295,7 @@ func tagOnPostConfirm(postID, userID int64) (us updateStatusAPI, err error) {
 	return us, nil
 }
 func tagOnPostDelete(postID, userID int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1319,7 +1319,7 @@ func tagOnPostDelete(postID, userID int64) (us updateStatusAPI, err error) {
 
 // comment
 func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return commentID, errors.New("db connection")
@@ -1360,7 +1360,7 @@ func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
 	return commentID, nil
 }
 func commentOnPostUpdate(comment commentAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1385,7 +1385,7 @@ func commentOnPostUpdate(comment commentAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 func commentOnPostDelete(comment commentAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1420,7 +1420,7 @@ func commentOnPostDelete(comment commentAPI) (us updateStatusAPI, err error) {
 
 // reply
 func replyOnCommentInsert(reply replyAPI) (replyID int64, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return replyID, errors.New("db connection")
@@ -1460,7 +1460,7 @@ func replyOnCommentInsert(reply replyAPI) (replyID int64, err error) {
 	return replyID, nil
 }
 func replyOnCommentUpdate(reply replyAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1485,7 +1485,7 @@ func replyOnCommentUpdate(reply replyAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 func replyOnCommentDelete(reply replyAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1520,7 +1520,7 @@ func replyOnCommentDelete(reply replyAPI) (us updateStatusAPI, err error) {
 
 // reaction
 func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1552,7 +1552,7 @@ func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, er
 	return us, nil
 }
 func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1581,7 +1581,7 @@ func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI,
 }
 
 func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1613,7 +1613,7 @@ func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStat
 	return us, nil
 }
 func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1642,7 +1642,7 @@ func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateS
 }
 
 func reactionOnReplySet(reactionOnReply reactionOnReplyAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1674,7 +1674,7 @@ func reactionOnReplySet(reactionOnReply reactionOnReplyAPI) (us updateStatusAPI,
 	return us, nil
 }
 func reactionOnReplyDelete(reactionOnReply reactionOnReplyAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
@@ -1706,7 +1706,7 @@ func reactionOnReplyDelete(reactionOnReply reactionOnReplyAPI) (us updateStatusA
 func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 	// combine this with func getPostsByRecentPage
 	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -1762,7 +1762,7 @@ func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 	return posts, nil
 }
 func getAllUserID() (users []xuserAPI, err error) {
-	c, err := connectPostgres(globalConfig[env].PostgresConStr)
+	c, err := connectPostgres(postgresConStr)
 	defer c.db.Close()
 	if err != nil {
 		return users, errors.New("db connection")

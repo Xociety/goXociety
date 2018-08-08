@@ -34,7 +34,7 @@ CREATE TABLE category (
     category_name   VARCHAR(30)
 );
 ------------------------
-TABLE city
+-- TABLE city
 ------------------------
 CREATE TABLE xuser(
     user_id             BIGSERIAL PRIMARY KEY NOT NULL,
