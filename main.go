@@ -107,7 +107,7 @@ func initSecret() {
 func initGCP() {
 	// GCP
 	// cloud storage
-	clientOptionGoogleAPI = option.WithServiceAccountFile(globalConfig[env].GCPSecretFolderPath + "/" + globalConfig[env].GCPSecretFilename)
+	clientOptionGoogleAPI = option.WithServiceAccountFile(globalConfig[env].GCPSecretFolderPath + globalConfig[env].GCPSecretFilename)
 }
 func initData() {
 

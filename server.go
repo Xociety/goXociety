@@ -62,5 +62,5 @@ func startServer() {
 		MaxHeaderBytes: 1 << 20,
 	}
 	log.Println("xcociety graphql api server " + globalConfig[env].ServerAddrBind + ":" + strconv.Itoa(globalConfig[env].ServerPort))
-	log.Fatal(server.ListenAndServeTLS(globalConfig[env].ServerCertSecretFolderPath+globalConfig[env].ServerCertSecretCertFilename, globalConfig[env].ServerCertSecretFolderPath+globalConfig[env].ServerCertSecretKeyFilename))
+	log.Fatal(server.ListenAndServeTLS(globalConfig[env].ServerSecretFolderPath+globalConfig[env].ServerSecretCertFilename, globalConfig[env].ServerSecretFolderPath+globalConfig[env].ServerSecretKeyFilename))
 }

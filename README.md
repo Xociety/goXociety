@@ -84,9 +84,9 @@ brew services start mongodb
 
 * install [tutorial](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-debian/) on google compute engine
 
-`./config/mongo/production/mongod.conf`
+to start MongoDB server on system start?: `$sudo systemctl enable mongod`
 
-`/var/lib/mongodb, /etc/mongod.conf, /etc/ssl, /var/log/mongodb`
+production `/var/lib/mongodb, /etc/mongod.conf, /etc/ssl, /var/log/mongodb` => project `./config/mongo/production/mongod.conf`
 
 * self sign cert and config sample
 

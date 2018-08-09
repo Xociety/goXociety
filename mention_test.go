@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func Test_checkMention(t *testing.T) {
+func TestCheckMention(t *testing.T) {
 	type input struct {
 		target  string
 		content string

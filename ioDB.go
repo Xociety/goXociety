@@ -1,9 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"errors"
+	"io/ioutil"
 	"log"
+	"net"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -33,7 +36,26 @@ func connectPostgres(dbinfo string) (connPostgres, error) {
 func connectMongoDB(dbinfo string) (connMongo, error) {
 	var err error
 	c := connMongo{}
-	c.session, err = mgo.Dial(dbinfo)
+	switch env {
+	case "development":
+		c.session, err = mgo.Dial(dbinfo)
+	case "production":
+		// https://godoc.org/github.com/globalsign/mgo#example-Dial--TlsConfig
+		clientCertPEM, _ := ioutil.ReadFile(globalConfig[env].MongoSecretCertFilename)
+		clientKeyPEM, _ := ioutil.ReadFile(globalConfig[env].MongoSecretKeyFilename)
+		clientCert, _ := tls.X509KeyPair(clientCertPEM, clientKeyPEM)
+		// clientCert.Leaf, err = x509.ParseCertificate(clientCert.Certificate[0])
+		tlsConfig := &tls.Config{
+			Certificates:       []tls.Certificate{clientCert},
+			InsecureSkipVerify: true,
+		}
+		c.session, err = mgo.DialWithInfo(&mgo.DialInfo{
+			Addrs: []string{dbinfo},
+			DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
+				return tls.Dial("tcp", dbinfo, tlsConfig)
+			},
+		})
+	}
 	if err != nil {
 		log.Println("mongo connect", err)
 		return c, err
@@ -44,10 +66,10 @@ func connectMongoDB(dbinfo string) (connMongo, error) {
 // auth
 func checkSession(userToken string) (user xuserAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return user, errors.New("db connection")
 	}
+	defer c.db.Close()
 	row := c.db.QueryRow(`
 		SELECT 
 		user_id, username, email, name, phone, 
@@ -82,10 +104,10 @@ func checkSession(userToken string) (user xuserAPI, err error) {
 // [query]
 func login(email, password string) (lc loginAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return lc, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `SELECT user_id FROM xuser WHERE email=$1 AND password=$2;`
 	row := c.db.QueryRow(sqlStr, email, password)
 	if err := row.Scan(
@@ -100,10 +122,10 @@ func login(email, password string) (lc loginAPI, err error) {
 // user
 func getUserByUserID(userID int64) (user xuserAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return user, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		user_id, username, email, name, phone, 
@@ -137,10 +159,10 @@ func getUserByUserID(userID int64) (user xuserAPI, err error) {
 }
 func getUserByUsername(username string) (user xuserAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return user, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		user_id, username, email, name, phone, 
@@ -177,10 +199,10 @@ func getUserByUsername(username string) (user xuserAPI, err error) {
 func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return users, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
@@ -216,10 +238,10 @@ func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingA
 func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return users, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
@@ -255,10 +277,10 @@ func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI
 func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bool, err error) {
 	count := 0
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return isFollowing, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `SELECT COUNT(*) FROM follow WHERE following_user_id=$1 AND follower_user_id=$2;`
 	err = c.db.QueryRow(sqlStr, followingUserID, followerUserID).Scan(&count)
 	if err != nil {
@@ -272,10 +294,10 @@ func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 	numPerRequest := 10
 	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		post.post_id,
@@ -329,10 +351,10 @@ func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -389,10 +411,10 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -448,11 +470,11 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
-	defer c.session.Close()
 	if err != nil {
 		log.Println("mongo session", err)
 		return posts, err
 	}
+	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
 	u := userPostPopular{}
 	if err := collection.Find(bson.M{"user_id": userID, "category_id": categoryID}).One(&u); err != nil {
@@ -470,10 +492,10 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 }
 func getPostByPostIDUserID(postID, userID int64) (count int, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return count, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		COUNT(*)
@@ -493,10 +515,10 @@ func getPostByPostIDUserID(postID, userID int64) (count int, err error) {
 func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return hashtags, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		hashtag_id, value, count
@@ -533,10 +555,10 @@ func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) {
 func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -595,10 +617,10 @@ func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) {
 func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -654,10 +676,10 @@ func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 }
 func getAllTagsByPost(postID int64) (tags []tagOnPostAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return tags, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		post_tag_xuser.post_id,
@@ -705,10 +727,10 @@ func getAllTagsByPost(postID int64) (tags []tagOnPostAPI, err error) {
 func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return comments, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		comment.comment_id, 
@@ -754,10 +776,10 @@ func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error
 func getRepliesOnComment(commentID int64, page int) (replies []replyAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return replies, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		reply.reply_id, 
@@ -802,10 +824,10 @@ func getRepliesOnComment(commentID int64, page int) (replies []replyAPI, err err
 func getReactionsOnPost(postID int64, page int) (reactionsOnPost []reactionOnPostAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return reactionsOnPost, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		post_reaction.post_id, 
@@ -842,10 +864,10 @@ func getReactionsOnPost(postID int64, page int) (reactionsOnPost []reactionOnPos
 func getReactionsOnComment(commentID int64, page int) (reactionsOnComment []reactionOnCommentAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return reactionsOnComment, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		comment_reaction.comment_id, 
@@ -882,10 +904,10 @@ func getReactionsOnComment(commentID int64, page int) (reactionsOnComment []reac
 func getReactionsOnReply(replyID int64, page int) (reactionsOnReply []reactionOnReplyAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return reactionsOnReply, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		reply_reaction.reply_id, 
@@ -923,10 +945,10 @@ func getReactionsOnReply(replyID int64, page int) (reactionsOnReply []reactionOn
 // [mutation]
 func userInsert(user userDB) (userID int64, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return userID, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		INSERT INTO xuser 
 		(
@@ -964,10 +986,10 @@ func userInsert(user userDB) (userID int64, err error) {
 // follow
 func follow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	timestamp := getNowUnixTimestamp()
 	sqlStr := `
 		INSERT INTO follow 
@@ -987,10 +1009,10 @@ func follow(followingUserID, followerUserID int64) (us updateStatusAPI, err erro
 }
 func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		DELETE FROM follow 
 		WHERE following_user_id=$1 AND follower_user_id=$2;
@@ -1011,10 +1033,10 @@ func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err er
 // post
 func postInsert(post postAPI) (postID int64, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return postID, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		INSERT INTO post 
 		(
@@ -1048,10 +1070,10 @@ func postInsert(post postAPI) (postID int64, err error) {
 }
 func postUpdate(post postAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		UPDATE post 
 		SET content=$1, country_id=$2, category_id=$3, updatetime=$4
@@ -1072,10 +1094,10 @@ func postUpdate(post postAPI) (us updateStatusAPI, err error) {
 }
 func postDelete(post postAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		DELETE FROM post
 		WHERE post_id=$1 AND user_id=$2;
@@ -1096,11 +1118,11 @@ func postPopularRead(categoryID, indexRead int, userID int64) (posts []postAPI, 
 	numPerRequest := 10
 	lastIndexNextList := indexRead + numPerRequest
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
-	defer c.session.Close()
 	if err != nil {
 		log.Println("mongo session", err)
 		return posts, err
 	}
+	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
 	u := userPostPopular{}
 	if err := collection.Find(bson.M{"user_id": userID, "category_id": categoryID}).One(&u); err != nil {
@@ -1139,10 +1161,10 @@ func postPopularRead(categoryID, indexRead int, userID int64) (posts []postAPI, 
 // hashtags
 func hashtagInsert(hashtags []string) (hashtagsID []int64, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return hashtagsID, errors.New("db connection")
 	}
+	defer c.db.Close()
 	for i := 0; i < len(hashtags); i++ {
 		hashtagID := int64(0)
 		sqlStr := `
@@ -1171,10 +1193,10 @@ func hashtagInsert(hashtags []string) (hashtagsID []int64, err error) {
 }
 func hashtagOnPostSet(postID int64, hashtagsID []int64) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStrInsert, sqlStrDelete, args := parsehashtagOnPostSQL(postID, hashtagsID)
 	res, err := c.db.Exec(sqlStrInsert, args...)
 	if err != nil {
@@ -1197,10 +1219,10 @@ func hashtagOnPostSet(postID int64, hashtagsID []int64) (us updateStatusAPI, err
 func tagOnPostUpdate(postID int64, tag tagOnPostSetAPI) (us updateStatusAPI, err error) {
 	timestamp := getNowUnixTimestamp()
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		UPDATE post_tag_xuser 
 		SET
@@ -1252,10 +1274,10 @@ func tagsOnPostSet(postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, er
 		return us, nil
 	}
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr, args := parseTagOnPostInserSQL(postID, tags)
 	res, err := c.db.Exec(sqlStr, args...)
 	if err != nil {
@@ -1270,10 +1292,10 @@ func tagsOnPostSet(postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, er
 }
 func tagOnPostConfirm(postID, userID int64) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		UPDATE post_tag_xuser 
 		SET
@@ -1296,10 +1318,10 @@ func tagOnPostConfirm(postID, userID int64) (us updateStatusAPI, err error) {
 }
 func tagOnPostDelete(postID, userID int64) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		DELETE FROM post_tag_xuser 
 		WHERE post_id=$1 AND user_id=$2;
@@ -1320,10 +1342,10 @@ func tagOnPostDelete(postID, userID int64) (us updateStatusAPI, err error) {
 // comment
 func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return commentID, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		INSERT INTO comment 
 		(
@@ -1361,10 +1383,10 @@ func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
 }
 func commentOnPostUpdate(comment commentAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		UPDATE comment 
 		SET comment=$1, updatetime=$2
@@ -1386,10 +1408,10 @@ func commentOnPostUpdate(comment commentAPI) (us updateStatusAPI, err error) {
 }
 func commentOnPostDelete(comment commentAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		DELETE FROM comment 
 		WHERE comment_id=$1 AND user_id=$2;
@@ -1421,10 +1443,10 @@ func commentOnPostDelete(comment commentAPI) (us updateStatusAPI, err error) {
 // reply
 func replyOnCommentInsert(reply replyAPI) (replyID int64, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return replyID, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		INSERT INTO reply 
 		(
@@ -1461,10 +1483,10 @@ func replyOnCommentInsert(reply replyAPI) (replyID int64, err error) {
 }
 func replyOnCommentUpdate(reply replyAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		UPDATE reply 
 		SET reply=$1, updatetime=$2
@@ -1486,10 +1508,10 @@ func replyOnCommentUpdate(reply replyAPI) (us updateStatusAPI, err error) {
 }
 func replyOnCommentDelete(reply replyAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		DELETE FROM reply 
 		WHERE reply_id=$1 AND user_id=$2;
@@ -1521,10 +1543,10 @@ func replyOnCommentDelete(reply replyAPI) (us updateStatusAPI, err error) {
 // reaction
 func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		INSERT INTO post_reaction (
 			post_id,user_id,reaction_id,createtime
@@ -1553,10 +1575,10 @@ func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, er
 }
 func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		DELETE FROM post_reaction 
 		WHERE post_id=$1 AND user_id=$2;
@@ -1582,10 +1604,10 @@ func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI,
 
 func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		INSERT INTO comment_reaction (
 			comment_id,user_id,reaction_id,createtime
@@ -1614,10 +1636,10 @@ func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStat
 }
 func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		DELETE FROM comment_reaction 
 		WHERE comment_id=$1 AND user_id=$2;
@@ -1643,10 +1665,10 @@ func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateS
 
 func reactionOnReplySet(reactionOnReply reactionOnReplyAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		INSERT INTO reply_reaction (
 			reply_id,user_id,reaction_id,createtime
@@ -1675,10 +1697,10 @@ func reactionOnReplySet(reactionOnReply reactionOnReplyAPI) (us updateStatusAPI,
 }
 func reactionOnReplyDelete(reactionOnReply reactionOnReplyAPI) (us updateStatusAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		DELETE FROM reply_reaction 
 		WHERE reply_id=$1 AND user_id=$2;
@@ -1707,10 +1729,10 @@ func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 	// combine this with func getPostsByRecentPage
 	timestamp := int(time.Now().Unix()) - twoMonthsInSecond // sixHoursInSecond
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		post.post_id,
@@ -1763,10 +1785,10 @@ func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 }
 func getAllUserID() (users []xuserAPI, err error) {
 	c, err := connectPostgres(postgresConStr)
-	defer c.db.Close()
 	if err != nil {
 		return users, errors.New("db connection")
 	}
+	defer c.db.Close()
 	sqlStr := `
 		SELECT 
 		user_id 
@@ -1796,11 +1818,11 @@ func getAllUserID() (users []xuserAPI, err error) {
 }
 func getPostsReadByUser(categoryID, weekTimestamp int, userID int64) (posts map[int64]int, err error) {
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
-	defer c.session.Close()
 	if err != nil {
 		log.Println("mongo session", err)
 		return posts, err
 	}
+	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostRead)
 	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
 		u := userPostPopularRead{}
@@ -1812,11 +1834,11 @@ func getPostsReadByUser(categoryID, weekTimestamp int, userID int64) (posts map[
 }
 func upsertPostPopular(categoryID int, userID int64, posts []postAPI) (err error) {
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
-	defer c.session.Close()
 	if err != nil {
 		log.Println("mongo session", err)
 		return err
 	}
+	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
 	selector := bson.M{"user_id": userID, "category_id": categoryID}
 	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"posts": posts}}); err != nil {
