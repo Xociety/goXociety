@@ -27,7 +27,7 @@
         "server_secret_cert_filename": "server-cert",
         "server_secret_key_filename": "server-key",
         "gcp_bucket_root_cloud_storage": "storage2.1mthechildbride.com",
-        "gcp_secret_folder_path": "/etc/xsecret/gcp",
+        "gcp_secret_folder_path": "/etc/xsecret/gcp/",
         "gcp_secret_filename": "keyfileGCP",
         "postgres_config_folder_path": "./config/postgres/",
         "postgres_con_str": "host=status.1mthechildbride.com port=5432 sslmode=verify-ca sslcert=/etc/xsecret/postgres/client-cert sslkey=/etc/xsecret/postgres/client-key sslrootcert=/etc/xsecret/postgres/server-ca",
