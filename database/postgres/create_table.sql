@@ -58,8 +58,8 @@ CREATE TABLE xuser(
 CREATE INDEX xuser_createtime ON xuser USING btree (createtime);
 ------------------------
 CREATE TABLE follow (
-    following_user_id   bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE, -- a person whom you follow
-    follower_user_id    bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE, -- a person who follows you
+    following_user_id   bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE, -- a person who person A follow
+    follower_user_id    bigint references xuser(user_id) ON DELETE CASCADE ON UPDATE CASCADE, -- person A
     valid               boolean, -- update by following_user, block user usage?
     createtime          integer, -- create and delete by follower_user
     updatetime          integer, -- update by following_user

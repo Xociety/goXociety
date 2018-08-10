@@ -94,34 +94,59 @@ func genPostCommentFaker(postID, userID int64, faker *faker.Faker, r *rand.Rand)
 
 func TestFakeData(t *testing.T) {
 	// createtime > 1533631289
-	if os.Getenv("test_fakedata") == "true" {
+	if os.Getenv("test_fakedata") != "true" || os.Getenv("test_fakedata") == "" {
 		t.Skip("skip TestSortPostPopular")
 	}
 	log.Println("start")
 	totalNumUser := 20
 	totalNumPost := 100
-	userIDsNew := []int64{}
+	usersID := []int64{}
 	fake, err := faker.New("en")
 	if err != nil {
 		log.Fatalln("faker", err)
 	}
 	r := rand.New(rand.NewSource(99))
+	// random people
+	log.Printf("start random %d people", totalNumUser)
 	for i := 0; i < totalNumUser; i++ {
 		user := genXuserFaker(fake, r)
 		userID, err := userInsert(user)
 		if err == nil {
-			userIDsNew = append(userIDsNew, userID)
+			usersID = append(usersID, userID)
 		}
 		// log.Println("user", err)
 	}
+	// random follow
+	log.Println("start random follow")
+	for i := 0; i < totalNumUser; i++ {
+		totalNumFollow := r.Int63n(int64(totalNumUser) - 1)
+		followingUserIDCheck := make(map[int64]bool)
+		count := int64(0)
+		follwerUserID := usersID[i]
+		followingUserID := usersID[i]
+		for count < totalNumFollow {
+			followingUserID = usersID[r.Int63n(int64(totalNumUser))]
+			if followingUserID == follwerUserID || followingUserIDCheck[followingUserID] {
+				continue
+			}
+			if _, err := follow(followingUserID, follwerUserID); err != nil {
+				log.Println("follow", err)
+				continue
+			}
+			followingUserIDCheck[followingUserID] = true
+			count++
+		}
+	}
+	// random post
+	log.Printf("start random %d post per user", totalNumPost)
 	for i := 0; i < totalNumPost; i++ {
-		userID := userIDsNew[r.Intn(len(userIDsNew))]
+		userID := usersID[r.Intn(len(usersID))]
 		post := genPostFaker(userID, fake, r)
 		postID, err := postInsert(post)
 		if err != nil {
 			log.Println("post err", err)
 		}
-		userIDsNewReaction := append([]int64{}, userIDsNew...)
+		userIDsNewReaction := append([]int64{}, usersID...) // prevent same person
 		totalNumPostReaction := r.Intn(len(userIDsNewReaction))
 		for j := 0; j < totalNumPostReaction; j++ {
 			index := r.Intn(len(userIDsNewReaction))
@@ -131,41 +156,48 @@ func TestFakeData(t *testing.T) {
 			}
 			userIDsNewReaction = append(userIDsNewReaction[:index], userIDsNewReaction[index+1:]...)
 		}
-		userIDsNewComment := append([]int64{}, userIDsNew...)
-		totalNumPostComment := r.Intn(len(userIDsNewComment))
+		totalNumPostComment := r.Intn(len(usersID))
 		for j := 0; j < totalNumPostComment; j++ {
-			index := r.Intn(len(userIDsNewComment))
-			commentOnPost := genPostCommentFaker(postID, userIDsNewComment[index], fake, r)
+			index := r.Intn(len(usersID))
+			commentOnPost := genPostCommentFaker(postID, usersID[index], fake, r)
 			if _, err = commentOnPostInsert(commentOnPost); err != nil {
 				log.Println("comment err", err)
 			}
-			userIDsNewComment = append(userIDsNewComment[:index], userIDsNewComment[index+1:]...)
 		}
 	}
+	// gen popular post
+	log.Println("start popular post")
+	genPopularPostUpsert(usersID)
 }
-
-func TestPopularPostUpsert(t *testing.T) {
-	if os.Getenv("test_fakedata") != "true" {
-		t.Skip("skip TestSortPostPopular")
-	}
-	users, err := getAllUserID()
-	if err != nil {
-		log.Println("user", err)
-	}
+func genPopularPostUpsert(usersID []int64) {
 	for categoryID := range categoryMapID2Name {
 		posts, err := getPostsByRecentNum(categoryID, numPopularPostPerRefresh)
 		if err != nil {
 			log.Println("post", err)
 		}
 		sort.Sort(postByPopular(posts))
-		for i := 0; i < len(users); i++ {
+		for i := 0; i < len(usersID); i++ {
 			weekTimestamp := getNowUnixWeekTimestamp()
-			if postsRead, err := getPostsReadByUser(categoryID, weekTimestamp, users[i].UserID); err == nil {
+			if postsRead, err := getPostsReadByUser(categoryID, weekTimestamp, usersID[i]); err == nil {
 				filteredPosts := filterReadedPost(postsRead, posts)
-				if err := upsertPostPopular(categoryID, users[i].UserID, filteredPosts); err != nil {
+				if err := upsertPostPopular(categoryID, usersID[i], filteredPosts); err != nil {
 					log.Println(err)
 				}
 			}
 		}
 	}
+}
+func TestPopularPostUpsert(t *testing.T) {
+	if os.Getenv("test_fakedata") != "true" || os.Getenv("test_fakedata") == "" {
+		t.Skip("skip TestSortPostPopular")
+	}
+	users, err := getAllUserID()
+	if err != nil {
+		log.Println("user", err)
+	}
+	usersID := []int64{}
+	for i := 0; i < len(users); i++ {
+		usersID = append(usersID, users[i].UserID)
+	}
+	genPopularPostUpsert(usersID)
 }
