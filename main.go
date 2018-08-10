@@ -181,10 +181,10 @@ func init() {
 	case "development":
 		// default env, configFolerPath
 	case "staging":
+		env = os.Getenv("env")
 		// undefined
 	case "production":
 		env = os.Getenv("env")
-		// configFolerPath = "/etc/xociety/config" // test
 	}
 	if file, err := ioutil.ReadFile(configFolerPath + "/xocietyConfig.json"); err != nil {
 		log.Panicln("xociety config file miss", err)

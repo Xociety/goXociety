@@ -94,7 +94,7 @@ func genPostCommentFaker(postID, userID int64, faker *faker.Faker, r *rand.Rand)
 
 func TestFakeData(t *testing.T) {
 	// createtime > 1533631289
-	if os.Getenv("env") != "test_fakedata" {
+	if os.Getenv("test_fakedata") == "true" {
 		t.Skip("skip TestSortPostPopular")
 	}
 	log.Println("start")
@@ -145,7 +145,7 @@ func TestFakeData(t *testing.T) {
 }
 
 func TestPopularPostUpsert(t *testing.T) {
-	if os.Getenv("env") != "test_fakedata" {
+	if os.Getenv("test_fakedata") != "true" {
 		t.Skip("skip TestSortPostPopular")
 	}
 	users, err := getAllUserID()

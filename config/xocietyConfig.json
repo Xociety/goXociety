@@ -18,7 +18,22 @@
         "mongo_secret_key_filename": ""
     },
     "staging": {
-
+        "server_addr_bind": "127.0.0.1",
+        "server_port": 4000,
+        "server_secret_folder_path": "./secret/cloudflare/",
+        "server_secret_cert_filename": "server.cert",
+        "server_secret_key_filename": "server.key",
+        "gcp_bucket_root_cloud_storage": "storage2.1mthechildbride.com",
+        "gcp_secret_folder_path": "./secret/gcp/",
+        "gcp_secret_filename": "keyfileGCP.json",
+        "postgres_config_folder_path": "./config/postgres/",
+        "postgres_con_str": "host=status.1mthechildbride.com port=5432 sslmode=verify-ca sslcert=./secret/postgres/client-cert.pem sslkey=./secret/postgres/client-key.pem sslrootcert=./secret/postgres/server-ca.pem",
+        "postgres_secret_folder_path": "./secret/postgres/",
+        "postgres_secret_auth_filename": "postgresSecret.json",
+        "mongo_con_str": "cron.1mthechildbride.com:27017",
+        "mongo_secret_folder_path": "./secret/mongo/",
+        "mongo_secret_cert_filename": "client.crt",
+        "mongo_secret_key_filename": "client.key"
     },
     "production":{
         "server_addr_bind": "0.0.0.0",

@@ -39,11 +39,45 @@ func connectMongoDB(dbinfo string) (connMongo, error) {
 	switch env {
 	case "development":
 		c.session, err = mgo.Dial(dbinfo)
+	case "staging":
+		// https://godoc.org/github.com/globalsign/mgo#example-Dial--TlsConfig
+		clientCertPEM, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretCertFilename)
+		if err != nil {
+			return c, errors.New("mongo pem not found")
+		}
+		clientKeyPEM, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretKeyFilename)
+		if err != nil {
+			return c, errors.New("mongo pem not found")
+		}
+		clientCert, err := tls.X509KeyPair(clientCertPEM, clientKeyPEM)
+		if err != nil {
+			return c, errors.New("mongo pem not found")
+		}
+		// clientCert.Leaf, err = x509.ParseCertificate(clientCert.Certificate[0])
+		tlsConfig := &tls.Config{
+			Certificates:       []tls.Certificate{clientCert},
+			InsecureSkipVerify: true,
+		}
+		c.session, err = mgo.DialWithInfo(&mgo.DialInfo{
+			Addrs: []string{dbinfo},
+			DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
+				return tls.Dial("tcp", dbinfo, tlsConfig)
+			},
+		})
 	case "production":
 		// https://godoc.org/github.com/globalsign/mgo#example-Dial--TlsConfig
-		clientCertPEM, _ := ioutil.ReadFile(globalConfig[env].MongoSecretCertFilename)
-		clientKeyPEM, _ := ioutil.ReadFile(globalConfig[env].MongoSecretKeyFilename)
-		clientCert, _ := tls.X509KeyPair(clientCertPEM, clientKeyPEM)
+		clientCertPEM, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretCertFilename)
+		if err != nil {
+			return c, errors.New("mongo pem not found")
+		}
+		clientKeyPEM, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretKeyFilename)
+		if err != nil {
+			return c, errors.New("mongo pem not found")
+		}
+		clientCert, err := tls.X509KeyPair(clientCertPEM, clientKeyPEM)
+		if err != nil {
+			return c, errors.New("mongo pem not found")
+		}
 		// clientCert.Leaf, err = x509.ParseCertificate(clientCert.Certificate[0])
 		tlsConfig := &tls.Config{
 			Certificates:       []tls.Certificate{clientCert},
@@ -152,7 +186,7 @@ func getUserByUserID(userID int64) (user xuserAPI, err error) {
 		&user.Createtime,
 		&user.Updatetime,
 	); err != nil {
-		// log.Println("getXuserByID", err)
+		log.Println("getXuserByID", err)
 		return user, errors.New("user not found")
 	}
 	return user, nil
@@ -474,6 +508,7 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 		log.Println("mongo session", err)
 		return posts, err
 	}
+	log.Println("mongo session", c.session)
 	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
 	u := userPostPopular{}
