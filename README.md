@@ -8,7 +8,7 @@
 
 `go get github.com/graphql-go/graphql`
 
-`go get github.com/chienfuchen32/goXHandler`
+`go get github.com/chienfuchen32/handler`
 
 `go get -u cloud.google.com/go/storage`
 
