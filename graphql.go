@@ -1212,7 +1212,7 @@ var graphqlMutationType = graphql.NewObject(
 				DeprecationReason: `please use form-data to upload file, form-data key:
 						query: mutation{post(...:...){post_id}}
 						file: tar.gz file,
-						. not finished yet
+						. not finished yet. check ~/upload.html
 					`,
 			},
 			"post_update": &graphql.Field{

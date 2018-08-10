@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/chienfuchen32/goXHandler"
+	"github.com/chienfuchen32/handler"
 )
 
 const (
@@ -27,7 +27,7 @@ func (c contextKey) String() string {
 }
 
 func startServer() {
-	h := func(inner http.Handler) http.Handler {
+	graphqlHandler := func(inner http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// header user token
 			reqCtx := context.Background()
@@ -41,13 +41,17 @@ func startServer() {
 			inner.ServeHTTP(w, r.WithContext(reqCtx))
 		})
 	}(handler.New(&handler.Config{
-		Schema:   &graphqlSchema,
-		Pretty:   true,
-		GraphiQL: graphiql,
+		Schema:     &graphqlSchema,
+		Pretty:     true,
+		GraphiQL:   graphqlGraphiql,
+		Playground: graphqlHandlerPlayground,
 	}))
-	http.Handle(graphqlRoute, h)
+	http.Handle(graphqlRoute, graphqlHandler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./view/index.html")
+	})
+	http.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./view/upload.html")
 	})
 	http.HandleFunc("/upload/sample/image.tar.gz", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./development/upload/sample/image.tar.gz")

@@ -1,0 +1,147 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>upload</title>
+  <style>
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      width: 100%;
+    }
+    #graphiql {
+      height: 100vh;
+    }
+    #sample {
+      margin: 10px;
+      width: 100%;
+    }
+    .selfdefine {
+      width:45%;
+      float:left;
+    }
+    .field {
+      color:#8B2BB9;
+    }
+    .note {
+      color: #999;
+    }
+    table {
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid gray;
+    }
+  </style>
+</head>
+<body>
+  <div id="sample">
+    <div class="selfdefine">
+      <span style="color:red">User-Token </span><span style="color:orange">header</span>
+      <table>
+        <thead>
+        <tr>
+          <th>Key</th>
+          <th>Value</th>
+          <th>note</th>
+        </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="field">User-Token</td>
+            <td><input id="user-token" placeholder="User-Token" value="" /></td>
+            <td class="note">for user identity
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="selfdefine">
+    <span style="color: #1F61A0">post_insert </span><span style="color:orange">body </span><span>form-data </span><button onClick="post_insert()">send</button><br/>
+      <table>
+        <thead>
+        <tr>
+          <th>Key</th>
+          <th>Value</th>
+          <th>note</th>
+        </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="field">file</td>
+            <td><input id="file_post" type="file"/></td>
+            <td class="note"><span>download sample file: </span><a href="./upload/sample/image.tar.gz">jpg</a>, <a href="./upload/sample/playlist.tar.gz">hls</a></td>
+          </tr>
+          <tr>
+            <td class="field">query</td>
+            <td>
+              <textarea id="mutation_post_insert" style="width:200px;height:50px"></textarea>
+            </td>
+            <td class="note"><span>init query sample: </span><button id="button_post_type" onClick="post_type()"></button></td>
+          </tr>
+          <tr>
+            <td class="field">variables</td>
+            <td>
+              <textarea id="variables_post_insert" style="width:200px;height:10px"></textarea>
+            </td>
+            <td>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+    var post_type_global = 0;
+    function post_type() {
+      var str_query = "";
+      var str_post_type = "";
+      switch(post_type_global) {
+        case 0:
+          str_post_type = 'jpg';
+          str_query = 'mutation{ \
+          post_insert( \
+          content:"ya", \
+          country_id:206, \
+          category_id:0, \
+          type: 0, \
+          origin_width:1920, \
+          origin_height:1280, \
+          tags: "[]" \
+          ){ \
+          post_id \
+          }}';
+          break;
+        case 1:
+          str_post_type = 'hls';
+          str_query = 'mutation{ \
+            post_insert( \
+            content:"wow", \
+            country_id:206, \
+            category_id:0, \
+            type: 1, \
+            origin_width:1920, \
+            origin_height:1080, \
+            tags: "[]" \
+            ){ \
+            post_id \
+            }}';
+          break;
+      }
+      document.getElementById('button_post_type').innerHTML = str_post_type;
+      document.getElementById('mutation_post_insert').value = str_query;
+      post_type_global = 1 - post_type_global;
+    }
+    post_type();
+    function post_insert() {
+        var formData = new FormData();
+        formData.append("query", document.getElementById('mutation_post_insert').value);
+        formData.append("file", document.getElementById('file_post').files[0]);
+        var request = new XMLHttpRequest();
+        request.open("POST", "graphql");
+        request.setRequestHeader('User-Token', document.getElementById('user-token').value);
+        request.send(formData);
+    }
+  </script>
+</body>

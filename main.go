@@ -17,8 +17,9 @@ var env = "development"
 
 // Graphql Server
 const (
-	graphqlRoute = "/graphql"
-	graphiql     = true
+	graphqlRoute             = "/graphql"
+	graphqlGraphiql          = false
+	graphqlHandlerPlayground = true
 	// numPerRequest := 10
 )
 

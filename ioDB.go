@@ -511,7 +511,6 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 		log.Println("mongo session", err)
 		return posts, err
 	}
-	log.Println("mongo session", c.session)
 	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
 	u := userPostPopular{}
