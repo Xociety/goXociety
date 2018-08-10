@@ -106,7 +106,13 @@ sample [resource](https://videos.pexels.com/)
 
 ## start develope this repo
 
-`env=development go run $(ls -1 *.go | grep -v _test.go)`
+`$env=development go run $(ls -1 *.go | grep -v _test.go)`
+
+## test
+
+* fake data
+
+`$env=development test_fakedata=true go test --run FakeData`
 
 ## deploy goXociety on kubernetes
 
@@ -118,8 +124,8 @@ sample [resource](https://videos.pexels.com/)
 
 local:
 
-`sh build.sh`
+`$sh build.sh`
 
 gcp:
 
-`gcloud container builds submit --config cloudbuild.yaml .`
+`$gcloud container builds submit --config cloudbuild.yaml .`
