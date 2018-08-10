@@ -284,9 +284,10 @@ var userBasicGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "user_basic",
 		Fields: graphql.Fields{
-			"user_id":  &graphql.Field{Type: int64GraphqlScalar},
-			"username": &graphql.Field{Type: graphql.String},
-			"name":     &graphql.Field{Type: graphql.String},
+			"user_id":   &graphql.Field{Type: int64GraphqlScalar},
+			"username":  &graphql.Field{Type: graphql.String},
+			"name":      &graphql.Field{Type: graphql.String},
+			"photo_url": &graphql.Field{Type: graphql.String},
 		},
 	},
 )

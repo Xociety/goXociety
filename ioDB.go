@@ -335,7 +335,7 @@ func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 	sqlStr := `
 		SELECT 
 		post.post_id,
-		post.user_id, xuser.username, xuser.name,
+		post.user_id, xuser.username, xuser.name, xuser.photo_url,
 		post.content, post.blob_id, post.origin_width, post.origin_height, post.type, 
 		post.like_count, post.dislike_count, post.comment_count, post.country_id, 
 		post.category_id, post.createtime, post.updatetime 
@@ -357,6 +357,7 @@ func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 			&post.User.UserID,
 			&post.User.Username,
 			&post.User.Name,
+			&post.User.PhotoURL,
 			&post.Content,
 			&post.Blob.BlobID,
 			&post.Blob.OriginWidth,
@@ -392,7 +393,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 	sqlStr := `
 		SELECT 
 		post.post_id, 
-		post.user_id, xuser.username, xuser.name,
+		post.user_id, xuser.username, xuser.name, xuser.photo_url,
 		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
 		post.like_count, post.dislike_count, post.comment_count,
 		post.country_id, post.category_id, post.createtime, post.updatetime 
@@ -416,6 +417,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 			&post.User.UserID,
 			&post.User.Username,
 			&post.User.Name,
+			&post.User.PhotoURL,
 			&post.Content,
 			&post.Blob.BlobID,
 			&post.Blob.OriginWidth,
@@ -452,7 +454,7 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 	sqlStr := `
 		SELECT 
 		post.post_id, 
-		post.user_id, xuser.username, xuser.name,
+		post.user_id, xuser.username, xuser.name, xuser.photo_url,
 		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
 		post.like_count, post.dislike_count, post.comment_count,
 		post.country_id, post.category_id, post.createtime, post.updatetime 
@@ -475,6 +477,7 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 			&post.User.UserID,
 			&post.User.Username,
 			&post.User.Name,
+			&post.User.PhotoURL,
 			&post.Content,
 			&post.Blob.BlobID,
 			&post.Blob.OriginWidth,
@@ -597,7 +600,7 @@ func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) {
 	sqlStr := `
 		SELECT 
 		post.post_id, 
-		post.user_id, xuser.username, xuser.name,
+		post.user_id, xuser.username, xuser.name, xuser.photo_url,
 		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
 		post.like_count, post.dislike_count, post.comment_count,
 		post.country_id, post.category_id, post.createtime, post.updatetime 
@@ -621,6 +624,7 @@ func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) {
 			&post.User.UserID,
 			&post.User.Username,
 			&post.User.Name,
+			&post.User.PhotoURL,
 			&post.Content,
 			&post.Blob.BlobID,
 			&post.Blob.OriginWidth,
@@ -659,7 +663,7 @@ func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 	sqlStr := `
 		SELECT 
 		post.post_id, 
-		post.user_id, xuser.username, xuser.name,
+		post.user_id, xuser.username, xuser.name, xuser.photo_url,
 		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
 		post.like_count, post.dislike_count, post.comment_count,
 		post.country_id, post.category_id, post.createtime, post.updatetime 
@@ -683,6 +687,7 @@ func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 			&post.User.UserID,
 			&post.User.Username,
 			&post.User.Name,
+			&post.User.PhotoURL,
 			&post.Content,
 			&post.Blob.BlobID,
 			&post.Blob.OriginWidth,
@@ -1771,7 +1776,7 @@ func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 	sqlStr := `
 		SELECT 
 		post.post_id,
-		post.user_id, xuser.username, xuser.name,
+		post.user_id, xuser.username, xuser.name, xuser.photo_url,
 		post.content, post.blob_id, post.origin_width, post.origin_height, post.type, 
 		post.like_count, post.dislike_count, post.comment_count, post.country_id, 
 		post.category_id, post.createtime, post.updatetime 
@@ -1793,6 +1798,7 @@ func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 			&post.User.UserID,
 			&post.User.Username,
 			&post.User.Name,
+			&post.User.PhotoURL,
 			&post.Content,
 			&post.Blob.BlobID,
 			&post.Blob.OriginWidth,

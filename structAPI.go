@@ -52,6 +52,7 @@ type userBasicAPI struct {
 	UserID   int64  `json:"user_id" bson:"user_id"`
 	Username string `json:"username" bson:"username"`
 	Name     string `json:"name" bson:"name"`
+	PhotoURL string `json:"photo_url" bson:"photo_url"`
 }
 type blobAPI struct {
 	BlobID       string `json:"blob_id" bson:"blob_id"`
