@@ -27,7 +27,8 @@ func (c contextKey) String() string {
 }
 
 func startServer() {
-	graphqlHandler := func(inner http.Handler) http.Handler {
+	// graphql
+	http.Handle(graphqlRoute, func(inner http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// header user token
 			reqCtx := context.Background()
@@ -45,11 +46,16 @@ func startServer() {
 		Pretty:     true,
 		GraphiQL:   graphqlGraphiql,
 		Playground: graphqlHandlerPlayground,
-	}))
-	http.Handle(graphqlRoute, graphqlHandler)
+	})))
+	// index
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./view/index.html")
 	})
+	// logo
+	http.HandleFunc("/logo-background.png", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./view/logo-background.png")
+	})
+	// upload
 	http.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./view/upload.html")
 	})
