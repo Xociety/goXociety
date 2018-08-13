@@ -519,8 +519,8 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 		return posts, err
 	}
 	// fake page because there's no appropriate query in mongo
-	for i := 0; i < len(u.Posts); i++ {
-		if i >= numPerRequest {
+	for i := page * numPerRequest; i < len(u.Posts); i++ {
+		if i >= (page+1)*numPerRequest {
 			break
 		}
 		posts = append(posts, u.Posts[i])
