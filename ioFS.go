@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -28,10 +29,20 @@ func loadConfigFromFile(dataPath string, indexID, indexTarget, length int, inclu
 	}
 }
 
-func writeFile(filePath string, content string) {
+func writeFile(filePath, content string) {
 	err := ioutil.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 	return
+}
+func ReadFile(filePath string) (data []byte, err error) {
+	return ioutil.ReadFile(filePath)
+}
+func ioReaderFromFile(filePath string) (file io.Reader, err error) {
+	file, err = os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return bufio.NewReader(file), err
 }
