@@ -323,6 +323,68 @@ func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bo
 	return count == 1, err
 }
 
+// city
+func getCityByLocation(lat, lon float64) (cities []cityAPI, err error) {
+	numPerRequest := 5
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return cities, err
+	}
+	defer c.session.Close()
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+	s := bson.M{"properties": 1}
+	// geoIntersects
+	q := bson.M{
+		"geometry": bson.M{
+			"$geoIntersects": bson.M{
+				"$geometry": bson.M{
+					"type":        "Point",
+					"coordinates": []float64{lon, lat},
+				},
+			},
+		},
+	}
+	if err := collection.Find(q).Select(s).Limit(numPerRequest).All(&cities); err != nil {
+		log.Println("getCityByLocation", err)
+		return cities, err
+	}
+	if len(cities) == 0 {
+		// near
+		q = bson.M{
+			"geometry": bson.M{
+				"$near": bson.M{
+					"$geometry": bson.M{
+						"type":        "Point",
+						"coordinates": []float64{lon, lat},
+					},
+					"$maxDistance": mongoGeoNearSearchInKM,
+				},
+			},
+		}
+		if err := collection.Find(q).Select(s).Limit(numPerRequest).All(&cities); err != nil {
+			log.Println("getCityByLocation", err)
+			return cities, err
+		}
+	}
+	return cities, nil
+}
+func getCityLevelPostCount(level, GID string) (cl cityLevelAPI, err error) {
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return cl, err
+	}
+	defer c.session.Close()
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCityLevel + level)
+	q := bson.M{"GID": GID}
+	if err := collection.Find(q).One(&cl); err != nil {
+		log.Println("getCityLevelPostCount", err)
+		return cl, err
+	}
+	return cl, nil
+}
+
 // post
 func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 	numPerRequest := 10
@@ -514,7 +576,8 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
 	u := userPostPopular{}
-	if err := collection.Find(bson.M{"user_id": userID, "category_id": categoryID}).One(&u); err != nil {
+	q := bson.M{"user_id": userID, "category_id": categoryID}
+	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("getPostsByPopular", err)
 		return posts, err
 	}
@@ -1164,7 +1227,8 @@ func postPopularRead(categoryID, indexRead int, userID int64) (posts []postAPI, 
 	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
 	u := userPostPopular{}
-	if err := collection.Find(bson.M{"user_id": userID, "category_id": categoryID}).One(&u); err != nil {
+	q := bson.M{"user_id": userID, "category_id": categoryID}
+	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postPopularRead", err)
 		return posts, err
 	}
@@ -1866,7 +1930,8 @@ func getPostsReadByUser(categoryID, weekTimestamp int, userID int64) (posts map[
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostRead)
 	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
 		u := userPostPopularRead{}
-		if err := collection.Find(bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}).One(&u); err == nil {
+		q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}
+		if err := collection.Find(q).One(&u); err == nil {
 			posts = u.Posts
 		}
 	}

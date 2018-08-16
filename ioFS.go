@@ -10,10 +10,10 @@ import (
 	"strings"
 )
 
-func loadConfigFromFile(dataPath string, indexID, indexTarget, length int, includeReverse bool, forward map[int]string, reverse map[string]int) {
-	file, err := os.Open(dataPath)
-	defer file.Close()
+func loadConfigFromFile(filePath string, indexID, indexTarget, length int, includeReverse bool, forward map[int]string, reverse map[string]int) {
+	file, err := os.Open(filePath)
 	if err == nil {
+		defer file.Close()
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			strSplitter := strings.Split(scanner.Text(), ";")
@@ -29,6 +29,18 @@ func loadConfigFromFile(dataPath string, indexID, indexTarget, length int, inclu
 	}
 }
 
+func loadListFromFile(filePath string) (list []string) {
+	file, err := os.Open(filePath)
+	if err == nil {
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			list = append(list, scanner.Text())
+		}
+	}
+	return list
+}
+
 func writeFile(filePath, content string) {
 	err := ioutil.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
@@ -36,7 +48,7 @@ func writeFile(filePath, content string) {
 	}
 	return
 }
-func ReadFile(filePath string) (data []byte, err error) {
+func readFile(filePath string) (data []byte, err error) {
 	return ioutil.ReadFile(filePath)
 }
 func ioReaderFromFile(filePath string) (file io.Reader, err error) {

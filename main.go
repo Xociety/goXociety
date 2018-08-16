@@ -69,8 +69,12 @@ var (
 // MongoDB
 const (
 	mongoDBXociety             = "xociety"
+	mongoCollectionCity        = "city"
+	mongoCollectionCityLevel   = "city_level"
 	mongoCollectionPostPopular = "post_popular"
 	mongoCollectionPostRead    = "post_read"
+	mongoGeoNearSearchInKM     = 100 * 1000
+	mongoTimeout               = 0
 )
 
 const numPopularPostPerRefresh = 10000

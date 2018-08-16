@@ -1,8 +1,20 @@
-// post_popular
+# collection
+
+`use xociety`
+
+## post_popular
+
+* init
+
+
+```javascript
 db.createCollection("post_popular");
 db.post_popular.createIndex({ "user_id": 1, "category_id": 1 });
-// sample
-/*
+```
+
+* document sample
+
+```json
 { 
     "_id" : ObjectId("5b4c12bc4157b267656284c8"), 
     "category_id" : NumberInt(0), 
@@ -14,13 +26,20 @@ db.post_popular.createIndex({ "user_id": 1, "category_id": 1 });
         "2914" : NumberInt(1531712207)
     }
 }
-*/
+```
 
-// post_read
+## post_read
+
+* init
+
+```javascript
 db.createCollection("post_read");
 db.post_read.createIndex({ "user_id": 1, "category_id": 1, "week_timestamp": 1 });
-// sample
-/*
+```
+
+* document sample
+
+```json
 { 
     "_id" : ObjectId("5b46ffdf4157b2676561d91f"), 
     "category_id" : NumberInt(0), 
@@ -74,4 +93,73 @@ db.post_read.createIndex({ "user_id": 1, "category_id": 1, "week_timestamp": 1 }
         }
     ]
 }
-*/
+```
+
+## city
+
+* init
+
+```javascript
+db.createCollection("city")
+db.city.createIndex({"geometry":"2dsphere"})
+```
+
+* document sample
+
+```json
+{
+    "_id" : ObjectId("5b73e8fcd5dd9938e90580e1"),
+    "geometry" : {
+        "type" : "Polygon",
+        "coordinates" : [ 
+            [ 
+                [ 
+                    121.413475036621, 
+                    25.1676387786866
+                ], 
+                [ 
+                    121.413475036621, 
+                    25.167917251587
+                ], 
+                [ 
+                    121.413475036621, 
+                    25.1676387786866
+                ]
+            ]
+        ]
+    },
+    "type" : "Feature",
+    "properties" : {
+        "NAME_2" : "Taipei",
+        "NAME_0" : "Taiwan",
+        "NAME_1" : "Taipei",
+        "VARNAME_2" : "Táiběi Shì",
+        "NL_NAME_1" : "台北",
+        "NL_NAME_2" : "台北市",
+        "HASC_2" : "TW.TP.TC",
+        "TYPE_2" : "Zhíxiáshì",
+        "CC_2" : "",
+        "GID_0" : "TWN",
+        "GID_1" : "TWN.6_1",
+        "GID_2" : "TWN.6.1_1",
+        "ENGTYPE_2" : "Special Municipality"
+    }
+}
+```
+
+## city_level
+
+```javascript
+db.createCollection("city_level0")
+db.city_level0.createIndex({"GID": 1})
+db.createCollection("city_level1")
+db.city_level1.createIndex({"GID": 1})
+db.createCollection("city_level2")
+db.city_level2.createIndex({"GID": 1})
+db.createCollection("city_level3")
+db.city_level3.createIndex({"GID": 1})
+db.createCollection("city_level4")
+db.city_level4.createIndex({"GID": 1})
+db.createCollection("city_level5")
+db.city_level5.createIndex({"GID": 1})
+```

@@ -322,6 +322,54 @@ var usersFollowerGraphqlType = graphql.NewList(
 	),
 )
 
+// city
+var cityGraphqlType = graphql.NewList(
+	graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "city",
+			Fields: graphql.Fields{
+				"properties": &graphql.Field{Type: cityPropertiesGraphqlType},
+			},
+		},
+	),
+)
+var cityPropertiesGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "city_properties",
+		Fields: graphql.Fields{
+			"gid_0":  &graphql.Field{Type: graphql.String},
+			"gid_1":  &graphql.Field{Type: graphql.String},
+			"gid_2":  &graphql.Field{Type: graphql.String},
+			"gid_3":  &graphql.Field{Type: graphql.String},
+			"gid_4":  &graphql.Field{Type: graphql.String},
+			"gid_5":  &graphql.Field{Type: graphql.String},
+			"name_0": &graphql.Field{Type: graphql.String},
+			"name_1": &graphql.Field{Type: graphql.String},
+			"name_2": &graphql.Field{Type: graphql.String},
+			"name_3": &graphql.Field{Type: graphql.String},
+			"name_4": &graphql.Field{Type: graphql.String},
+			"name_5": &graphql.Field{Type: graphql.String},
+			"type_0": &graphql.Field{Type: graphql.String},
+			"type_1": &graphql.Field{Type: graphql.String},
+			"type_2": &graphql.Field{Type: graphql.String},
+			"type_3": &graphql.Field{Type: graphql.String},
+			"type_4": &graphql.Field{Type: graphql.String},
+			"type_5": &graphql.Field{Type: graphql.String},
+		},
+	},
+)
+var cityLevelGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "city_level",
+		Fields: graphql.Fields{
+			"gid":        &graphql.Field{Type: graphql.String},
+			"name":       &graphql.Field{Type: graphql.String},
+			"type":       &graphql.Field{Type: graphql.String},
+			"post_count": &graphql.Field{Type: int64GraphqlScalar},
+		},
+	},
+)
+
 // blob
 var blobGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
@@ -745,6 +793,58 @@ var graphqlQueryType = graphql.NewObject(
 					return tags, err
 				},
 				Description: "get all taged user in post",
+			},
+			"city_by_location": &graphql.Field{
+				Type: cityGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"lat": &graphql.ArgumentConfig{
+						Type:        graphql.Float,
+						Description: "latitude",
+					},
+					"lon": &graphql.ArgumentConfig{
+						Type:        graphql.Float,
+						Description: "longitude",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					lat, isOK := p.Args["lat"].(float64)
+					if !isOK {
+						return nil, errors.New("lat format")
+					}
+					lon, isOK := p.Args["lon"].(float64)
+					if !isOK {
+						return nil, errors.New("lon format")
+					}
+					cities, err := getCityByLocation(lat, lon)
+					return cities, err
+				},
+				Description: "",
+			},
+			"city_level_post_count": &graphql.Field{
+				Type: cityLevelGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"level": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "level",
+					},
+					"gid": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "gid",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					level, isOK := p.Args["level"].(string)
+					if !isOK {
+						return nil, errors.New("level format")
+					}
+					gid, isOK := p.Args["gid"].(string)
+					if !isOK {
+						return nil, errors.New("gid format")
+					}
+					cl, err := getCityLevelPostCount(level, gid)
+					return cl, err
+				},
+				Description: "",
 			},
 			// post_detail
 			"posts_by_recent": &graphql.Field{
