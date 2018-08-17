@@ -15,7 +15,8 @@
         "mongo_con_str": "localhost:27017",
         "mongo_secret_folder_path": "./secret/mongo/",
         "mongo_secret_cert_filename": "",
-        "mongo_secret_key_filename": ""
+        "mongo_secret_key_filename": "",
+        "mongo_secret_auth_filename": "mongoSecret.json"
     },
     "staging": {
         "server_addr_bind": "127.0.0.1",
@@ -33,7 +34,8 @@
         "mongo_con_str": "cron.1mthechildbride.com:27017",
         "mongo_secret_folder_path": "./secret/mongo/",
         "mongo_secret_cert_filename": "client.crt",
-        "mongo_secret_key_filename": "client.key"
+        "mongo_secret_key_filename": "client.key",
+        "mongo_secret_auth_filename": "mongoSecret.json"
     },
     "production":{
         "server_addr_bind": "0.0.0.0",
@@ -51,6 +53,7 @@
         "mongo_con_str": "cron.1mthechildbride.com:27017",
         "mongo_secret_folder_path": "/etc/xsecret/mongo/",
         "mongo_secret_cert_filename": "client-cert",
-        "mongo_secret_key_filename": "client-key"
+        "mongo_secret_key_filename": "client-key",
+        "mongo_secret_auth_filename": "mongoSecret"
     }
 }

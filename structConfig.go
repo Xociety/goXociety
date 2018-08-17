@@ -17,4 +17,5 @@ type config struct {
 	MongoSecretFolderPath      string `json:"mongo_secret_folder_path"`
 	MongoSecretCertFilename    string `json:"mongo_secret_cert_filename"`
 	MongoSecretKeyFilename     string `json:"mongo_secret_key_filename"`
+	MongoSecretAuthFilename    string `json:"mongo_secret_auth_filename"`
 }

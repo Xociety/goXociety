@@ -1,3 +1,14 @@
+# root
+
+use admin
+db.createUser(
+  {
+    user: "",
+    pwd: "",
+    roles: [ "root" ]
+  }
+)
+
 # collection
 
 `use xociety`

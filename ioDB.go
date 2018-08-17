@@ -63,6 +63,9 @@ func connectMongoDB(dbinfo string) (connMongo, error) {
 			DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
 				return tls.Dial("tcp", dbinfo, tlsConfig)
 			},
+			Database: globalSecret.Mongo.MongoDatabase,
+			Username: globalSecret.Mongo.MongoUsername,
+			Password: globalSecret.Mongo.MongoPassword,
 		})
 	case "production":
 		// https://godoc.org/github.com/globalsign/mgo#example-Dial--TlsConfig
@@ -88,6 +91,9 @@ func connectMongoDB(dbinfo string) (connMongo, error) {
 			DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
 				return tls.Dial("tcp", dbinfo, tlsConfig)
 			},
+			Database: globalSecret.Mongo.MongoDatabase,
+			Username: globalSecret.Mongo.MongoUsername,
+			Password: globalSecret.Mongo.MongoPassword,
 		})
 	}
 	if err != nil {

@@ -98,6 +98,7 @@ const (
 
 func initSecret() {
 	// secret
+	// postgres
 	postgresSecret := make(map[string]secretPostgres)
 	if file, err := ioutil.ReadFile(globalConfig[env].PostgresSecretFolderPath + globalConfig[env].PostgresSecretAuthFilename); err != nil {
 		log.Panicln("postgres secret file miss", err)
@@ -108,6 +109,16 @@ func initSecret() {
 	}
 	globalSecret.Postgres = postgresSecret[env]
 	postgresConStr = globalConfig[env].PostgresConStr + " " + globalSecret.Postgres.PostgresAuthStr
+	// mongo
+	mongoSecret := make(map[string]secretMongo)
+	if file, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretAuthFilename); err != nil {
+		log.Panicln("mongo secret file miss", err)
+	} else {
+		if err := json.Unmarshal(file, &mongoSecret); err != nil {
+			log.Panicln("mongo secret file parse fail", err)
+		}
+	}
+	globalSecret.Mongo = mongoSecret[env]
 }
 func initGCP() {
 	// GCP
