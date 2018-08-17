@@ -17,7 +17,6 @@ db.createUser(
 
 * init
 
-
 ```javascript
 db.createCollection("post_popular");
 db.post_popular.createIndex({ "user_id": 1, "category_id": 1 });
@@ -115,6 +114,10 @@ db.createCollection("city")
 db.city.createIndex({"geometry":"2dsphere"})
 ```
 
+* data source gadm
+
+please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity)
+
 * document sample
 
 ```json
@@ -141,36 +144,40 @@ db.city.createIndex({"geometry":"2dsphere"})
     },
     "type" : "Feature",
     "properties" : {
-        "NAME_2" : "Taipei",
-        "NAME_0" : "Taiwan",
-        "NAME_1" : "Taipei",
-        "VARNAME_2" : "Táiběi Shì",
-        "NL_NAME_1" : "台北",
-        "NL_NAME_2" : "台北市",
-        "HASC_2" : "TW.TP.TC",
-        "TYPE_2" : "Zhíxiáshì",
-        "CC_2" : "",
-        "GID_0" : "TWN",
-        "GID_1" : "TWN.6_1",
-        "GID_2" : "TWN.6.1_1",
-        "ENGTYPE_2" : "Special Municipality"
+        "name_2" : "Taipei",
+        "name_0" : "Taiwan",
+        "name_1" : "Taipei",
+        "varname_2" : "Táiběi Shì",
+        "nl_name_1" : "台北",
+        "nl_name_2" : "台北市",
+        "hasc_2" : "TW.TP.TC",
+        "type_2" : "Zhíxiáshì",
+        "cc_2" : "",
+        "gid_0" : "TWN",
+        "gid_1" : "TWN.6_1",
+        "gid_2" : "TWN.6.1_1",
+        "engtype_2" : "Special Municipality"
     }
 }
 ```
 
 ## city_level
 
+* data source gadm
+
+please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity)
+
 ```javascript
 db.createCollection("city_level0")
-db.city_level0.createIndex({"GID": 1})
+db.city_level0.createIndex({"gid": 1})
 db.createCollection("city_level1")
-db.city_level1.createIndex({"GID": 1})
+db.city_level1.createIndex({"gid": 1})
 db.createCollection("city_level2")
-db.city_level2.createIndex({"GID": 1})
+db.city_level2.createIndex({"gid": 1})
 db.createCollection("city_level3")
-db.city_level3.createIndex({"GID": 1})
+db.city_level3.createIndex({"gid": 1})
 db.createCollection("city_level4")
-db.city_level4.createIndex({"GID": 1})
+db.city_level4.createIndex({"gid": 1})
 db.createCollection("city_level5")
-db.city_level5.createIndex({"GID": 1})
+db.city_level5.createIndex({"gid": 1})
 ```
