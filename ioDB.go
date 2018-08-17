@@ -375,7 +375,7 @@ func getCityByLocation(lat, lon float64) (cities []cityAPI, err error) {
 	}
 	return cities, nil
 }
-func getCityLevelPostCount(level, GID string) (cl cityLevelAPI, err error) {
+func getCityLevelPostCount(level, gid string) (cl cityLevelAPI, err error) {
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
 	if err != nil {
 		log.Println("mongo session", err)
@@ -383,7 +383,7 @@ func getCityLevelPostCount(level, GID string) (cl cityLevelAPI, err error) {
 	}
 	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCityLevel + level)
-	q := bson.M{"GID": GID}
+	q := bson.M{"gid": gid}
 	if err := collection.Find(q).One(&cl); err != nil {
 		log.Println("getCityLevelPostCount", err)
 		return cl, err
