@@ -1284,7 +1284,7 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					// place check[lat lon check]
 					// file size check
-					err = untarFileAndUpload(post, file)
+					err = untarFileAndUpload(post, file, true)
 					if err != nil {
 						return nil, err
 					}

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"io"
+	"io/ioutil"
 
 	"cloud.google.com/go/storage"
 )
@@ -23,5 +24,11 @@ func writeAndMakePublicCloudStorageGCP(client *storage.Client, bucket, object st
 		return err
 	}
 	// [END upload_file]
+	return nil
+}
+func writeDiscardIOGCP(f io.Reader) error {
+	if _, err := io.Copy(ioutil.Discard, f); err != nil {
+		return err
+	}
 	return nil
 }

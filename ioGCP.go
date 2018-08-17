@@ -24,7 +24,7 @@ func makeBucketFolderName(postType int, blobID string) (foldername string) {
 	foldername += "/" + blobID + "/"
 	return foldername
 }
-func untarFileAndUpload(post postAPI, r io.Reader) error {
+func untarFileAndUpload(post postAPI, r io.Reader, isGCP bool) error {
 	// format checker
 	jpgCount := 0
 	m3u8Count := 0
@@ -101,9 +101,16 @@ func untarFileAndUpload(post postAPI, r io.Reader) error {
 			}
 		}
 		if isUpload {
-			if err := writeAndMakePublicCloudStorageGCP(client, globalConfig[env].GCPBucketRootCloudStorage, foldername+filename, tr); err != nil {
-				log.Println("upload failed: ", err)
-				return errors.New("upload failed")
+			if isGCP {
+				if err := writeAndMakePublicCloudStorageGCP(client, globalConfig[env].GCPBucketRootCloudStorage, foldername+filename, tr); err != nil {
+					log.Println("upload failed: ", err)
+					return errors.New("upload failed")
+				}
+			} else {
+				if err := writeDiscardIOGCP(tr); err != nil {
+					log.Println("fake upload failed: ", err)
+					return errors.New("fake upload failed")
+				}
 			}
 		}
 	}
