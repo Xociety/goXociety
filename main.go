@@ -75,7 +75,6 @@ const (
 	mongoCollectionPostPopularCommon    = "post_popular_common"
 	mongoCollectionPostPopularReadIndex = "post_popular_read_index"
 	mongoCollectionPostPopularRead      = "post_popular_read"
-	mongoCollectionPostPopularRead2     = "post_popular_read2"
 	mongoGeoNearSearchInKM              = 100 * 1000
 	mongoTimeout                        = 0
 )

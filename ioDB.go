@@ -572,30 +572,6 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 	// log.Println("posts", posts)
 	return posts, nil
 }
-func getPostsByPopularOld(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
-	numPerRequest := 10
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
-	if err != nil {
-		log.Println("mongo session", err)
-		return posts, err
-	}
-	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
-	u := userPostPopular{}
-	q := bson.M{"user_id": userID, "category_id": categoryID}
-	if err := collection.Find(q).One(&u); err != nil {
-		log.Println("getPostsByPopular", err)
-		return posts, err
-	}
-	// fake page because there's no appropriate query in mongo
-	for i := page * numPerRequest; i < len(u.Posts); i++ {
-		if i >= (page+1)*numPerRequest {
-			break
-		}
-		posts = append(posts, u.Posts[i])
-	}
-	return posts, nil
-}
 func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
@@ -614,7 +590,7 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	}
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead2)
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead)
 	q = bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp}
 	r := postPopularReadAPI{}
 	collection.Find(q).One(&r)
@@ -1263,51 +1239,6 @@ func postDelete(post postAPI) (us updateStatusAPI, err error) {
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func postPopularReadOld(categoryID, indexRead int, userID int64) (posts []postAPI, err error) {
-	// you can wrap func as a transaction
-	numPerRequest := 10
-	lastIndexNextList := indexRead + numPerRequest
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
-	if err != nil {
-		log.Println("mongo session", err)
-		return posts, err
-	}
-	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
-	u := userPostPopular{}
-	q := bson.M{"user_id": userID, "category_id": categoryID}
-	if err := collection.Find(q).One(&u); err != nil {
-		log.Println("postPopularRead", err)
-		return posts, err
-	}
-	weekTimestamp := getNowUnixWeekTimestamp()
-	timestamp := getNowUnixTimestamp()
-	postsPopular := []postAPI{} // popular order
-	postsRead := make(map[int64]int)
-	for i := 0; i < len(u.Posts); i++ {
-		if i <= indexRead {
-			postsRead[u.Posts[i].PostID] = timestamp // for record read post
-		} else {
-			// fake page because there's no appropriate query in mongo
-			if i <= lastIndexNextList {
-				posts = append(posts, u.Posts[i]) // for current query popular post list
-			}
-			postsPopular = append(postsPopular, u.Posts[i]) // for update post list in db
-		}
-	}
-	collection2 := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead) // you can make this part using another channel queue
-	if _, err := collection2.Upsert(
-		bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp},
-		bson.M{"$set": parsePopularPostReadObjectMongo(postsRead)}); err != nil {
-		log.Println("upsert", err)
-	}
-	if _, err := collection.Upsert( // update popular post list
-		bson.M{"user_id": userID, "category_id": categoryID},
-		bson.M{"$set": bson.M{"posts": postsPopular}}); err != nil {
-		log.Println("upsert", err)
-	}
-	return posts, nil
-}
 func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postAPI, err error) {
 	// you can wrap func as a transaction
 	numPerRequest := 10
@@ -1326,7 +1257,7 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 	weekTimestamp := getNowUnixWeekTimestamp()
 
 	postsRead := make(map[int64]int)
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead2)
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead)
 	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
 		u := postPopularReadAPI{}
 		q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}
@@ -1336,11 +1267,6 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 			}
 		}
 	}
-	// postsRead, err := getPostsReadByUser(categoryID, weekTimestamp, userID)
-	// if err != nil {
-	// 	log.Println("postPopularRead", err)
-	// 	return posts, err
-	// }
 	// post_common
 	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularCommon)
 	u := postPopularCommonAPI{}
@@ -1358,7 +1284,7 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 		}
 	}
 	if len(postsReadNew) > 0 {
-		collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead2)
+		collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead)
 		if _, err := collection.Upsert(
 			bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp},
 			bson.M{"$set": parsePopularPostReadObjectMongo(postsReadNew)}); err != nil {

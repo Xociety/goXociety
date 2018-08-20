@@ -119,16 +119,6 @@ func genPopularPostUpsert() {
 			log.Println("post", err)
 		}
 		sort.Sort(postByPopular(posts))
-		// old
-		for i := 0; i < len(usersID); i++ {
-			weekTimestamp := getNowUnixWeekTimestamp()
-			if postsRead, err := getPostsReadByUser(categoryID, weekTimestamp, usersID[i]); err == nil {
-				filteredPosts := filterReadedPost(postsRead, posts)
-				if err := upsertPostPopular(categoryID, usersID[i], filteredPosts); err != nil {
-					log.Println(err)
-				}
-			}
-		}
 		// new
 		if err := upsertInitPostPopularIndex(categoryID, usersID); err != nil {
 			log.Println(err)
