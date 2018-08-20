@@ -20,31 +20,10 @@ db.createUser(
 ```javascript
 db.createCollection("post_popular");
 db.post_popular.createIndex({ "user_id": 1, "category_id": 1 });
-```
-
-* document sample
-
-```json
-{ 
-    "_id" : ObjectId("5b4c12bc4157b267656284c8"), 
-    "category_id" : NumberInt(0), 
-    "user_id" : NumberLong(4), 
-    "week_timestamp" : NumberInt(2532), 
-    "posts" : {
-        "2858" : NumberInt(1531712188), 
-        "2882" : NumberInt(1531712188), 
-        "2914" : NumberInt(1531712207)
-    }
-}
-```
-
-## post_read
-
-* init
-
-```javascript
-db.createCollection("post_read");
-db.post_read.createIndex({ "user_id": 1, "category_id": 1, "week_timestamp": 1 });
+db.createCollection("post_popular_common");
+db.post_popular_common.createIndex({ "category_id": 1 });
+db.createCollection("post_popular_read_index");
+db.post_popular_index.createIndex({ "user_id": 1, "category_id": 1 });
 ```
 
 * document sample
@@ -102,6 +81,30 @@ db.post_read.createIndex({ "user_id": 1, "category_id": 1, "week_timestamp": 1 }
             "updatetime" : NumberInt(1531205257)
         }
     ]
+}
+```
+
+## post_read
+
+* init
+
+```javascript
+db.createCollection("post_popular_read");
+db.post_popular_read.createIndex({ "user_id": 1, "category_id": 1, "week_timestamp": 1 });
+```
+* document sample
+
+```json
+{ 
+    "_id" : ObjectId("5b4c12bc4157b267656284c8"), 
+    "category_id" : NumberInt(0), 
+    "user_id" : NumberLong(4), 
+    "week_timestamp" : NumberInt(2532), 
+    "posts" : {
+        "2858" : NumberInt(1531712188), 
+        "2882" : NumberInt(1531712188), 
+        "2914" : NumberInt(1531712207)
+    }
 }
 ```
 

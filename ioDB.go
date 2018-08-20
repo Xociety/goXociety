@@ -572,7 +572,7 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 	// log.Println("posts", posts)
 	return posts, nil
 }
-func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
+func getPostsByPopularOld(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
 	if err != nil {
@@ -593,6 +593,48 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 			break
 		}
 		posts = append(posts, u.Posts[i])
+	}
+	return posts, nil
+}
+func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
+	numPerRequest := 10
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return posts, err
+	}
+	defer c.session.Close()
+	// read_index
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularReadIndex)
+	indexRead := postPopularReadIndexAPI{}
+	q := bson.M{"user_id": userID, "category_id": categoryID}
+	if err := collection.Find(q).One(&indexRead); err != nil {
+		log.Println("getPostsByPopular0", err)
+		return posts, err
+	}
+	// read
+	weekTimestamp := getNowUnixWeekTimestamp()
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead2)
+	q = bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp}
+	r := postPopularReadAPI{}
+	collection.Find(q).One(&r)
+	// popular_common
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
+	q = bson.M{"user_id": userID, "category_id": categoryID}
+	p := postPopularCommonAPI{}
+	if err := collection.Find(q).One(&p); err != nil {
+		log.Println("getPostsByPopular2", err)
+		return posts, err
+	}
+	count := 0
+	for i := indexRead.Index; i < len(p.Posts); i++ {
+		if count >= numPerRequest {
+			break
+		}
+		if r.Posts[p.Posts[i].PostID] == 0 {
+			posts = append(posts, p.Posts[i])
+			count++
+		}
 	}
 	return posts, nil
 }
@@ -1221,7 +1263,7 @@ func postDelete(post postAPI) (us updateStatusAPI, err error) {
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func postPopularRead(categoryID, indexRead int, userID int64) (posts []postAPI, err error) {
+func postPopularReadOld(categoryID, indexRead int, userID int64) (posts []postAPI, err error) {
 	// you can wrap func as a transaction
 	numPerRequest := 10
 	lastIndexNextList := indexRead + numPerRequest
@@ -1253,7 +1295,7 @@ func postPopularRead(categoryID, indexRead int, userID int64) (posts []postAPI, 
 			postsPopular = append(postsPopular, u.Posts[i]) // for update post list in db
 		}
 	}
-	collection2 := c.session.DB(mongoDBXociety).C(mongoCollectionPostRead) // you can make this part using another channel queue
+	collection2 := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead) // you can make this part using another channel queue
 	if _, err := collection2.Upsert(
 		bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp},
 		bson.M{"$set": parsePopularPostReadObjectMongo(postsRead)}); err != nil {
@@ -1263,6 +1305,85 @@ func postPopularRead(categoryID, indexRead int, userID int64) (posts []postAPI, 
 		bson.M{"user_id": userID, "category_id": categoryID},
 		bson.M{"$set": bson.M{"posts": postsPopular}}); err != nil {
 		log.Println("upsert", err)
+	}
+	return posts, nil
+}
+func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postAPI, err error) {
+	// you can wrap func as a transaction
+	numPerRequest := 10
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return posts, err
+	}
+	defer c.session.Close()
+	// read_index
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularReadIndex)
+	indexPopularRead := postPopularReadIndexAPI{}
+	q := bson.M{"user_id": userID, "category_id": categoryID}
+	collection.Find(q).One(&indexPopularRead)
+	// read
+	weekTimestamp := getNowUnixWeekTimestamp()
+
+	postsRead := make(map[int64]int)
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead2)
+	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
+		u := postPopularReadAPI{}
+		q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}
+		if err := collection.Find(q).One(&u); err == nil {
+			for k, v := range u.Posts {
+				postsRead[k] = v
+			}
+		}
+	}
+	// postsRead, err := getPostsReadByUser(categoryID, weekTimestamp, userID)
+	// if err != nil {
+	// 	log.Println("postPopularRead", err)
+	// 	return posts, err
+	// }
+	// post_common
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularCommon)
+	u := postPopularCommonAPI{}
+	q = bson.M{"category_id": categoryID}
+	if err := collection.Find(q).One(&u); err != nil {
+		log.Println("postPopularRead", err)
+		return posts, err
+	}
+	timestamp := getNowUnixTimestamp()
+	postsReadNew := make(map[int64]int)
+	count := 0
+	if indexRead >= 0 {
+		for i := indexPopularRead.Index; i <= indexPopularRead.Index+indexRead; i++ {
+			postsReadNew[u.Posts[i].PostID] = timestamp // for record read post
+		}
+	}
+	if len(postsReadNew) > 0 {
+		collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead2)
+		if _, err := collection.Upsert(
+			bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp},
+			bson.M{"$set": parsePopularPostReadObjectMongo(postsReadNew)}); err != nil {
+			log.Println("upsert", err)
+		}
+	}
+	for k, v := range postsReadNew {
+		postsRead[k] = v
+	}
+	for i := indexPopularRead.Index + indexRead + 1; i < len(u.Posts); i++ {
+		if count > numPerRequest {
+			break
+		}
+		if postsRead[u.Posts[i].PostID] == 0 {
+			posts = append(posts, u.Posts[i]) // for current query popular post list
+			count++
+		}
+	}
+	if count > 0 {
+		collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularReadIndex)
+		if _, err := collection.Upsert(
+			bson.M{"user_id": userID, "category_id": categoryID},
+			bson.M{"$set": bson.M{"index": indexPopularRead.Index + indexRead + 1}}); err != nil {
+			log.Println("upsert", err)
+		}
 	}
 	return posts, nil
 }
@@ -1933,12 +2054,15 @@ func getPostsReadByUser(categoryID, weekTimestamp int, userID int64) (posts map[
 		return posts, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostRead)
+	posts = make(map[int64]int)
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead)
 	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
-		u := userPostPopularRead{}
+		u := postPopularReadAPI{}
 		q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}
 		if err := collection.Find(q).One(&u); err == nil {
-			posts = u.Posts
+			for k, v := range u.Posts {
+				posts[k] = v
+			}
 		}
 	}
 	return posts, nil
@@ -1955,6 +2079,39 @@ func upsertPostPopular(categoryID int, userID int64, posts []postAPI) (err error
 	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"posts": posts}}); err != nil {
 		log.Println("upsertPostPopular", err)
 		return err
+	}
+	return nil
+}
+
+func upsertPostPopularCommon(categoryID int, posts []postAPI) (err error) {
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return err
+	}
+	defer c.session.Close()
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularCommon)
+	selector := bson.M{"category_id": categoryID}
+	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"posts": posts}}); err != nil {
+		log.Println("upsertPostPopularCommon", err)
+		return err
+	}
+	return nil
+}
+func upsertInitPostPopularIndex(categoryID int, usersID []int64) (err error) {
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return err
+	}
+	defer c.session.Close()
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularReadIndex)
+	for i := 0; i < len(usersID); i++ {
+		selector := bson.M{"user_id": usersID[i], "category_id": categoryID}
+		if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"index": 0}}); err != nil {
+			log.Println("upsertInitPostPopularIndex", err)
+			return err
+		}
 	}
 	return nil
 }

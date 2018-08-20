@@ -119,6 +119,7 @@ func genPopularPostUpsert() {
 			log.Println("post", err)
 		}
 		sort.Sort(postByPopular(posts))
+		// old
 		for i := 0; i < len(usersID); i++ {
 			weekTimestamp := getNowUnixWeekTimestamp()
 			if postsRead, err := getPostsReadByUser(categoryID, weekTimestamp, usersID[i]); err == nil {
@@ -127,6 +128,14 @@ func genPopularPostUpsert() {
 					log.Println(err)
 				}
 			}
+		}
+		// new
+		if err := upsertInitPostPopularIndex(categoryID, usersID); err != nil {
+			log.Println(err)
+		}
+		// common
+		if err := upsertPostPopularCommon(categoryID, posts); err != nil {
+			log.Println(err)
 		}
 	}
 }
@@ -196,8 +205,8 @@ func TestFakeDataSample(t *testing.T) {
 		t.Skip("skip TestFakeData")
 	}
 	log.Println("start")
-	totalNumUser := 20
-	totalNumPost := 100
+	totalNumUser := 30
+	totalNumPost := 200
 	usersID := []int64{}
 	fake, err := faker.New("en")
 	if err != nil {
@@ -223,7 +232,7 @@ func TestFakeDataSample(t *testing.T) {
 		follwerUserID := usersID[i]
 		followingUserID := usersID[i]
 		for count < totalNumFollow {
-			followingUserID = usersID[r.Int63n(int64(totalNumUser))]
+			followingUserID = usersID[r.Intn(totalNumUser)]
 			if followingUserID == follwerUserID || followingUserIDCheck[followingUserID] {
 				continue
 			}
@@ -236,7 +245,7 @@ func TestFakeDataSample(t *testing.T) {
 		}
 	}
 	// random post
-	log.Printf("start random %d post per user", totalNumPost)
+	log.Printf("start random total %d post", totalNumPost)
 	for i := 0; i < totalNumPost; i++ {
 		userID := usersID[r.Intn(len(usersID))]
 		post := genPostFaker(userID, fake, r)

@@ -223,7 +223,20 @@ type userPostPopular struct {
 	Posts      []postAPI     `bson:"posts"`
 }
 
-type userPostPopularRead struct {
+type postPopularCommonAPI struct {
+	ID         bson.ObjectId `bson:"_id"`
+	CategoryID int           `bson:"category_id"`
+	Posts      []postAPI     `bson:"posts"`
+}
+
+type postPopularReadIndexAPI struct {
+	ID         bson.ObjectId `bson:"_id"`
+	UserID     int           `bson:"user_id"`
+	CategoryID int           `bson:"category_id"`
+	Index      int           `bson:"index"`
+}
+
+type postPopularReadAPI struct {
 	ID            bson.ObjectId `bson:"_id"`
 	UserID        int64         `bson:"user_id"`
 	CategoryID    int           `bson:"category_id"`

@@ -923,6 +923,39 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
+			"posts_by_popular_old": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByPopularOld(user.UserID, categoryID, page)
+					log.Printf("posts_by_popular_old total took %fs\n", time.Since(startTime).Seconds())
+					return posts, err
+				},
+				Description: "",
+			},
 			"posts_by_popular": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -936,6 +969,7 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
 					user, err := parseAuth(p)
 					if err != nil {
 						return nil, err
@@ -950,6 +984,7 @@ var graphqlQueryType = graphql.NewObject(
 					}
 					// block check
 					posts, err := getPostsByPopular(user.UserID, categoryID, page)
+					log.Printf("posts_by_popular total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
 				Description: "",
@@ -1473,7 +1508,7 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			"post_popular_read": &graphql.Field{
+			"post_popular_read_old": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"category_id": &graphql.ArgumentConfig{
@@ -1482,10 +1517,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 					"index_read": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
-						Description: "index_read",
+						Description: "index_read, [0 - ∞)",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
 					user, err := parseAuth(p)
 					if err != nil {
 						return nil, err
@@ -1498,7 +1534,46 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("index_read format")
 					}
+					if indexRead < 0 {
+						return nil, errors.New("index_read format")
+					}
+					posts, err := postPopularReadOld(categoryID, indexRead, user.UserID)
+					log.Printf("post_popular_read_old total took %fs\n", time.Since(startTime).Seconds())
+					return posts, err
+				},
+				Description: "",
+			},
+			"post_popular_read": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"index_read": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "index_read, [0 - ∞)",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
+					indexRead, isOK := p.Args["index_read"].(int)
+					if !isOK {
+						return nil, errors.New("index_read format")
+					}
+					if indexRead < 0 {
+						return nil, errors.New("index_read format")
+					}
 					posts, err := postPopularRead(categoryID, indexRead, user.UserID)
+					log.Printf("post_popular_read total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
 				Description: "",
