@@ -508,7 +508,37 @@ func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bo
 	return count == 1, err
 }
 
-// city
+// country city
+func getCountries() (ct []countryAPI, err error) {
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return ct, err
+	}
+	defer c.session.Close()
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
+	q := bson.M{}
+	if err := collection.Find(q).All(&ct); err != nil {
+		log.Println("getCountries", err)
+		return ct, err
+	}
+	return ct, nil
+}
+func getCountryPostCount(countryCode string) (ct countryAPI, err error) {
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return ct, err
+	}
+	defer c.session.Close()
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
+	q := bson.M{"country_code": countryCode}
+	if err := collection.Find(q).One(&ct); err != nil {
+		log.Println("getCountry", err)
+		return ct, err
+	}
+	return ct, nil
+}
 func getCityByLocation(lat, lon float64) (cities []cityAPI, err error) {
 	numPerRequest := 5
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
@@ -554,7 +584,7 @@ func getCityByLocation(lat, lon float64) (cities []cityAPI, err error) {
 	}
 	return cities, nil
 }
-func getCityLevelPostCount(level, gid string) (cl cityLevelAPI, err error) {
+func getCityLevelPostCount(level string, cityID string) (cl cityLevelAPI, err error) {
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
 	if err != nil {
 		log.Println("mongo session", err)
@@ -562,7 +592,7 @@ func getCityLevelPostCount(level, gid string) (cl cityLevelAPI, err error) {
 	}
 	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCityLevel + level)
-	q := bson.M{"gid": gid}
+	q := bson.M{"city_id": cityID}
 	if err := collection.Find(q).One(&cl); err != nil {
 		log.Println("getCityLevelPostCount", err)
 		return cl, err

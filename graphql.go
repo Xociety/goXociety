@@ -177,13 +177,13 @@ var updateStatusGraphqlType = graphql.NewObject(
 	},
 )
 
-var countryGraphqlType = graphql.NewList(
+var countryBasicGraphqlType = graphql.NewList(
 	graphql.NewObject(
 		graphql.ObjectConfig{
-			Name: "country",
+			Name: "country_basic",
 			Fields: graphql.Fields{
-				"country":      &graphql.Field{Type: graphql.String},
 				"country_code": &graphql.Field{Type: graphql.String},
+				"country_name": &graphql.Field{Type: graphql.String},
 			},
 		},
 	),
@@ -337,24 +337,23 @@ var cityPropertiesGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "city_properties",
 		Fields: graphql.Fields{
-			"gid_0":  &graphql.Field{Type: graphql.String},
-			"gid_1":  &graphql.Field{Type: graphql.String},
-			"gid_2":  &graphql.Field{Type: graphql.String},
-			"gid_3":  &graphql.Field{Type: graphql.String},
-			"gid_4":  &graphql.Field{Type: graphql.String},
-			"gid_5":  &graphql.Field{Type: graphql.String},
-			"name_0": &graphql.Field{Type: graphql.String},
-			"name_1": &graphql.Field{Type: graphql.String},
-			"name_2": &graphql.Field{Type: graphql.String},
-			"name_3": &graphql.Field{Type: graphql.String},
-			"name_4": &graphql.Field{Type: graphql.String},
-			"name_5": &graphql.Field{Type: graphql.String},
-			"type_0": &graphql.Field{Type: graphql.String},
-			"type_1": &graphql.Field{Type: graphql.String},
-			"type_2": &graphql.Field{Type: graphql.String},
-			"type_3": &graphql.Field{Type: graphql.String},
-			"type_4": &graphql.Field{Type: graphql.String},
-			"type_5": &graphql.Field{Type: graphql.String},
+			"country_code": &graphql.Field{Type: graphql.String},
+			"city_id_1":    &graphql.Field{Type: graphql.String},
+			"city_id_2":    &graphql.Field{Type: graphql.String},
+			"city_id_3":    &graphql.Field{Type: graphql.String},
+			"city_id_4":    &graphql.Field{Type: graphql.String},
+			"city_id_5":    &graphql.Field{Type: graphql.String},
+			"country_name": &graphql.Field{Type: graphql.String},
+			"name_1":       &graphql.Field{Type: graphql.String},
+			"name_2":       &graphql.Field{Type: graphql.String},
+			"name_3":       &graphql.Field{Type: graphql.String},
+			"name_4":       &graphql.Field{Type: graphql.String},
+			"name_5":       &graphql.Field{Type: graphql.String},
+			"type_1":       &graphql.Field{Type: graphql.String},
+			"type_2":       &graphql.Field{Type: graphql.String},
+			"type_3":       &graphql.Field{Type: graphql.String},
+			"type_4":       &graphql.Field{Type: graphql.String},
+			"type_5":       &graphql.Field{Type: graphql.String},
 		},
 	},
 )
@@ -362,10 +361,20 @@ var cityLevelGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "city_level",
 		Fields: graphql.Fields{
-			"gid":        &graphql.Field{Type: graphql.String},
+			"city_id":    &graphql.Field{Type: graphql.String},
 			"name":       &graphql.Field{Type: graphql.String},
 			"type":       &graphql.Field{Type: graphql.String},
 			"post_count": &graphql.Field{Type: int64GraphqlScalar},
+		},
+	},
+)
+var countryGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "country",
+		Fields: graphql.Fields{
+			"country_code": &graphql.Field{Type: graphql.String},
+			"country_name": &graphql.Field{Type: graphql.String},
+			"post_count":   &graphql.Field{Type: int64GraphqlScalar},
 		},
 	},
 )
@@ -603,9 +612,10 @@ var graphqlQueryType = graphql.NewObject(
 		Name: "Query",
 		Fields: graphql.Fields{
 			"country": &graphql.Field{
-				Type: countryGraphqlType,
+				Type: countryBasicGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					return countryConfigAPI, nil
+					ct, err := getCountries()
+					return ct, err
 				},
 				Description: "",
 			},
@@ -820,28 +830,49 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
+			"country_post_count": &graphql.Field{
+				Type: countryGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"city_code": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "city_code",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					cityCode, isOK := p.Args["city_code"].(string)
+					if !isOK {
+						return nil, errors.New("city_code format")
+					}
+					ct, err := getCountryPostCount(cityCode)
+					return ct, err
+				},
+				Description: "",
+			},
 			"city_level_post_count": &graphql.Field{
 				Type: cityLevelGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"level": &graphql.ArgumentConfig{
-						Type:        graphql.String,
+						Type:        graphql.Int,
 						Description: "level",
 					},
-					"gid": &graphql.ArgumentConfig{
+					"city_id": &graphql.ArgumentConfig{
 						Type:        graphql.String,
-						Description: "gid",
+						Description: "city_id",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					level, isOK := p.Args["level"].(string)
+					level, isOK := p.Args["level"].(int)
 					if !isOK {
 						return nil, errors.New("level format")
 					}
-					gid, isOK := p.Args["gid"].(string)
-					if !isOK {
-						return nil, errors.New("gid format")
+					if level < 1 || level > 5 {
+						return nil, errors.New("level format")
 					}
-					cl, err := getCityLevelPostCount(level, gid)
+					cityID, isOK := p.Args["city_id"].(string)
+					if !isOK {
+						return nil, errors.New("city_id id format")
+					}
+					cl, err := getCityLevelPostCount(strconv.Itoa(level), cityID)
 					return cl, err
 				},
 				Description: "",

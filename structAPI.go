@@ -48,36 +48,36 @@ type userFollowerAPI struct {
 }
 
 // city
-type geometryCityAPI struct {
-	Type        string        `bson:"type"`
-	Coordinates [][][]float64 `bson:"coordinates"`
-}
 type propertiesCityAPI struct {
-	Name0 string `json:"name_0,omitempty" bson:"name_0,omitempty"`
-	Name1 string `json:"name_1,omitempty" bson:"name_1,omitempty"`
-	Name2 string `json:"name_2,omitempty" bson:"name_2,omitempty"`
-	Name3 string `json:"name_3,omitempty" bson:"name_3,omitempty"`
-	Name4 string `json:"name_4,omitempty" bson:"name_4,omitempty"`
-	Name5 string `json:"name_5,omitempty" bson:"name_5,omitempty"`
-	GID0  string `json:"gid_0,omitempty" bson:"gid_0,omitempty"`
-	GID1  string `json:"gid_1,omitempty" bson:"gid_1,omitempty"`
-	GID2  string `json:"gid_2,omitempty" bson:"gid_2,omitempty"`
-	GID3  string `json:"gid_3,omitempty" bson:"gid_3,omitempty"`
-	GID4  string `json:"gid_4,omitempty" bson:"gid_4,omitempty"`
-	GID5  string `json:"gid_5,omitempty" bson:"gid_5,omitempty"`
-	Type0 string `json:"type_0,omitempty" bson:"type_0,omitempty"`
-	Type1 string `json:"type_1,omitempty" bson:"type_1,omitempty"`
-	Type2 string `json:"type_2,omitempty" bson:"type_2,omitempty"`
-	Type3 string `json:"type_3,omitempty" bson:"type_3,omitempty"`
-	Type4 string `json:"type_4,omitempty" bson:"type_4,omitempty"`
-	Type5 string `json:"type_5,omitempty" bson:"type_5,omitempty"`
+	CountryName string `json:"country_name,omitempty" bson:"country_name,omitempty"`
+	Name1       string `json:"name_1,omitempty" bson:"name_1,omitempty"`
+	Name2       string `json:"name_2,omitempty" bson:"name_2,omitempty"`
+	Name3       string `json:"name_3,omitempty" bson:"name_3,omitempty"`
+	Name4       string `json:"name_4,omitempty" bson:"name_4,omitempty"`
+	Name5       string `json:"name_5,omitempty" bson:"name_5,omitempty"`
+	CountryCode string `json:"country_code,omitempty" bson:"country_code,omitempty"`
+	CityID1     string `json:"city_id_1,omitempty" bson:"city_id_1,omitempty"`
+	CityID2     string `json:"city_id_2,omitempty" bson:"city_id_2,omitempty"`
+	CityID3     string `json:"city_id_3,omitempty" bson:"city_id_3,omitempty"`
+	CityID4     string `json:"city_id_4,omitempty" bson:"city_id_4,omitempty"`
+	CityID5     string `json:"city_id_5,omitempty" bson:"city_id_5,omitempty"`
+	Type1       string `json:"type_1,omitempty" bson:"type_1,omitempty"`
+	Type2       string `json:"type_2,omitempty" bson:"type_2,omitempty"`
+	Type3       string `json:"type_3,omitempty" bson:"type_3,omitempty"`
+	Type4       string `json:"type_4,omitempty" bson:"type_4,omitempty"`
+	Type5       string `json:"type_5,omitempty" bson:"type_5,omitempty"`
 }
 type cityAPI struct {
 	Properties propertiesCityAPI `json:"properties" bson:"properties"`
 }
+type countryAPI struct {
+	CountryCode string `json:"country_code" bson:"country_code"`
+	CountryName string `json:"country_name" bson:"country_name"`
+	PostCount   int    `json:"post_count" bson:"post_count"`
+}
 type cityLevelAPI struct {
 	Name      string `json:"name" bson:"name"`
-	GID       string `json:"gid" bson:"gid"`
+	CityID    string `json:"city_id" bson:"city_id"`
 	Type      string `json:"type" bson:"type"`
 	PostCount int    `json:"post_count" bson:"post_count"`
 }
@@ -187,11 +187,6 @@ type reactionOnReplyAPI struct {
 }
 
 // common
-type countryAPI struct {
-	CountryID   int    `json:"country_id"`
-	Country     string `json:"country"`
-	CountryCode string `json:"country_code"`
-}
 type languageAPI struct {
 	LanguageID      int    `json:"language_id"`
 	DisplayLanguage string `json:"display_language"`

@@ -65,6 +65,7 @@ var (
 const (
 	mongoDBXociety                      = "xociety"
 	mongoCollectionCity                 = "city"
+	mongoCollectionCountry              = "country"
 	mongoCollectionCityLevel            = "city_level_"
 	mongoCollectionPostPopular          = "post_popular"
 	mongoCollectionPostPopularCommon    = "post_popular_common"
@@ -124,6 +125,9 @@ func initGCP() {
 }
 func initData() {
 	var err error
+	if countryConfigAPI, err = getCountries(); err != nil {
+		log.Println("country config")
+	}
 	if languageConfigAPI, err = getLanguages(); err != nil {
 		log.Fatalln("language config")
 	}
