@@ -159,6 +159,185 @@ func login(email, password string) (lc loginAPI, err error) {
 	return lc, nil
 }
 
+// common
+func getCategories() (categories []categoryAPI, err error) {
+	c, err := connectPostgres(postgresConStr)
+	if err != nil {
+		return categories, errors.New("db connection")
+	}
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		category_id, category_name
+		FROM category;
+	`
+	rows, err := c.db.Query(sqlStr)
+	if err != nil {
+		log.Println("getCategories", err)
+		return categories, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		category := categoryAPI{}
+		if err := rows.Scan(
+			&category.CategoryID,
+			&category.CategoryName,
+		); err != nil {
+			log.Println(err)
+			return categories, err
+		}
+		categories = append(categories, category)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return categories, err
+	}
+	return categories, nil
+}
+func getGender() (genderList []genderAPI, err error) {
+	c, err := connectPostgres(postgresConStr)
+	if err != nil {
+		return genderList, errors.New("db connection")
+	}
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		gender_id, value
+		FROM gender;
+	`
+	rows, err := c.db.Query(sqlStr)
+	if err != nil {
+		log.Println("getGender", err)
+		return genderList, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		gender := genderAPI{}
+		if err := rows.Scan(
+			&gender.GenderID,
+			&gender.Value,
+		); err != nil {
+			log.Println(err)
+			return genderList, err
+		}
+		genderList = append(genderList, gender)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return genderList, err
+	}
+	return genderList, nil
+}
+func getLanguages() (languages []languageAPI, err error) {
+	c, err := connectPostgres(postgresConStr)
+	if err != nil {
+		return languages, errors.New("db connection")
+	}
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		language_id, display_language, value
+		FROM language;
+	`
+	rows, err := c.db.Query(sqlStr)
+	if err != nil {
+		log.Println("getLanguages", err)
+		return languages, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		language := languageAPI{}
+		if err := rows.Scan(
+			&language.LanguageID,
+			&language.DisplayLanguage,
+			&language.Value,
+		); err != nil {
+			log.Println(err)
+			return languages, err
+		}
+		languages = append(languages, language)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return languages, err
+	}
+	return languages, nil
+}
+func getPostType() (postTypeList []postTypeAPI, err error) {
+	c, err := connectPostgres(postgresConStr)
+	if err != nil {
+		return postTypeList, errors.New("db connection")
+	}
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		post_type_id, value
+		FROM post_type;
+	`
+	rows, err := c.db.Query(sqlStr)
+	if err != nil {
+		log.Println("getPostType", err)
+		return postTypeList, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		postType := postTypeAPI{}
+		if err := rows.Scan(
+			&postType.PostTypeID,
+			&postType.Value,
+		); err != nil {
+			log.Println(err)
+			return postTypeList, err
+		}
+		switch postType.Value {
+		case mediaFormatJPG:
+			postType.FileFormat = []string{mediaFormatJPG}
+		case mediaFormatHLS:
+			postType.FileFormat = []string{mediaFormatM3U8, mediaFormatTS}
+		}
+		postTypeList = append(postTypeList, postType)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return postTypeList, err
+	}
+	return postTypeList, nil
+}
+func getReaction() (reactionList []reactionAPI, err error) {
+	c, err := connectPostgres(postgresConStr)
+	if err != nil {
+		return reactionList, errors.New("db connection")
+	}
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		reaction_id, value
+		FROM reaction;
+	`
+	rows, err := c.db.Query(sqlStr)
+	if err != nil {
+		log.Println("getReaction", err)
+		return reactionList, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		reaction := reactionAPI{}
+		if err := rows.Scan(
+			&reaction.ReactionID,
+			&reaction.Value,
+		); err != nil {
+			log.Println(err)
+			return reactionList, err
+		}
+		reactionList = append(reactionList, reaction)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return reactionList, err
+	}
+	return reactionList, nil
+}
+
 // user
 func getUserByUserID(userID int64) (user xuserAPI, err error) {
 	c, err := connectPostgres(postgresConStr)

@@ -180,7 +180,6 @@ func TestUploadImagesSample(t *testing.T) { // delete this in the future
 				// cloud storage
 				foldername := bucketImagesCloudStorage + "/sample/" + strconv.Itoa(v1) + "/" + strconv.Itoa(s) + "/"
 				filename := "0.jpg"
-				log.Println(globalConfig[env].GCPBucketRootCloudStorage, foldername+filename)
 				if err := writeAndMakePublicCloudStorageGCP(client, globalConfig[env].GCPBucketRootCloudStorage, foldername+filename, ir); err != nil {
 					log.Println("upload failed: ", err)
 					continue
@@ -195,8 +194,8 @@ func TestFakeDataSample(t *testing.T) {
 		t.Skip("skip TestFakeData")
 	}
 	log.Println("start")
-	totalNumUser := 30
-	totalNumPost := 200
+	totalNumUser := 100
+	totalNumPost := 1000
 	usersID := []int64{}
 	fake, err := faker.New("en")
 	if err != nil {
@@ -237,6 +236,9 @@ func TestFakeDataSample(t *testing.T) {
 	// random post
 	log.Printf("start random total %d post", totalNumPost)
 	for i := 0; i < totalNumPost; i++ {
+		if i%100 == 0 {
+			log.Println("finished", i, "posts")
+		}
 		userID := usersID[r.Intn(len(usersID))]
 		post := genPostFaker(userID, fake, r)
 		postID, err := postInsert(post)

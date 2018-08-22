@@ -46,15 +46,10 @@ type forwardLookupMap map[int]string
 type reverseLookupMap map[string]int
 
 var (
-	postTypeMapID2Type             = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
-	postTypeMapType2ID             = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
-	reactionsMapID2Description     = make(map[int]string) // example: [0: "like", 1: "dislike"]
-	countryMapID2Country           = make(map[int]string) // example: [0: "Afghanistan"]
-	countryMapID2CountryCode       = make(map[int]string) // example: [0: "af"]
-	languageMapID2DisplayLanguage  = make(map[int]string) // example: [0: "Afrikaans"]
-	languageMapID2HlParameterValue = make(map[int]string) // example: [0: "af"]
-	genderMapID2Description        = make(map[int]string) // example: [0: "not known"]
-	categoryMapID2Name             = make(map[int]string) // example: [0: "travel"]
+	postTypeMapID2Type         = make(map[int]string) // example: [0: "jpg", 1: "hls" ...]
+	postTypeMapType2ID         = make(map[string]int) // example: [jpg: "0", "hls": 1 ...]
+	reactionsMapID2Description = make(map[int]string) // example: [0: "like", 1: "dislike"]
+	categoryMapID2Name         = make(map[int]string) // example: [0: "travel"]
 )
 
 // PostgreSQL
@@ -70,7 +65,7 @@ var (
 const (
 	mongoDBXociety                      = "xociety"
 	mongoCollectionCity                 = "city"
-	mongoCollectionCityLevel            = "city_level"
+	mongoCollectionCityLevel            = "city_level_"
 	mongoCollectionPostPopular          = "post_popular"
 	mongoCollectionPostPopularCommon    = "post_popular_common"
 	mongoCollectionPostPopularReadIndex = "post_popular_read_index"
@@ -128,61 +123,50 @@ func initGCP() {
 	clientOptionGoogleAPI = option.WithServiceAccountFile(globalConfig[env].GCPSecretFolderPath + globalConfig[env].GCPSecretFilename)
 }
 func initData() {
-
-	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"country.csv", 0, 1, 3, false, countryMapID2Country, nil)
-	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"country.csv", 0, 2, 3, false, countryMapID2CountryCode, nil)
-	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"language.csv", 0, 1, 3, false, languageMapID2DisplayLanguage, nil)
-	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"language.csv", 0, 2, 3, false, languageMapID2HlParameterValue, nil)
-	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"gender.csv", 0, 1, 2, false, genderMapID2Description, nil)
-	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"reaction.csv", 0, 1, 2, false, reactionsMapID2Description, nil)
-	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"post_type.csv", 0, 1, 2, true, postTypeMapID2Type, postTypeMapType2ID)
-	loadConfigFromFile(globalConfig[env].PostgresConfigFolderPath+"category.csv", 0, 1, 2, false, categoryMapID2Name, nil)
-
-	for k, v := range countryMapID2Country {
-		countryConfigAPI = append(countryConfigAPI, countryAPI{
-			CountryID:   k,
-			Country:     v,
-			CountryCode: countryMapID2CountryCode[k],
-		})
+	var err error
+	if languageConfigAPI, err = getLanguages(); err != nil {
+		log.Fatalln("language config")
 	}
-	for k, v := range languageMapID2DisplayLanguage {
-		languageConfigAPI = append(languageConfigAPI, languageAPI{
-			LanguageID:      k,
-			DisplayLanguage: v,
-			Value:           languageMapID2HlParameterValue[k],
-		})
-	}
-	for k, v := range genderMapID2Description {
-		genderConfigAPI = append(genderConfigAPI, genderAPI{
-			GenderID: k,
-			Value:    v,
-		})
-	}
-	for k, v := range categoryMapID2Name {
-		categoryConfigAPI = append(categoryConfigAPI, categoryAPI{
-			CategoryID:   k,
-			CategoryName: v,
-		})
-	}
-	for k, v := range reactionsMapID2Description {
-		reactionConfigAPI = append(reactionConfigAPI, reactionAPI{
-			ReactionID: k,
-			Value:      v,
-		})
-	}
-	for k, v := range postTypeMapID2Type {
-		postType := postTypeAPI{
-			PostTypeID: k,
-			Value:      v,
+	if postTypeConfigAPI, err = getPostType(); err == nil {
+		IDs := []int{}
+		values := []string{}
+		for i := 0; i < len(postTypeConfigAPI); i++ {
+			IDs = append(IDs, postTypeConfigAPI[i].PostTypeID)
+			values = append(values, postTypeConfigAPI[i].Value)
 		}
-		switch v {
-		case mediaFormatJPG:
-			postType.FileFormat = []string{mediaFormatJPG}
-		case mediaFormatHLS:
-			postType.FileFormat = []string{mediaFormatM3U8, mediaFormatTS}
-		}
-		postTypeConfigAPI = append(postTypeConfigAPI, postType)
+		convertIDAndValue(IDs, values, true, postTypeMapID2Type, postTypeMapType2ID)
+	} else {
+		log.Fatalln("post type config")
 	}
+	if reactionConfigAPI, err = getReaction(); err == nil {
+		IDs := []int{}
+		values := []string{}
+		for i := 0; i < len(reactionConfigAPI); i++ {
+			IDs = append(IDs, reactionConfigAPI[i].ReactionID)
+			values = append(values, reactionConfigAPI[i].Value)
+		}
+		convertIDAndValue(IDs, values, false, reactionsMapID2Description, nil)
+	} else {
+		log.Println("reaction")
+	}
+	genderConfigAPI, err = getGender()
+	if err != nil {
+		log.Println("gender")
+	}
+	if categoryConfigAPI, err = getCategories(); err == nil {
+		IDs := []int{}
+		values := []string{}
+		for i := 0; i < len(categoryConfigAPI); i++ {
+			IDs = append(IDs, categoryConfigAPI[i].CategoryID)
+			values = append(values, categoryConfigAPI[i].CategoryName)
+		}
+		convertIDAndValue(IDs, values, false, categoryMapID2Name, nil)
+	} else {
+		log.Println("category config")
+	}
+	log.Println(postTypeMapID2Type, postTypeMapType2ID)
+	log.Println(reactionsMapID2Description)
+	log.Println(categoryMapID2Name)
 }
 
 func init() {

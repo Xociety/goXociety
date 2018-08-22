@@ -6,28 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strconv"
-	"strings"
 )
-
-func loadConfigFromFile(filePath string, indexID, indexTarget, length int, includeReverse bool, forward map[int]string, reverse map[string]int) {
-	file, err := os.Open(filePath)
-	if err == nil {
-		defer file.Close()
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			strSplitter := strings.Split(scanner.Text(), ";")
-			if len(strSplitter) == length {
-				if i, err := strconv.Atoi(strSplitter[indexID]); err == nil {
-					forward[i] = strSplitter[indexTarget]
-					if includeReverse {
-						reverse[strSplitter[indexTarget]] = i
-					}
-				}
-			}
-		}
-	}
-}
 
 func loadListFromFile(filePath string) (list []string) {
 	file, err := os.Open(filePath)
