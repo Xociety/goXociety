@@ -67,7 +67,6 @@ const (
 	mongoCollectionCity                 = "city"
 	mongoCollectionCountry              = "country"
 	mongoCollectionCityLevel            = "city_level_"
-	mongoCollectionPostPopular          = "post_popular"
 	mongoCollectionPostPopularCommon    = "post_popular_common"
 	mongoCollectionPostPopularReadIndex = "post_popular_read_index"
 	mongoCollectionPostPopularRead      = "post_popular_read"
@@ -168,9 +167,6 @@ func initData() {
 	} else {
 		log.Println("category config")
 	}
-	log.Println(postTypeMapID2Type, postTypeMapType2ID)
-	log.Println(reactionsMapID2Description)
-	log.Println(categoryMapID2Name)
 }
 
 func init() {

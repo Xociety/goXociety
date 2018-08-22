@@ -793,10 +793,7 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularReadIndex)
 	indexRead := postPopularReadIndexAPI{}
 	q := bson.M{"user_id": userID, "category_id": categoryID}
-	if err := collection.Find(q).One(&indexRead); err != nil {
-		log.Println("getPostsByPopular0", err)
-		return posts, err
-	}
+	collection.Find(q).One(&indexRead)
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
 	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularRead)
@@ -804,8 +801,8 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	r := postPopularReadAPI{}
 	collection.Find(q).One(&r)
 	// popular_common
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
-	q = bson.M{"user_id": userID, "category_id": categoryID}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostPopularCommon)
+	q = bson.M{"category_id": categoryID}
 	p := postPopularCommonAPI{}
 	if err := collection.Find(q).One(&p); err != nil {
 		log.Println("getPostsByPopular2", err)
@@ -2201,21 +2198,6 @@ func getPostsReadByUser(categoryID, weekTimestamp int, userID int64) (posts map[
 		}
 	}
 	return posts, nil
-}
-func upsertPostPopular(categoryID int, userID int64, posts []postAPI) (err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
-	if err != nil {
-		log.Println("mongo session", err)
-		return err
-	}
-	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostPopular)
-	selector := bson.M{"user_id": userID, "category_id": categoryID}
-	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"posts": posts}}); err != nil {
-		log.Println("upsertPostPopular", err)
-		return err
-	}
-	return nil
 }
 
 func upsertPostPopularCommon(categoryID int, posts []postAPI) (err error) {
