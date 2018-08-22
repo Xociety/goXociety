@@ -833,17 +833,17 @@ var graphqlQueryType = graphql.NewObject(
 			"country_post_count": &graphql.Field{
 				Type: countryGraphqlType,
 				Args: graphql.FieldConfigArgument{
-					"city_code": &graphql.ArgumentConfig{
+					"country_code": &graphql.ArgumentConfig{
 						Type:        graphql.String,
-						Description: "city_code",
+						Description: "country_code",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					cityCode, isOK := p.Args["city_code"].(string)
+					countryCode, isOK := p.Args["country_code"].(string)
 					if !isOK {
-						return nil, errors.New("city_code format")
+						return nil, errors.New("country_code format")
 					}
-					ct, err := getCountryPostCount(cityCode)
+					ct, err := getCountryPostCount(countryCode)
 					return ct, err
 				},
 				Description: "",
