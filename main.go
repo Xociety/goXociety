@@ -79,6 +79,11 @@ const numPopularPostPerRefresh = 10000
 // GCP cloud storage
 var clientOptionGoogleAPI option.ClientOption
 
+// Google map
+var googleMapKey string
+
+const radiusGoogleMap = 200
+
 const (
 	bucketPostCloudStorage   = "posts"
 	bucketImagesCloudStorage = bucketPostCloudStorage + "/images"
@@ -121,6 +126,16 @@ func initGCP() {
 	// GCP
 	// cloud storage
 	clientOptionGoogleAPI = option.WithServiceAccountFile(globalConfig[env].GCPSecretFolderPath + globalConfig[env].GCPSecretFilename)
+	// google map
+	googleMap := secretMap{}
+	if file, err := ioutil.ReadFile(globalConfig[env].GCPSecretFolderPath + globalConfig[env].GoogleMapKeyFilename); err != nil {
+		log.Panicln("google map secret file miss", err)
+	} else {
+		if err := json.Unmarshal(file, &googleMap); err != nil {
+			log.Panicln("google map file parse fail", err)
+		}
+	}
+	googleMapKey = googleMap.Key
 }
 func initData() {
 	var err error

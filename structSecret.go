@@ -14,3 +14,7 @@ type secretMongo struct {
 	MongoPassword string `json:"mongo_password"`
 	MongoDatabase string `json:"mongo_database"`
 }
+
+type secretMap struct {
+	Key string `json:"key"`
+}

@@ -2,12 +2,6 @@
 -- alter table XXX DROP CONTAINT XXX;
 -- alter table post ADD CONSTAINT post_type_fkey FOREIGN KEY (type) REFERENCES post_type(post_type_id) ON DELETE CASCADE ON UPDATE CASCADE;
 ------------------------
-CREATE TABLE country (
-    country_id          integer PRIMARY KEY NOT NULL,
-    country             VARCHAR(200),
-    country_code        VARCHAR(2)
-);
-------------------------
 CREATE TABLE language (
     language_id         integer PRIMARY KEY NOT NULL,
     display_language    VARCHAR(200),
@@ -48,7 +42,7 @@ CREATE TABLE xuser(
     credit              double precision,
     photo_url           VARCHAR(200),
     language_id         integer references language(language_id),
-    country_id          integer references country(country_id),
+    country_code        VARCHAR(3), -- country.country_code
     timezone            integer,
     last_ip             VARCHAR(15), -- ipv4 123.194.188.0
     -- apid
@@ -70,12 +64,19 @@ CREATE INDEX follow_createtime ON follow USING btree (createtime);
 -- following limit 7500 on Instagram, we might limit following 5000 people
 ------------------------
 CREATE TABLE place (
-    place_id    BIGSERIAL PRIMARY KEY NOT NULL,
-    -- city_id
-    position    point,
-    name        VARCHAR(50),
-    check_count bigint
-    -- CONSTRAINT position_point_name_unique UNIQUE (position, name) [ERROR:  data type point has no default operator class for access method "btree", HINT:  You must specify an operator class for the index or define a default operator class for the data type.]
+    place_id        BIGSERIAL PRIMARY KEY NOT NULL,
+    country_code    VARCHAR(3),
+    city_id_1       VARCHAR(25),
+    city_id_2       VARCHAR(25),
+    city_id_3       VARCHAR(25),
+    city_id_4       VARCHAR(25),
+    city_id_5       VARCHAR(25),
+    lat             double precision,
+    lon             double precision,
+    name            VARCHAR(50),
+    address         VARCHAR(100),
+    total_check_count bigint
+    -- CONSTRAINT position_point_name_unique UNIQUE (lat, lon, name) [ERROR:  data type point has no default operator class for access method "btree", HINT:  You must specify an operator class for the index or define a default operator class for the data type.]
 );
 ------------------------
 CREATE TABLE post (
@@ -91,7 +92,6 @@ CREATE TABLE post (
     dislike_count       bigint,
     comment_count       bigint,
     place_id            bigint references place(place_id),
-    country_id          integer references country(country_id),
     category_id         integer, -- references
     public              boolean, -- public post in the future
     createtime          integer, -- timestamp without time zone, unix time

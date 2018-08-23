@@ -121,7 +121,7 @@ func parsehashtagOnPostSQL(postID int64, hashtagsID []int64) (sqlStrInsert, sqlS
 	sqlStrDelete += `);`
 	return
 }
-func parseTagOnPostInserSQL(postID int64, tags []tagOnPostSetAPI) (sqlStr string, args []interface{}) {
+func parseTagOnPostInsertSQL(postID int64, tags []tagOnPostSetAPI) (sqlStr string, args []interface{}) {
 	/*
 		in order to insert multiple hashtag on post in one sql command, this func parse the command and parameters
 		basic insert:

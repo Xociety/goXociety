@@ -82,6 +82,26 @@ type cityLevelAPI struct {
 	PostCount int    `json:"post_count" bson:"post_count"`
 }
 
+// place
+type placesLookupAPI struct {
+	Place         []placeAPI `json:"place"`
+	NextPageToken string     `json:"next_page_token"`
+}
+type placeAPI struct {
+	PlaceID    int64   `json:"place_id"`
+	ContryCode string  `json:"contry_code"`
+	CityID1    string  `json:"city_id_1"`
+	CityID2    string  `json:"city_id_2"`
+	CityID3    string  `json:"city_id_3"`
+	CityID4    string  `json:"city_id_4"`
+	CityID5    string  `json:"city_id_5"`
+	Lat        float64 `json:"lat"`
+	Lon        float64 `json:"lon"`
+	Name       string  `json:"name"`
+	// Address string
+	// TotalCheckCount int64
+}
+
 // post
 type userBasicAPI struct {
 	UserID   int64  `json:"user_id" bson:"user_id"`

@@ -9,6 +9,7 @@ type config struct {
 	GCPBucketRootCloudStorage  string `json:"gcp_bucket_root_cloud_storage"`
 	GCPSecretFolderPath        string `json:"gcp_secret_folder_path"`
 	GCPSecretFilename          string `json:"gcp_secret_filename"`
+	GoogleMapKeyFilename       string `json:"google_map_key_filename"`
 	PostgresConfigFolderPath   string `json:"postgres_config_folder_path"`
 	PostgresConStr             string `json:"postgres_con_str"`
 	PostgresSecretFolderPath   string `json:"postgres_secret_folder_path"`

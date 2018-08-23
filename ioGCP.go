@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"googlemaps.github.io/maps"
 )
 
 func makeBucketFolderName(postType int, blobID string) (foldername string) {
@@ -126,4 +127,66 @@ func untarFileAndUpload(post postAPI, r io.Reader, isGCP bool) error {
 		}
 	}
 	return nil
+}
+
+func getPlaceByLocationGCP(lat, lon float64, keyword, pageToken string) (places []placeAPI, nextPageToken string, err error) {
+	c, err := maps.NewClient(maps.WithAPIKey(googleMapKey))
+	if err != nil {
+		log.Println("google map client ", err)
+		return places, "", err
+	}
+	r := &maps.NearbySearchRequest{
+		Location: &maps.LatLng{Lat: lat, Lng: lon},
+		Radius:   radiusGoogleMap,
+		Language: "en",
+	}
+	if keyword != "" {
+		r.Keyword = keyword
+	}
+	if pageToken != "" {
+		r.PageToken = pageToken
+	}
+	resp, err := c.NearbySearch(context.Background(), r)
+	if err != nil {
+		log.Println("getPlaceByLocationGCP", err)
+		return places, "", err
+	}
+	for i := 0; i < len(resp.Results); i++ {
+		place := placeAPI{
+			Name: resp.Results[i].Name,
+			Lat:  resp.Results[i].Geometry.Location.Lat,
+			Lon:  resp.Results[i].Geometry.Location.Lng,
+		}
+		places = append(places, place)
+	}
+	return places, resp.NextPageToken, nil
+}
+
+func getPlaceByNameGCP(keyword, pageToken string) (places []placeAPI, nextPageToken string, err error) {
+	c, err := maps.NewClient(maps.WithAPIKey(googleMapKey))
+	if err != nil {
+		log.Println("google map client ", err)
+		return places, "", err
+	}
+	r := &maps.TextSearchRequest{
+		Query:  "restaurants+in+Sydney",
+		Radius: radiusGoogleMap,
+	}
+	if pageToken != "" {
+		r.PageToken = pageToken
+	}
+	resp, err := c.TextSearch(context.Background(), r)
+	if err != nil {
+		log.Println("getPlaceByNameGCP", err)
+		return places, "", err
+	}
+	for i := 0; i < len(resp.Results); i++ {
+		place := placeAPI{
+			Name: resp.Results[i].Name,
+			Lat:  resp.Results[i].Geometry.Location.Lat,
+			Lon:  resp.Results[i].Geometry.Location.Lng,
+		}
+		places = append(places, place)
+	}
+	return places, resp.NextPageToken, nil
 }

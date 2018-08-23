@@ -600,6 +600,77 @@ func getCityLevelPostCount(level string, cityID string) (cl cityLevelAPI, err er
 	return cl, nil
 }
 
+// place
+func getPlacesByPlacesGCP(placesGCP []placeAPI) (places []placeAPI, err error) {
+	c, err := connectPostgres(postgresConStr)
+	if err != nil {
+		return places, errors.New("db connection")
+	}
+	defer c.db.Close()
+	name := []string{}
+	lat := []float64{}
+	lon := []float64{}
+	for i := 0; i < len(placesGCP); i++ {
+		name = append(name, placesGCP[i].Name)
+		lat = append(lat, placesGCP[i].Lat)
+		lon = append(lon, placesGCP[i].Lon)
+	}
+	sqlStr, args := parsePlaceSelectSQL(name, lat, lon)
+	rows, err := c.db.Query(sqlStr, args...)
+	if err != nil {
+		log.Println("getPlacesByNameLocation", err)
+		return places, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		place := placeAPI{}
+		if err := rows.Scan(
+			&place.PlaceID,
+		); err != nil {
+			log.Println(err)
+			return places, err
+		}
+		places = append(places, place)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return places, err
+	}
+	return places, nil
+}
+func getPlacesByNameLocation(name []string, lat, lon []float64) (places []placeAPI, err error) {
+	if !(len(name) == len(lat) && len(name) == len(lon) && len(lat) == len(lon)) {
+		return places, errors.New("getPlacesByNameLocation input length wrong")
+	}
+	c, err := connectPostgres(postgresConStr)
+	if err != nil {
+		return places, errors.New("db connection")
+	}
+	defer c.db.Close()
+	sqlStr, args := parsePlaceSelectSQL(name, lat, lon)
+	rows, err := c.db.Query(sqlStr, args...)
+	if err != nil {
+		log.Println("getPlacesByNameLocation", err)
+		return places, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		place := placeAPI{}
+		if err := rows.Scan(
+			&place.PlaceID,
+		); err != nil {
+			log.Println(err)
+			return places, err
+		}
+		places = append(places, place)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return places, err
+	}
+	return places, nil
+}
+
 // post
 func getPostsByRecentPage(categoryID, page int) (posts []postAPI, err error) {
 	numPerRequest := 10
@@ -1640,7 +1711,7 @@ func tagsOnPostSet(postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, er
 		return us, errors.New("db connection")
 	}
 	defer c.db.Close()
-	sqlStr, args := parseTagOnPostInserSQL(postID, tags)
+	sqlStr, args := parseTagOnPostInsertSQL(postID, tags)
 	res, err := c.db.Exec(sqlStr, args...)
 	if err != nil {
 		return us, err
