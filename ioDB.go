@@ -615,7 +615,7 @@ func getPlacesByPlacesGCP(placesGCP []placeAPI) (places []placeAPI, err error) {
 		lat = append(lat, placesGCP[i].Lat)
 		lon = append(lon, placesGCP[i].Lon)
 	}
-	sqlStr, args := parsePlaceSelectSQL(name, lat, lon)
+	sqlStr, args := parsePlaceSelectBasicSQL(name, lat, lon)
 	rows, err := c.db.Query(sqlStr, args...)
 	if err != nil {
 		log.Println("getPlacesByNameLocation", err)
@@ -626,6 +626,9 @@ func getPlacesByPlacesGCP(placesGCP []placeAPI) (places []placeAPI, err error) {
 		place := placeAPI{}
 		if err := rows.Scan(
 			&place.PlaceID,
+			&place.Lat,
+			&place.Lon,
+			&place.Name,
 		); err != nil {
 			log.Println(err)
 			return places, err
@@ -639,35 +642,41 @@ func getPlacesByPlacesGCP(placesGCP []placeAPI) (places []placeAPI, err error) {
 	return places, nil
 }
 func getPlacesByNameLocation(name []string, lat, lon []float64) (places []placeAPI, err error) {
-	if !(len(name) == len(lat) && len(name) == len(lon) && len(lat) == len(lon)) {
-		return places, errors.New("getPlacesByNameLocation input length wrong")
-	}
-	c, err := connectPostgres(postgresConStr)
-	if err != nil {
-		return places, errors.New("db connection")
-	}
-	defer c.db.Close()
-	sqlStr, args := parsePlaceSelectSQL(name, lat, lon)
-	rows, err := c.db.Query(sqlStr, args...)
-	if err != nil {
-		log.Println("getPlacesByNameLocation", err)
-		return places, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		place := placeAPI{}
-		if err := rows.Scan(
-			&place.PlaceID,
-		); err != nil {
+	/*
+		this should be used for query location in db only
+		if !(len(name) == len(lat) && len(name) == len(lon) && len(lat) == len(lon)) {
+			return places, errors.New("getPlacesByNameLocation input length wrong")
+		}
+		c, err := connectPostgres(postgresConStr)
+		if err != nil {
+			return places, errors.New("db connection")
+		}
+		defer c.db.Close()
+		sqlStr, args := parsePlaceSelectAllSQL(name, lat, lon)
+		rows, err := c.db.Query(sqlStr, args...)
+		if err != nil {
+			log.Println("getPlacesByNameLocation", err)
+			return places, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			place := placeAPI{}
+			if err := rows.Scan(
+				&place.PlaceID,
+				&place.Lat,
+				&place.Lon,
+				&place.Name,
+			); err != nil {
+				log.Println(err)
+				return places, err
+			}
+			places = append(places, place)
+		}
+		if err := rows.Err(); err != nil {
 			log.Println(err)
 			return places, err
 		}
-		places = append(places, place)
-	}
-	if err := rows.Err(); err != nil {
-		log.Println(err)
-		return places, err
-	}
+	*/
 	return places, nil
 }
 
@@ -1431,6 +1440,38 @@ func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err er
 	}
 	us.RowsAffected = int(count)
 	return us, nil
+}
+
+// place
+func placeInsert(place placeAPI) (placeID int64, err error) {
+	c, err := connectPostgres(postgresConStr)
+	if err != nil {
+		return placeID, errors.New("db connection")
+	}
+	defer c.db.Close()
+	sqlStr := `
+		INSERT INTO place 
+		(country_code, city_id_1, city_id_2, city_id_3, city_id_4, city_id_5, lat, lon, name, address, total_check_count) 
+		values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning place_id;
+	`
+	err = c.db.QueryRow(sqlStr,
+		place.ContryCode,
+		place.CityID1,
+		place.CityID2,
+		place.CityID3,
+		place.CityID4,
+		place.CityID5,
+		place.Lat,
+		place.Lon,
+		place.Name,
+		"",
+		place.TotalCheckCount,
+	).Scan(&placeID)
+	if err != nil {
+		// log.Println(err)
+		return placeID, err
+	}
+	return placeID, nil
 }
 
 // post

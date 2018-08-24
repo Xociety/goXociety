@@ -76,7 +76,7 @@ CREATE TABLE place (
     name            VARCHAR(50),
     address         VARCHAR(100),
     total_check_count bigint
-    -- CONSTRAINT position_point_name_unique UNIQUE (lat, lon, name) [ERROR:  data type point has no default operator class for access method "btree", HINT:  You must specify an operator class for the index or define a default operator class for the data type.]
+    CONSTRAINT place_location_name_unique UNIQUE (lat, lon, name) -- [ERROR:  data type point has no default operator class for access method "btree", HINT:  You must specify an operator class for the index or define a default operator class for the data type.]
 );
 ------------------------
 CREATE TABLE post (

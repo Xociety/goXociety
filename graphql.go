@@ -399,27 +399,27 @@ var placesLookupGraphql = graphql.NewObject(
 			"place":           &graphql.Field{Type: placesGraphqlType},
 			"next_page_token": &graphql.Field{Type: graphql.String},
 		},
+		Description: "if place_id equals 0, it means that it's not existed in our db",
 	},
 )
-var placesGraphqlType = graphql.NewList(
-	graphql.NewObject(
-		graphql.ObjectConfig{
-			Name: "place",
-			Fields: graphql.Fields{
-				"place_id":     &graphql.Field{Type: int64GraphqlScalar},
-				"country_code": &graphql.Field{Type: graphql.String},
-				"city_id_1":    &graphql.Field{Type: graphql.String},
-				"city_id_2":    &graphql.Field{Type: graphql.String},
-				"city_id_3":    &graphql.Field{Type: graphql.String},
-				"city_id_4":    &graphql.Field{Type: graphql.String},
-				"city_id_5":    &graphql.Field{Type: graphql.String},
-				"lat":          &graphql.Field{Type: graphql.Float},
-				"lon":          &graphql.Field{Type: graphql.Float},
-				"name":         &graphql.Field{Type: graphql.String},
-			},
+var placeGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "place",
+		Fields: graphql.Fields{
+			"place_id":     &graphql.Field{Type: int64GraphqlScalar},
+			"country_code": &graphql.Field{Type: graphql.String},
+			"city_id_1":    &graphql.Field{Type: graphql.String},
+			"city_id_2":    &graphql.Field{Type: graphql.String},
+			"city_id_3":    &graphql.Field{Type: graphql.String},
+			"city_id_4":    &graphql.Field{Type: graphql.String},
+			"city_id_5":    &graphql.Field{Type: graphql.String},
+			"lat":          &graphql.Field{Type: graphql.Float},
+			"lon":          &graphql.Field{Type: graphql.Float},
+			"name":         &graphql.Field{Type: graphql.String},
 		},
-	),
+	},
 )
+var placesGraphqlType = graphql.NewList(placeGraphqlType)
 
 // post
 var postGraphqlType = graphql.NewObject(
@@ -962,19 +962,20 @@ var graphqlQueryType = graphql.NewObject(
 					// combine places then return
 					places := []placeAPI{}
 					for i := 0; i < len(placesGCP); i++ {
+						place := placeAPI{
+							Lat:  placesGCP[i].Lat,
+							Lon:  placesGCP[i].Lon,
+							Name: placesGCP[i].Name,
+						}
 						for j := 0; j < len(placesDB); j++ {
 							if placesGCP[i].Name == placesDB[j].Name &&
 								placesGCP[i].Lat == placesDB[j].Lat &&
 								placesGCP[i].Lon == placesDB[j].Lon { // geo near check?
-								place := placeAPI{
-									PlaceID: placesDB[j].PlaceID,
-									Lat:     placesGCP[i].Lat,
-									Lon:     placesGCP[i].Lon,
-								}
-								places = append(places, place)
+								place.PlaceID = placesDB[j].PlaceID
 								break
 							}
 						}
+						places = append(places, place)
 					}
 					return placesLookupAPI{places, nextPageToken}, err
 				},
@@ -1017,19 +1018,20 @@ var graphqlQueryType = graphql.NewObject(
 					// combine places then return
 					places := []placeAPI{}
 					for i := 0; i < len(placesGCP); i++ {
+						place := placeAPI{
+							Lat:  placesGCP[i].Lat,
+							Lon:  placesGCP[i].Lon,
+							Name: placesGCP[i].Name,
+						}
 						for j := 0; j < len(placesDB); j++ {
 							if placesGCP[i].Name == placesDB[j].Name &&
 								placesGCP[i].Lat == placesDB[j].Lat &&
 								placesGCP[i].Lon == placesDB[j].Lon { // geo near check?
-								place := placeAPI{
-									PlaceID: placesDB[j].PlaceID,
-									Lat:     placesGCP[i].Lat,
-									Lon:     placesGCP[i].Lon,
-								}
-								places = append(places, place)
+								place.PlaceID = placesDB[j].PlaceID
 								break
 							}
 						}
+						places = append(places, place)
 					}
 					return placesLookupAPI{places, nextPageToken}, err
 				},
@@ -1405,6 +1407,57 @@ var graphqlMutationType = graphql.NewObject(
 					return us, err
 				},
 				Description: "",
+			},
+			"place_insert": &graphql.Field{
+				Type: placeGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"lat": &graphql.ArgumentConfig{
+						Type:        graphql.Float,
+						Description: "latitude",
+					},
+					"lon": &graphql.ArgumentConfig{
+						Type:        graphql.Float,
+						Description: "longitude",
+					},
+					"name": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					lat, isOK := p.Args["lat"].(float64)
+					if !isOK {
+						return nil, errors.New("lat format")
+					}
+					lon, isOK := p.Args["lon"].(float64)
+					if !isOK {
+						return nil, errors.New("lon format")
+					}
+					name, isOK := p.Args["name"].(string)
+					if !isOK {
+						return nil, errors.New("name format")
+					}
+					// format check
+					// source check
+					place := placeAPI{Lat: lat, Lon: lon, Name: name}
+					// city lookup
+					cities, err := getCityByLocation(lat, lon)
+					if err != nil {
+						return nil, err
+					}
+					if len(cities) >= 1 { // which is closest city sortby mongo
+						place.ContryCode = cities[0].Properties.CountryCode
+						place.CityID1 = cities[0].Properties.CityID1
+						place.CityID2 = cities[0].Properties.CityID2
+						place.CityID3 = cities[0].Properties.CityID3
+						place.CityID4 = cities[0].Properties.CityID4
+						place.CityID5 = cities[0].Properties.CityID5
+					}
+					// place_insert
+					place.PlaceID, err = placeInsert(place)
+					return place, err
+				},
+				Description: "please enter data which query place provide",
 			},
 			"post_insert": &graphql.Field{
 				Type: postGraphqlType,

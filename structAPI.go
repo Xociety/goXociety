@@ -99,7 +99,7 @@ type placeAPI struct {
 	Lon        float64 `json:"lon"`
 	Name       string  `json:"name"`
 	// Address string
-	// TotalCheckCount int64
+	TotalCheckCount int64 `json:"total_check_count"`
 }
 
 // post
