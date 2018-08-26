@@ -16,6 +16,8 @@
 
 `go get github.com/globalsign/mgo`
 
+`go get googlemaps.github.io/maps`
+
 ## dns
 
 | Type   |      Name      |  Value |
