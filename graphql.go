@@ -260,21 +260,21 @@ var userGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "User",
 		Fields: graphql.Fields{
-			"user_id":     &graphql.Field{Type: int64GraphqlScalar},
-			"username":    &graphql.Field{Type: graphql.String},
-			"email":       &graphql.Field{Type: graphql.String},
-			"name":        &graphql.Field{Type: graphql.String},
-			"phone":       &graphql.Field{Type: graphql.String},
-			"gender":      &graphql.Field{Type: graphql.Int},
-			"bio":         &graphql.Field{Type: graphql.String},
-			"credit":      &graphql.Field{Type: graphql.Int},
-			"photo_url":   &graphql.Field{Type: graphql.String},
-			"language_id": &graphql.Field{Type: graphql.Int},
-			"country_id":  &graphql.Field{Type: graphql.Int},
-			"timezone":    &graphql.Field{Type: graphql.Int},
-			"last_ip":     &graphql.Field{Type: graphql.String},
-			"createtime":  &graphql.Field{Type: graphql.Int},
-			"updatetime":  &graphql.Field{Type: graphql.Int},
+			"user_id":      &graphql.Field{Type: int64GraphqlScalar},
+			"username":     &graphql.Field{Type: graphql.String},
+			"email":        &graphql.Field{Type: graphql.String},
+			"name":         &graphql.Field{Type: graphql.String},
+			"phone":        &graphql.Field{Type: graphql.String},
+			"gender":       &graphql.Field{Type: graphql.Int},
+			"bio":          &graphql.Field{Type: graphql.String},
+			"credit":       &graphql.Field{Type: graphql.Int},
+			"photo_url":    &graphql.Field{Type: graphql.String},
+			"language_id":  &graphql.Field{Type: graphql.Int},
+			"country_code": &graphql.Field{Type: graphql.String},
+			"timezone":     &graphql.Field{Type: graphql.Int},
+			"last_ip":      &graphql.Field{Type: graphql.String},
+			"createtime":   &graphql.Field{Type: graphql.Int},
+			"updatetime":   &graphql.Field{Type: graphql.Int},
 		},
 	},
 )
@@ -434,7 +434,7 @@ var postGraphqlType = graphql.NewObject(
 			"like_count":    &graphql.Field{Type: int64GraphqlScalar},
 			"dislike_count": &graphql.Field{Type: int64GraphqlScalar},
 			"comment_count": &graphql.Field{Type: int64GraphqlScalar},
-			"country_id":    &graphql.Field{Type: graphql.Int},
+			"place":         &graphql.Field{Type: placeGraphqlType},
 			"category_id":   &graphql.Field{Type: graphql.Int},
 			"createtime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 			"updatetime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
@@ -568,13 +568,13 @@ func parsePost(p graphql.ResolveParams, postID, userID int64, postType, originWi
 	if !isOK {
 		return post, errors.New("content format")
 	}
-	countryID, isOK := p.Args["country_id"].(int)
-	if !isOK {
-		return post, errors.New("country_id format")
-	}
 	categoryID, isOK := p.Args["category_id"].(int)
 	if !isOK {
 		return post, errors.New("category_id format")
+	}
+	placeID, isOK := p.Args["place_id"].(int64)
+	if !isOK {
+		return post, errors.New("place_id format")
 	}
 	timestamp := getNowUnixTimestamp()
 	post.PostID = postID
@@ -583,17 +583,22 @@ func parsePost(p graphql.ResolveParams, postID, userID int64, postType, originWi
 	post.Blob.BlobID = strconv.FormatInt(userID, 10) + "_" + strconv.Itoa(timestamp)
 	post.Blob.OriginWidth = originWidth
 	post.Blob.OriginHeight = originHeight
-	// Point
 	post.Type = postType
-	post.CommentCount = 0
 	post.LikeCount = 0
 	post.DislikeCount = 0
-	post.CountryID = countryID
+	post.CommentCount = 0
+	post.Place.PlaceID = placeID
 	post.CategoryID = categoryID
 	post.Public = true
 	post.Createtime = timestamp
 	post.Updatetime = timestamp
 	return post, nil
+}
+func checkPost(post postAPI) error {
+	if post.Place.PlaceID == 0 && post.CategoryID == categorySup {
+		return errors.New(categoryMapID2Name[categorySup] + " must with place")
+	}
+	return nil
 }
 func parseComment(p graphql.ResolveParams, commentID, postID, userID int64) (c commentAPI, err error) {
 	comment, isOK := p.Args["comment"].(string)
@@ -962,16 +967,12 @@ var graphqlQueryType = graphql.NewObject(
 					// combine places then return
 					places := []placeAPI{}
 					for i := 0; i < len(placesGCP); i++ {
-						place := placeAPI{
-							Lat:  placesGCP[i].Lat,
-							Lon:  placesGCP[i].Lon,
-							Name: placesGCP[i].Name,
-						}
+						place := placesGCP[i]
 						for j := 0; j < len(placesDB); j++ {
 							if placesGCP[i].Name == placesDB[j].Name &&
 								placesGCP[i].Lat == placesDB[j].Lat &&
 								placesGCP[i].Lon == placesDB[j].Lon { // geo near check?
-								place.PlaceID = placesDB[j].PlaceID
+								place = placesDB[j]
 								break
 							}
 						}
@@ -1018,16 +1019,12 @@ var graphqlQueryType = graphql.NewObject(
 					// combine places then return
 					places := []placeAPI{}
 					for i := 0; i < len(placesGCP); i++ {
-						place := placeAPI{
-							Lat:  placesGCP[i].Lat,
-							Lon:  placesGCP[i].Lon,
-							Name: placesGCP[i].Name,
-						}
+						place := placesGCP[i]
 						for j := 0; j < len(placesDB); j++ {
 							if placesGCP[i].Name == placesDB[j].Name &&
 								placesGCP[i].Lat == placesDB[j].Lat &&
 								placesGCP[i].Lon == placesDB[j].Lon { // geo near check?
-								place.PlaceID = placesDB[j].PlaceID
+								place = placesDB[j]
 								break
 							}
 						}
@@ -1059,7 +1056,88 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
-					posts, err := getPostsByRecentPage(categoryID, page)
+					posts, err := getPostsByRecent(categoryID, page)
+					return posts, err
+				},
+				Description: "",
+			},
+			"posts_by_recent_country": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"country_code": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "country_code",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
+					countryCode, isOK := p.Args["country_code"].(string)
+					if !isOK {
+						return nil, errors.New("country_code format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByRecentCountryCode(countryCode, categoryID, page)
+					return posts, err
+				},
+				Description: "",
+			},
+			"posts_by_recent_city": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"level": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "level",
+					},
+					"city_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "city_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
+					level, isOK := p.Args["level"].(int)
+					if !isOK {
+						return nil, errors.New("level format")
+					}
+					if level < 1 || level > 5 {
+						return nil, errors.New("level format")
+					}
+					cityID, isOK := p.Args["city_id"].(string)
+					if !isOK {
+						return nil, errors.New("city_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByRecentCity(strconv.Itoa(level), cityID, categoryID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1197,6 +1275,33 @@ var graphqlQueryType = graphql.NewObject(
 					}
 					// block check
 					posts, err := getPostsByTag(userID, page)
+					return posts, err
+				},
+				Description: "",
+			},
+			"posts_by_place": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"place_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "user_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					placeID, isOK := p.Args["place_id"].(int64)
+					if !isOK {
+						return nil, errors.New("place_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByPlaceID(placeID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1446,7 +1551,7 @@ var graphqlMutationType = graphql.NewObject(
 						return nil, err
 					}
 					if len(cities) >= 1 { // which is closest city sortby mongo
-						place.ContryCode = cities[0].Properties.CountryCode
+						place.CountryCode = cities[0].Properties.CountryCode
 						place.CityID1 = cities[0].Properties.CityID1
 						place.CityID2 = cities[0].Properties.CityID2
 						place.CityID3 = cities[0].Properties.CityID3
@@ -1466,13 +1571,13 @@ var graphqlMutationType = graphql.NewObject(
 						Type:        graphql.String,
 						Description: "content",
 					},
-					"country_id": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "country_id",
-					},
 					"category_id": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
 						Description: "category_id",
+					},
+					"place_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "place_id",
 					},
 					"type": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
@@ -1526,7 +1631,9 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return post, err
 					}
-					// place check[lat lon check]
+					if err = checkPost(post); err != nil {
+						return post, err
+					}
 					// file size check
 					err = untarFileAndUpload(post, file, true)
 					if err != nil {
@@ -1552,7 +1659,7 @@ var graphqlMutationType = graphql.NewObject(
 					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
 					return post, err
 				},
-				Description: "",
+				Description: "place_id:0 => no place",
 				DeprecationReason: `please use form-data to upload file, form-data key:
 						query: mutation{post(...:...){post_id}}
 						file: tar.gz file,
@@ -1574,13 +1681,13 @@ var graphqlMutationType = graphql.NewObject(
 						Type:        graphql.Boolean,
 						Description: "is_update_content",
 					},
-					"country_id": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "country_id",
-					},
 					"category_id": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
 						Description: "category_id",
+					},
+					"place_id": &graphql.ArgumentConfig{
+						Type:        int64GraphqlScalar,
+						Description: "place_id",
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -1601,7 +1708,9 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return post, err
 					}
-					// place check[lat lon check]
+					if err = checkPost(post); err != nil {
+						return post, err
+					}
 					us, err := postUpdate(post)
 					if err != nil {
 						return us, err

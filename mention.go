@@ -85,7 +85,7 @@ func checkMention(content string) (hashtags []string, tags []string) {
 	return
 }
 
-func parsehashtagOnPostSQL(postID int64, hashtagsID []int64) (sqlStrInsert, sqlStrDelete string, args []interface{}) {
+func parseHashtagOnPostSQL(postID int64, hashtagsID []int64) (sqlStrInsert, sqlStrDelete string, args []interface{}) {
 	/*
 		in order to insert multiple hashtag on post in one sql command, this func parse the command and parameters
 		basic insert:

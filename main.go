@@ -45,6 +45,7 @@ const (
 	twentyFourHoursInSecond = 24 * 60 * 60
 	sevenDaysInSecond       = 7 * 24 * 60 * 60
 	twoMonthsInSecond       = 2 * 30 * 24 * 60 * 60
+	categorySup             = 0
 )
 
 var (

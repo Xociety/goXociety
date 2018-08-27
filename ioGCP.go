@@ -169,7 +169,7 @@ func getPlaceByNameGCP(keyword, pageToken string) (places []placeAPI, nextPageTo
 		return places, "", err
 	}
 	r := &maps.TextSearchRequest{
-		Query:  "restaurants+in+Sydney",
+		Query:  keyword,
 		Radius: radiusGoogleMap,
 	}
 	if pageToken != "" {

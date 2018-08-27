@@ -14,21 +14,21 @@ type loginAPI struct {
 
 // user
 type xuserAPI struct {
-	UserID     int64  `json:"user_id"`
-	Username   string `json:"username"`
-	Email      string `json:"email"`
-	Name       string `json:"name"`
-	Phone      string `json:"phone"`
-	Gender     int    `json:"gender"`
-	Bio        string `json:"bio"`
-	Credit     int    `json:"credit"`
-	PhotoURL   string `json:"photo_url"`
-	LanguageID int    `json:"language_id"`
-	CountryID  int    `json:"country_id"`
-	Timezone   int    `json:"timezone"`
-	LastIP     string `json:"last_ip"`
-	Updatetime int    `json:"updatetime"`
-	Createtime int    `json:"createtime"`
+	UserID      int64  `json:"user_id"`
+	Username    string `json:"username"`
+	Email       string `json:"email"`
+	Name        string `json:"name"`
+	Phone       string `json:"phone"`
+	Gender      int    `json:"gender"`
+	Bio         string `json:"bio"`
+	Credit      int    `json:"credit"`
+	PhotoURL    string `json:"photo_url"`
+	LanguageID  int    `json:"language_id"`
+	CountryCode string `json:"country_code"`
+	Timezone    int    `json:"timezone"`
+	LastIP      string `json:"last_ip"`
+	Updatetime  int    `json:"updatetime"`
+	Createtime  int    `json:"createtime"`
 }
 
 // follow
@@ -88,16 +88,16 @@ type placesLookupAPI struct {
 	NextPageToken string     `json:"next_page_token"`
 }
 type placeAPI struct {
-	PlaceID    int64   `json:"place_id"`
-	ContryCode string  `json:"contry_code"`
-	CityID1    string  `json:"city_id_1"`
-	CityID2    string  `json:"city_id_2"`
-	CityID3    string  `json:"city_id_3"`
-	CityID4    string  `json:"city_id_4"`
-	CityID5    string  `json:"city_id_5"`
-	Lat        float64 `json:"lat"`
-	Lon        float64 `json:"lon"`
-	Name       string  `json:"name"`
+	PlaceID     int64   `json:"place_id"`
+	CountryCode string  `json:"country_code"`
+	CityID1     string  `json:"city_id_1"`
+	CityID2     string  `json:"city_id_2"`
+	CityID3     string  `json:"city_id_3"`
+	CityID4     string  `json:"city_id_4"`
+	CityID5     string  `json:"city_id_5"`
+	Lat         float64 `json:"lat"`
+	Lon         float64 `json:"lon"`
+	Name        string  `json:"name"`
 	// Address string
 	TotalCheckCount int64 `json:"total_check_count"`
 }
@@ -123,8 +123,8 @@ type postAPI struct {
 	LikeCount    int64        `json:"like_count" bson:"like_count"`
 	DislikeCount int64        `json:"dislike_count" bson:"dislike_count"`
 	CommentCount int64        `json:"comment_count" bson:"comment_count"`
-	CountryID    int          `json:"country_id" bson:"country_id"`
 	CategoryID   int          `json:"category_id" bson:"category_id"`
+	Place        placeAPI     `json:"place" bson:"place"`
 	Public       bool         `json:"public" bson:"public"`
 	Createtime   int          `json:"createtime" bson:"createtime"`
 	Updatetime   int          `json:"updatetime" bson:"updatetime"`

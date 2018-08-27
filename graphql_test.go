@@ -146,12 +146,12 @@ func TestGraphqlMutationPostInsert(t *testing.T) {
 	q := `
 		mutation {
 			post_insert(
-				country_id: 206,
 				type:0,
 				origin_width:1920,
 				origin_height:1280,
 				content: "ya",
-				category_id:0,
+				category_id:1,
+				place_id: 0,
 			){
 				post_id
 			}
