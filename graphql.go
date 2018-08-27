@@ -441,6 +441,25 @@ var postGraphqlType = graphql.NewObject(
 		},
 	},
 )
+var postWithoutPlaceGraphqlType = graphql.NewObject(
+	graphql.ObjectConfig{
+		Name: "post_without_place",
+		Fields: graphql.Fields{
+			"post_id":       &graphql.Field{Type: int64GraphqlScalar},
+			"user":          &graphql.Field{Type: userBasicGraphqlType},
+			"content":       &graphql.Field{Type: graphql.String},
+			"blob":          &graphql.Field{Type: blobGraphqlType},
+			"type":          &graphql.Field{Type: graphql.Int, Description: "post type"},
+			"like_count":    &graphql.Field{Type: int64GraphqlScalar},
+			"dislike_count": &graphql.Field{Type: int64GraphqlScalar},
+			"comment_count": &graphql.Field{Type: int64GraphqlScalar},
+			"category_id":   &graphql.Field{Type: graphql.Int},
+			"createtime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			"updatetime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+		},
+	},
+)
+var postsWithoutPlaceGraphqlType = graphql.NewList(postWithoutPlaceGraphqlType)
 var postsGraphqlType = graphql.NewList(postGraphqlType)
 
 // hashtags
@@ -1061,7 +1080,7 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			"posts_by_recent_country": &graphql.Field{
+			"posts_by_recent_with_country": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"category_id": &graphql.ArgumentConfig{
@@ -1091,12 +1110,12 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByRecentCountryCode(countryCode, categoryID, page)
+					posts, err := getPostsByRecentWithCountryCode(countryCode, categoryID, page)
 					return posts, err
 				},
 				Description: "",
 			},
-			"posts_by_recent_city": &graphql.Field{
+			"posts_by_recent_with_city": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"category_id": &graphql.ArgumentConfig{
@@ -1137,7 +1156,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByRecentCity(strconv.Itoa(level), cityID, categoryID, page)
+					posts, err := getPostsByRecentWithCity(strconv.Itoa(level), cityID, categoryID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1226,7 +1245,7 @@ var graphqlQueryType = graphql.NewObject(
 				Description: "",
 			},
 			"posts_by_hashtag": &graphql.Field{
-				Type: postsGraphqlType,
+				Type: postsWithoutPlaceGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"hashtag_id": &graphql.ArgumentConfig{
 						Type:        int64GraphqlScalar,
@@ -1253,7 +1272,7 @@ var graphqlQueryType = graphql.NewObject(
 				Description: "",
 			},
 			"posts_by_tag": &graphql.Field{
-				Type: postsGraphqlType,
+				Type: postsWithoutPlaceGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"user_id": &graphql.ArgumentConfig{
 						Type:        int64GraphqlScalar,
