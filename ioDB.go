@@ -728,7 +728,7 @@ func getPostsByRecent(categoryID, page int) (posts []postAPI, err error) {
 	}
 	return posts, err
 }
-func getPostsByRecentWithCountryCode(countryCode string, categoryID, page int) (posts []postAPI, err error) {
+func getPostsByRecentWithCountry(countryCode string, categoryID, page int) (posts []postAPI, err error) {
 	numPerRequest := 10
 	c, err := connectPostgres(postgresConStr)
 	if err != nil {
@@ -924,7 +924,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 		JOIN place ON place.place_id = post.place_id
 		WHERE follow.follower_user_id= $1 AND post.createtime>=$2
 		ORDER BY post.createtime
-		DESC OFFSET $2 LIMIT $3;
+		DESC OFFSET $3 LIMIT $4;
 	`
 	rows, err := c.db.Query(sqlStr, userID, timestamp, page*numPerRequest, numPerRequest)
 	if err != nil {
@@ -982,7 +982,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 	// log.Println("posts", posts)
 	return posts, nil
 }
-func getPostsByFollowingUsersWithCountryCode(userID int64, countryCode string, page int) (posts []postAPI, err error) { // not done yet
+func getPostsByFollowingUsersWithCountry(userID int64, countryCode string, page int) (posts []postAPI, err error) { // not done yet
 	numPerRequest := 10
 	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
 	c, err := connectPostgres(postgresConStr)
@@ -1005,13 +1005,96 @@ func getPostsByFollowingUsersWithCountryCode(userID int64, countryCode string, p
 		JOIN xuser ON xuser.user_id = post.user_id
 		JOIN follow ON follow.following_user_id = post.user_id
 		JOIN place ON place.place_id = post.place_id
-		WHERE follow.follower_user_id= $1 AND post.createtime>=$2
+		WHERE follow.follower_user_id= $1 AND post.createtime>=$2  AND place.country_code=$3
 		ORDER BY post.createtime
-		DESC OFFSET $2 LIMIT $3;
+		DESC OFFSET $4 LIMIT $5;
 	`
-	rows, err := c.db.Query(sqlStr, userID, timestamp, page*numPerRequest, numPerRequest)
+	rows, err := c.db.Query(sqlStr, userID, timestamp, countryCode, page*numPerRequest, numPerRequest)
 	if err != nil {
-		log.Println("getPostsFollowing", err)
+		log.Println("getPostsByFollowingUsersWithCountry", err)
+		return posts, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		post := postAPI{}
+		place := placeAPI{}
+		var placeID interface{}
+		if err := rows.Scan(
+			&post.PostID,
+			&post.User.UserID,
+			&post.User.Username,
+			&post.User.Name,
+			&post.User.PhotoURL,
+			&post.Content,
+			&post.Blob.BlobID,
+			&post.Blob.OriginWidth,
+			&post.Blob.OriginHeight,
+			&post.Type,
+			&post.LikeCount,
+			&post.DislikeCount,
+			&post.CommentCount,
+			&placeID,
+			&place.CountryCode,
+			&place.CityID1,
+			&place.CityID2,
+			&place.CityID3,
+			&place.CityID4,
+			&place.CityID5,
+			&place.Lat,
+			&place.Lon,
+			&place.Name,
+			&post.CategoryID,
+			&post.Createtime,
+			&post.Updatetime,
+		); err != nil {
+			log.Println(err)
+			return posts, err
+		}
+		placeIDCheck, isOK := placeID.(int64)
+		if isOK {
+			place.PlaceID = placeIDCheck
+		}
+		post.Place = place
+		post.Blob.BlobID = makeBlobURL(post)
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return posts, err
+	}
+	// log.Println("posts", posts)
+	return posts, nil
+}
+func getPostsByFollowingUsersWithCity(userID int64, level, cityID string, page int) (posts []postAPI, err error) { // not done yet
+	numPerRequest := 10
+	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
+	c, err := connectPostgres(postgresConStr)
+	if err != nil {
+		return posts, errors.New("db connection")
+	}
+	defer c.db.Close()
+	sqlStr := `
+		SELECT 
+		post.post_id, 
+		post.user_id, xuser.username, xuser.name, xuser.photo_url,
+		post.content, post.blob_id, post.origin_width, post.origin_height, post.type,
+		post.like_count, post.dislike_count, post.comment_count,
+		place.place_id, place.country_code,
+		place.city_id_1, place.city_id_2, place.city_id_3,
+		place.city_id_4, place.city_id_5,
+		place.lat, place.lon, place.name,
+		post.category_id, post.createtime, post.updatetime 
+		FROM post
+		JOIN xuser ON xuser.user_id = post.user_id
+		JOIN follow ON follow.following_user_id = post.user_id
+		JOIN place ON place.place_id = post.place_id
+		WHERE follow.follower_user_id= $1 AND post.createtime>=$2  AND place.city_id_` + level + `=$3
+		ORDER BY post.createtime
+		DESC OFFSET $4 LIMIT $5;
+	`
+	rows, err := c.db.Query(sqlStr, userID, timestamp, cityID, page*numPerRequest, numPerRequest)
+	if err != nil {
+		log.Println("getPostsByFollowingUsersWithCity", err)
 		return posts, err
 	}
 	defer rows.Close()

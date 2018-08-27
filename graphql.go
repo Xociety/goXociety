@@ -1110,7 +1110,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByRecentWithCountryCode(countryCode, categoryID, page)
+					posts, err := getPostsByRecentWithCountry(countryCode, categoryID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1180,6 +1180,79 @@ var graphqlQueryType = graphql.NewObject(
 					}
 					// block check
 					posts, err := getPostsByFollowingUsers(user.UserID, page)
+					return posts, err
+				},
+				Description: "",
+			},
+			"posts_by_following_users_with_country": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"country_code": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "country_code",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					countryCode, isOK := p.Args["country_code"].(string)
+					if !isOK {
+						return nil, errors.New("country_code format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByFollowingUsersWithCountry(user.UserID,countryCode, page)
+					return posts, err
+				},
+				Description: "",
+			},
+			"posts_by_following_users_with_city": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"level": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "level",
+					},
+					"city_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "city_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					level, isOK := p.Args["level"].(int)
+					if !isOK {
+						return nil, errors.New("level format")
+					}
+					if level < 1 || level > 5 {
+						return nil, errors.New("level format")
+					}
+					cityID, isOK := p.Args["city_id"].(string)
+					if !isOK {
+						return nil, errors.New("city_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByFollowingUsersWithCity(user.UserID, strconv.Itoa(level), cityID, page)
 					return posts, err
 				},
 				Description: "",
