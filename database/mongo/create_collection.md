@@ -28,54 +28,44 @@ db.post_popular_common.createIndex({ "category_id": 1 });
 
 ```json
 {
-    "_id" : ObjectId("5b7a6e4da6d3157bc2b49a5e"),
-    "category_id" : 4,
+    "_id" : ObjectId("5b7a6e4da6d3157bc2b49f3a"),
+    "category_id" : 10,
     "posts" : [ 
         {
-            "post_id" : NumberLong(2564),
+            "post_id" : NumberLong(4662),
             "user" : {
-                "user_id" : NumberLong(925),
-                "username" : "stewart",
-                "name" : "Enola Wintheiser",
+                "user_id" : NumberLong(1916),
+                "username" : "deron.fritsch",
+                "name" : "Elza Klocko",
                 "photo_url" : ""
             },
             "content" : "test post",
             "blob" : {
-                "blob_id" : "http://storage2.1mthechildbride.com/posts/images/sample/4/6/0.jpg",
+                "blob_id" : "http://storage2.1mthechildbride.com/posts/images/sample/10/1/0.jpg",
                 "origin_width" : 1242,
                 "origin_height" : 2004
             },
             "type" : 0,
-            "like_count" : NumberLong(49),
-            "dislike_count" : NumberLong(44),
-            "comment_count" : NumberLong(93),
-            "category_id" : 4,
-            "public" : false,
-            "createtime" : 1534826851,
-            "updatetime" : 1534826851
-        }, 
-        {
-            "post_id" : NumberLong(2319),
-            "user" : {
-                "user_id" : NumberLong(981),
-                "username" : "gilda",
-                "name" : "Helene Jerde",
-                "photo_url" : ""
+            "like_count" : NumberLong(57),
+            "dislike_count" : NumberLong(41),
+            "comment_count" : NumberLong(86),
+            "category_id" : 10,
+            "place" : {
+                "placeid" : NumberLong(406),
+                "countrycode" : "TWN",
+                "cityid1" : "TWN.7_1",
+                "cityid2" : "TWN.7.6_1",
+                "cityid3" : "",
+                "cityid4" : "",
+                "cityid5" : "",
+                "lat" : 24.2904120493827,
+                "lon" : 121.722583824469,
+                "name" : "test",
+                "totalcheckcount" : NumberLong(0)
             },
-            "content" : "test post",
-            "blob" : {
-                "blob_id" : "http://storage2.1mthechildbride.com/posts/images/sample/4/3/0.jpg",
-                "origin_width" : 1242,
-                "origin_height" : 2004
-            },
-            "type" : 0,
-            "like_count" : NumberLong(47),
-            "dislike_count" : NumberLong(46),
-            "comment_count" : NumberLong(77),
-            "category_id" : 4,
             "public" : false,
-            "createtime" : 1534826220,
-            "updatetime" : 1534826220
+            "createtime" : 1535424486,
+            "updatetime" : 1535424486
         }
     ]
 }
