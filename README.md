@@ -18,6 +18,8 @@
 
 `go get googlemaps.github.io/maps`
 
+`go get github.com/kellydunn/golang-geo`
+
 ## dns
 
 | Type   |      Name      |  Value |

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -10,6 +12,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/storage"
+	geo "github.com/kellydunn/golang-geo"
 	"github.com/manveru/faker"
 
 	_ "github.com/lib/pq"
@@ -36,7 +39,7 @@ func genXuserFaker(fake *faker.Faker, r *rand.Rand) userDB {
 	}
 }
 
-func genPostFaker(userID int64, faker *faker.Faker, r *rand.Rand) postAPI {
+func genPostFaker(userID, placeID int64, faker *faker.Faker, r *rand.Rand) postAPI {
 	timeNow := getNowUnixTimestamp()
 	postType := 0             // r.Intn(2)
 	originWidth := 0          // plz check current sample size
@@ -58,7 +61,7 @@ func genPostFaker(userID int64, faker *faker.Faker, r *rand.Rand) postAPI {
 		originWidth = 1920
 		originHeight = 1080
 	}
-	return postAPI{
+	post := postAPI{
 		User: userBasicAPI{
 			UserID: userID,
 		},
@@ -72,12 +75,13 @@ func genPostFaker(userID int64, faker *faker.Faker, r *rand.Rand) postAPI {
 		LikeCount:    0,
 		DislikeCount: 0,
 		CommentCount: 0,
-		Place:        placeAPI{PlaceID: 0},
+		Place:        placeAPI{PlaceID: placeID},
 		CategoryID:   categoryID,
 		Public:       true,
 		Createtime:   timeNow,
 		Updatetime:   timeNow,
 	}
+	return post
 }
 
 func genPostReactionFaker(postID, userID int64, r *rand.Rand) reactionOnPostAPI {
@@ -102,6 +106,31 @@ func genPostCommentFaker(postID, userID int64, faker *faker.Faker, r *rand.Rand)
 		Createtime:   timestamp,
 		Updatetime:   timestamp,
 	}
+}
+
+func genPlaceFaker(geoPolygon *geo.Polygon, lat0, latR, lon0, lonR float64, r *rand.Rand) placeAPI {
+	place := placeAPI{
+		Name: "test",
+		Lat:  float64(lat0 + latR*r.Float64()),
+		Lon:  float64(lon0 + lonR*r.Float64()),
+	}
+	for {
+		if geoPolygon.Contains(geo.NewPoint(place.Lat, place.Lon)) {
+			break
+		}
+		place.Lat = float64(lat0 + latR*r.Float64())
+		place.Lon = float64(lon0 + lonR*r.Float64())
+	}
+	cities, _ := getCityByLocation(place.Lat, place.Lon)
+	if len(cities) > 0 {
+		place.CityID1 = cities[0].Properties.CityID1
+		place.CityID2 = cities[0].Properties.CityID2
+		place.CityID3 = cities[0].Properties.CityID3
+		place.CityID4 = cities[0].Properties.CityID4
+		place.CityID5 = cities[0].Properties.CityID5
+		place.CountryCode = cities[0].Properties.CountryCode
+	}
+	return place
 }
 
 func genPopularPostUpsert() {
@@ -129,7 +158,7 @@ func genPopularPostUpsert() {
 		}
 	}
 }
-func TestUploadImagesSample(t *testing.T) { // delete this in the future
+func TestUploadImagesSample(t *testing.T) { // delete this in the future, this is for demo data structure
 	type sampleImageCategory struct {
 		category map[string]map[string]int
 	}
@@ -194,8 +223,10 @@ func TestFakeDataSample(t *testing.T) {
 		t.Skip("skip TestFakeData")
 	}
 	log.Println("start")
-	totalNumUser := 100
-	totalNumPost := 1000
+	scale := 100
+	totalNumUser := 1 * scale
+	totalNumPost := 10 * scale
+	totalNumPlace := 1 * scale
 	usersID := []int64{}
 	fake, err := faker.New("en")
 	if err != nil {
@@ -215,13 +246,13 @@ func TestFakeDataSample(t *testing.T) {
 	// random follow
 	log.Println("start random follow")
 	for i := 0; i < totalNumUser; i++ {
-		totalNumFollow := r.Int63n(int64(totalNumUser) - 1)
+		totalNumFollow := r.Int63n(int64(len(usersID)))
 		followingUserIDCheck := make(map[int64]bool)
 		count := int64(0)
 		follwerUserID := usersID[i]
 		followingUserID := usersID[i]
 		for count < totalNumFollow {
-			followingUserID = usersID[r.Intn(totalNumUser)]
+			followingUserID = usersID[r.Intn(len(usersID))]
 			if followingUserID == follwerUserID || followingUserIDCheck[followingUserID] {
 				continue
 			}
@@ -233,14 +264,57 @@ func TestFakeDataSample(t *testing.T) {
 			count++
 		}
 	}
+	// random place
+	type countryLatLng struct {
+		Lng float64 `json:"lng"`
+		Lat float64 `json:"lat"`
+	}
+	type countryPolygon struct {
+		Polygon []countryLatLng `json:"polygon"`
+	}
+
+	var countryPolygonTest countryPolygon
+	lat0 := 21.5
+	lat1 := 25.5
+	lon0 := 119.8
+	lon1 := 122.1
+	latR := lat1 - lat0
+	lonR := lon1 - lon0
+	if file, err := ioutil.ReadFile("./development/geo/taiwan.json"); err == nil {
+		if err1 := json.Unmarshal(file, &countryPolygonTest); err1 != nil {
+			log.Fatalln("taiwan.json parse failed")
+		}
+	} else {
+		log.Fatalln("taiwan.json file err")
+	}
+	var geoPoints []*geo.Point
+	if len(countryPolygonTest.Polygon) > 0 {
+		for i := 0; i < len(countryPolygonTest.Polygon); i++ {
+			geoPoints = append(geoPoints, geo.NewPoint(countryPolygonTest.Polygon[i].Lat, countryPolygonTest.Polygon[i].Lng))
+		}
+		geoPoints = append(geoPoints, geo.NewPoint(countryPolygonTest.Polygon[0].Lat, countryPolygonTest.Polygon[0].Lng))
+	}
+	geoPolygon := geo.NewPolygon(geoPoints)
+	placesID := []int64{}
+	for i := 0; i < totalNumPlace; i++ {
+		place := genPlaceFaker(geoPolygon, lat0, latR, lon0, lonR, r)
+		placeID, err := placeInsert(place)
+		if err == nil {
+			placesID = append(placesID, placeID)
+		}
+	}
 	// random post
 	log.Printf("start random total %d post", totalNumPost)
 	for i := 0; i < totalNumPost; i++ {
-		if i%100 == 0 {
+		if i%100 == 0 && i != 0 {
 			log.Println("finished", i, "posts")
 		}
 		userID := usersID[r.Intn(len(usersID))]
-		post := genPostFaker(userID, fake, r)
+		placeID := int64(0)
+		if r.Intn(2) == 0 {
+			placeID = placesID[r.Intn(len(placesID))]
+		}
+		post := genPostFaker(userID, placeID, fake, r)
 		postID, err := postInsert(post)
 		if err != nil {
 			log.Println("post err", err)
