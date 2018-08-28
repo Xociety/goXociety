@@ -20,7 +20,7 @@ func parsePopularPostReadObjectMongo(posts map[int64]int) bson.M {
 	*/
 	m := make(bson.M)
 	for k, v := range posts {
-		m["posts."+strconv.FormatInt(k, 10)] = v
+		m["popular_posts."+strconv.FormatInt(k, 10)] = v
 	}
 	return m
 }

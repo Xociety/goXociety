@@ -4,6 +4,10 @@ import (
 	"strconv"
 )
 
+func parseMongoCollectionNameCityLevel(level string) string {
+	return mongoCollectionCityLevel + level
+}
+
 func parsePlaceSelectAllSQL(name []string, lat, lon []float64) (sqlStr string, args []interface{}) {
 	/*
 		in order to select multiple place on post in one sql command, this func parse the command and parameters

@@ -66,15 +66,15 @@ var (
 
 // MongoDB
 const (
-	mongoDBXociety                      = "xociety"
-	mongoCollectionCity                 = "city"
-	mongoCollectionCountry              = "country"
-	mongoCollectionCityLevel            = "city_level_"
-	mongoCollectionPostPopularCommon    = "post_popular_common"
-	mongoCollectionPostPopularReadIndex = "post_popular_read_index"
-	mongoCollectionPostPopularRead      = "post_popular_read"
-	mongoGeoNearSearchInKM              = 100 * 1000
-	mongoTimeout                        = 0
+	mongoDBXociety                   = "xociety"
+	mongoCollectionCity              = "city"
+	mongoCollectionCountry           = "country"
+	mongoCollectionCityLevel         = "city_level_"
+	mongoCollectionPostCommon        = "post_common"
+	mongoCollectionPostUserReadIndex = "post_user_read_index"
+	mongoCollectionPostUserRead      = "post_user_read"
+	mongoGeoNearSearchInKM           = 100 * 1000
+	mongoTimeout                     = 0
 )
 
 const numPopularPostPerRefresh = 10000

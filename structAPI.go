@@ -238,23 +238,26 @@ type userPostPopular struct {
 	Posts      []postAPI     `bson:"posts"`
 }
 
-type postPopularCommonAPI struct {
-	ID         bson.ObjectId `bson:"_id"`
-	CategoryID int           `bson:"category_id"`
-	Posts      []postAPI     `bson:"posts"`
+type postCommonAPI struct {
+	ID           bson.ObjectId `bson:"_id"`
+	CategoryID   int           `bson:"category_id"`
+	PopularPosts []postAPI     `bson:"popular_posts"`
 }
 
-type postPopularReadIndexAPI struct {
-	ID         bson.ObjectId `bson:"_id"`
-	UserID     int           `bson:"user_id"`
-	CategoryID int           `bson:"category_id"`
-	Index      int           `bson:"index"`
+type postUserReadIndexPopularAPI struct {
+	Index int `bson:"index"`
+}
+type postUserReadIndexAPI struct {
+	ID          bson.ObjectId               `bson:"_id"`
+	UserID      int                         `bson:"user_id"`
+	CategoryID  int                         `bson:"category_id"`
+	PopularPost postUserReadIndexPopularAPI `bson:"popular_post"`
 }
 
-type postPopularReadAPI struct {
+type postUserReadAPI struct {
 	ID            bson.ObjectId `bson:"_id"`
 	UserID        int64         `bson:"user_id"`
 	CategoryID    int           `bson:"category_id"`
 	WeekTimestamp int           `bson:"week_timestamp"`
-	Posts         map[int64]int `bson:"posts"` // k: PostID, v: timestamp
+	PopularPosts  map[int64]int `bson:"popular_posts"` // k: PostID, v: timestamp
 }
