@@ -2020,7 +2020,6 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 	collection.Find(q).One(&indexUserRead)
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
-
 	postsRead := make(map[int64]int)
 	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
 	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
@@ -2044,7 +2043,11 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 	postsReadNew := make(map[int64]int)
 	count := 0
 	if indexRead >= 0 {
-		for i := indexUserRead.PopularPost.Index; i <= indexUserRead.PopularPost.Index+indexRead; i++ {
+		last := indexUserRead.PopularPost.Index + indexRead + 1
+		if last >= len(u.PopularPosts) {
+			last = len(u.PopularPosts)
+		}
+		for i := indexUserRead.PopularPost.Index; i < last; i++ {
 			postsReadNew[u.PopularPosts[i].PostID] = timestamp // for record read post
 		}
 	}
