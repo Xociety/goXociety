@@ -2941,7 +2941,7 @@ func getPostsReadByUser(categoryID, weekTimestamp int, userID int64) (posts map[
 	return posts, nil
 }
 
-func upsertPostCommon(categoryID int, posts []postAPI) (err error) {
+func upsertPopularPostOnPostCommon(categoryID int, posts []postAPI) (err error) {
 	c, err := connectMongoDB(globalConfig[env].MongoConStr)
 	if err != nil {
 		log.Println("mongo session", err)
@@ -2951,7 +2951,38 @@ func upsertPostCommon(categoryID int, posts []postAPI) (err error) {
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostCommon)
 	selector := bson.M{"category_id": categoryID}
 	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"popular_posts": posts}}); err != nil {
-		log.Println("upsertPostPopularCommon", err)
+		log.Println("upsertPopularPostOnPostCommon", err)
+		return err
+	}
+	return nil
+}
+
+func upsertPopularPostOnCountry(countryCode string, posts []postAPI) (err error) {
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return err
+	}
+	defer c.session.Close()
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
+	selector := bson.M{"country_code": countryCode}
+	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"popular_posts": posts}}); err != nil {
+		log.Println("upsertPopularPostOnCountry", err)
+		return err
+	}
+	return nil
+}
+func upsertPopularPostOnCity(level, cityID string, posts []postAPI) (err error) {
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+		return err
+	}
+	defer c.session.Close()
+	collection := c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
+	selector := bson.M{"city_id": cityID}
+	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"popular_posts": posts}}); err != nil {
+		log.Println("upsertPopularPostOnCity", err)
 		return err
 	}
 	return nil
