@@ -245,7 +245,7 @@ func TestFakeDataSample(t *testing.T) {
 	}
 	// random follow
 	log.Println("start random follow")
-	for i := 0; i < totalNumUser; i++ {
+	for i := 0; i < len(usersID); i++ {
 		totalNumFollow := r.Int63n(int64(len(usersID)))
 		followingUserIDCheck := make(map[int64]bool)
 		count := int64(0)
