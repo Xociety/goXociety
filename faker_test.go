@@ -385,19 +385,17 @@ func TestCategorySupCityPost(t *testing.T) {
 }
 
 func TestRedis(t *testing.T) {
-
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     globalConfig[env].RedisConStr,
 		Password: "",
 		DB:       7,
 	})
-
-	val, err := client.Get("0:1").Result()
-	if err == redis.Nil {
-		log.Println("key does not exist")
-	} else if err != nil {
-		panic(err)
-	} else {
-		log.Println("key", val)
+	for i := 0; i < 10000; i++ {
+		_, err := client.Get("0:1").Result()
+		if err == redis.Nil {
+			log.Println("key does not exist")
+		} else if err != nil {
+			panic(err)
+		}
 	}
 }

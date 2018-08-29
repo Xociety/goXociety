@@ -17,7 +17,8 @@
         "mongo_secret_folder_path": "./secret/mongo/",
         "mongo_secret_cert_filename": "",
         "mongo_secret_key_filename": "",
-        "mongo_secret_auth_filename": "mongoSecret.json"
+        "mongo_secret_auth_filename": "mongoSecret.json",
+        "redis_con_str": "localhost:6379"
     },
     "staging": {
         "server_addr_bind": "127.0.0.1",
@@ -37,7 +38,8 @@
         "mongo_secret_folder_path": "./secret/mongo/",
         "mongo_secret_cert_filename": "client.crt",
         "mongo_secret_key_filename": "client.key",
-        "mongo_secret_auth_filename": "mongoSecret.json"
+        "mongo_secret_auth_filename": "mongoSecret.json",
+        "redis_con_str": ""
     },
     "production":{
         "server_addr_bind": "0.0.0.0",
@@ -57,6 +59,7 @@
         "mongo_secret_folder_path": "/etc/xsecret/mongo/",
         "mongo_secret_cert_filename": "client-cert",
         "mongo_secret_key_filename": "client-key",
-        "mongo_secret_auth_filename": "mongoSecret"
+        "mongo_secret_auth_filename": "mongoSecret",
+        "redis_con_str": ""
     }
 }

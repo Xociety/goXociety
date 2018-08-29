@@ -19,4 +19,5 @@ type config struct {
 	MongoSecretCertFilename    string `json:"mongo_secret_cert_filename"`
 	MongoSecretKeyFilename     string `json:"mongo_secret_key_filename"`
 	MongoSecretAuthFilename    string `json:"mongo_secret_auth_filename"`
+	RedisConStr                string `json:"redis_con_str"`
 }
