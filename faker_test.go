@@ -148,12 +148,12 @@ func genPopularPostUpsert() {
 			log.Println("post", err)
 		}
 		sort.Sort(postByPopular(posts))
-		// new
-		if err := upsertInitPostPopularIndex(categoryID, usersID); err != nil {
+		// init post_user_read_index
+		if err := upsertInitPostUserReadIndex(categoryID, usersID); err != nil {
 			log.Println(err)
 		}
-		// common
-		if err := upsertPostPopularCommon(categoryID, posts); err != nil {
+		// post_common
+		if err := upsertPostCommon(categoryID, posts); err != nil {
 			log.Println(err)
 		}
 	}
@@ -347,4 +347,29 @@ func TestPopularPostUpsertSample(t *testing.T) {
 		t.Skip("skip TestSortPostPopular")
 	}
 	genPopularPostUpsert()
+}
+func TestCityPost(t *testing.T) {
+	countries, err := getCountries()
+	if err != nil {
+		log.Println(err)
+	}
+	for i := 0; i < len(countries); i++ {
+		if countries[i].CountryCode == "TWN" {
+			for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
+				level := strconv.Itoa(j)
+				citiesLevel, err := getCitiesLevelByCityIDLike(level, countries[i].CountryCode)
+				if err != nil {
+					log.Println(err)
+				}
+				for k := 0; k < len(citiesLevel); k++ {
+					posts, err := getPostsByRecentWithCityNum(level, citiesLevel[k].CityID, categorySup, numPopularPostPerRefresh)
+					if err != nil {
+						log.Println(err)
+					}
+					sort.Sort(postByPopular(posts))
+					// log.Println(len(posts))
+				}
+			}
+		}
+	}
 }

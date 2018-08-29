@@ -75,9 +75,12 @@ const (
 	mongoCollectionPostUserRead      = "post_user_read"
 	mongoGeoNearSearchInKM           = 100 * 1000
 	mongoTimeout                     = 0
+	cityLevelRangeFirst              = 1
+	cityLevelRangeLast               = 5
 )
 
 const numPopularPostPerRefresh = 10000
+const numPerRequest = 10
 
 // GCP cloud storage
 var clientOptionGoogleAPI option.ClientOption

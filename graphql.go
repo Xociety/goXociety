@@ -897,8 +897,8 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("country_code format")
 					}
-					ct, err := getCountryPostCount(countryCode)
-					return ct, err
+					countries, err := getCountry(countryCode)
+					return countries, err
 				},
 				Description: "",
 			},
@@ -919,15 +919,15 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("level format")
 					}
-					if level < 1 || level > 5 {
+					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
 						return nil, errors.New("level format")
 					}
 					cityID, isOK := p.Args["city_id"].(string)
 					if !isOK {
 						return nil, errors.New("city_id id format")
 					}
-					cl, err := getCityLevelPostCount(strconv.Itoa(level), cityID)
-					return cl, err
+					cityLevel, err := getCityLevel(strconv.Itoa(level), cityID)
+					return cityLevel, err
 				},
 				Description: "",
 			},
@@ -1144,7 +1144,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("level format")
 					}
-					if level < 1 || level > 5 {
+					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
 						return nil, errors.New("level format")
 					}
 					cityID, isOK := p.Args["city_id"].(string)
@@ -1210,7 +1210,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByFollowingUsersWithCountry(user.UserID,countryCode, page)
+					posts, err := getPostsByFollowingUsersWithCountry(user.UserID, countryCode, page)
 					return posts, err
 				},
 				Description: "",
@@ -1240,7 +1240,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("level format")
 					}
-					if level < 1 || level > 5 {
+					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
 						return nil, errors.New("level format")
 					}
 					cityID, isOK := p.Args["city_id"].(string)
