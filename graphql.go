@@ -878,7 +878,7 @@ var graphqlQueryType = graphql.NewObject(
 				Description: "",
 			},
 			// post_detail
-			"posts_by_recent": &graphql.Field{
+			"posts_by_recent_category": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"category_id": &graphql.ArgumentConfig{
@@ -901,6 +901,45 @@ var graphqlQueryType = graphql.NewObject(
 					}
 					posts, err := getPostsByRecentPage(categoryID, page)
 					return posts, err
+				},
+				Description: "",
+			},
+			"posts_by_recent_categories": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_ids": &graphql.ArgumentConfig{
+						Type:        graphql.NewList(graphql.Int),
+						Description: "category_ids",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					categoryIDs := []int{}
+					interfaceSlice, err := convertInterfaceSlice(p.Args["category_ids"])
+					if err != nil {
+						return nil, errors.New("category_ids format")
+					}
+					for i := 0; i < len(interfaceSlice); i++ {
+						categoryID, isOK := interfaceSlice[i].(int)
+						if isOK {
+							categoryIDs = append(categoryIDs, categoryID)
+						}
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					posts := []postAPI{}
+					for i := 0; i < len(categoryIDs); i++ {
+						postsCategory, err := getPostsByRecentPage(categoryIDs[i], page)
+						if err == nil {
+							posts = append(posts, postsCategory...)
+						}
+					}
+					return posts, nil
 				},
 				Description: "",
 			},
@@ -954,7 +993,7 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "",
 			},
-			"posts_by_popular": &graphql.Field{
+			"posts_by_popular_category": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"category_id": &graphql.ArgumentConfig{
@@ -982,6 +1021,52 @@ var graphqlQueryType = graphql.NewObject(
 					}
 					// block check
 					posts, err := getPostsByPopular(user.UserID, categoryID, page)
+					log.Printf("posts_by_popular total took %fs\n", time.Since(startTime).Seconds())
+					return posts, err
+				},
+				Description: "",
+			},
+			"posts_by_popular_categories": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_ids": &graphql.ArgumentConfig{
+						Type:        graphql.NewList(graphql.Int),
+						Description: "category_ids",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryIDs := []int{}
+					interfaceSlice, err := convertInterfaceSlice(p.Args["category_ids"])
+					if err != nil {
+						return nil, errors.New("category_ids format")
+					}
+					for i := 0; i < len(interfaceSlice); i++ {
+						categoryID, isOK := interfaceSlice[i].(int)
+						if isOK {
+							categoryIDs = append(categoryIDs, categoryID)
+						}
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts := []postAPI{}
+					for i := 0; i < len(categoryIDs); i++ {
+						postsCategory, err := getPostsByPopular(user.UserID, categoryIDs[i], page)
+						if err == nil {
+							posts = append(posts, postsCategory...)
+						}
+					}
 					log.Printf("posts_by_popular total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
