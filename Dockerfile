@@ -11,6 +11,7 @@ RUN go get github.com/graphql-go/graphql
 RUN go get github.com/globalsign/mgo
 RUN go get googlemaps.github.io/maps
 RUN go get github.com/kellydunn/golang-geo
+RUN go get -u github.com/go-redis/redis
 WORKDIR /goXociety
 ADD . .
 RUN go build

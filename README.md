@@ -20,6 +20,8 @@
 
 `go get github.com/kellydunn/golang-geo`
 
+`go get -u github.com/go-redis/redis`
+
 ## dns
 
 | Type   |      Name      |  Value |

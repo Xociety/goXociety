@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/storage"
+	"github.com/go-redis/redis"
 	geo "github.com/kellydunn/golang-geo"
 	"github.com/manveru/faker"
 
@@ -380,5 +381,23 @@ func TestCategorySupCityPost(t *testing.T) {
 				log.Println(len(posts))
 			}
 		}
+	}
+}
+
+func TestRedis(t *testing.T) {
+
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       7,
+	})
+
+	val, err := client.Get("0:1").Result()
+	if err == redis.Nil {
+		log.Println("key does not exist")
+	} else if err != nil {
+		panic(err)
+	} else {
+		log.Println("key", val)
 	}
 }
