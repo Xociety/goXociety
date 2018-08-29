@@ -354,32 +354,30 @@ func TestCategorySupCityPost(t *testing.T) {
 		log.Println(err)
 	}
 	for i := 0; i < len(countries); i++ {
-		if countries[i].CountryCode == "TWN" {
-			postsCountry, err := getPostsByRecentWithCountryNum(countries[i].CountryCode, categorySup, numPopularPostPerRefresh)
+		postsCountry, err := getPostsByRecentWithCountryNum(countries[i].CountryCode, categorySup, numPopularPostPerRefresh)
+		if err != nil {
+			continue
+		}
+		sort.Sort(postByPopular(postsCountry))
+		if err := upsertPopularPostOnCountry(countries[i].CountryCode, postsCountry); err != nil {
+			log.Println(err)
+		}
+		for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
+			level := strconv.Itoa(j)
+			citiesLevel, err := getCitiesLevelByCityIDLike(level, countries[i].CountryCode)
 			if err != nil {
-				continue
-			}
-			sort.Sort(postByPopular(postsCountry))
-			if err := upsertPopularPostOnCountry(countries[i].CountryCode, postsCountry); err != nil {
 				log.Println(err)
 			}
-			for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
-				level := strconv.Itoa(j)
-				citiesLevel, err := getCitiesLevelByCityIDLike(level, countries[i].CountryCode)
+			for k := 0; k < len(citiesLevel); k++ {
+				posts, err := getPostsByRecentWithCityNum(level, citiesLevel[k].CityID, categorySup, numPopularPostPerRefresh)
 				if err != nil {
 					log.Println(err)
 				}
-				for k := 0; k < len(citiesLevel); k++ {
-					posts, err := getPostsByRecentWithCityNum(level, citiesLevel[k].CityID, categorySup, numPopularPostPerRefresh)
-					if err != nil {
-						log.Println(err)
-					}
-					sort.Sort(postByPopular(posts))
-					if err := upsertPopularPostOnCity(level, citiesLevel[k].CityID, posts); err != nil {
-						log.Println(err)
-					}
-					log.Println(len(posts))
+				sort.Sort(postByPopular(posts))
+				if err := upsertPopularPostOnCity(level, citiesLevel[k].CityID, posts); err != nil {
+					log.Println(err)
 				}
+				log.Println(len(posts))
 			}
 		}
 	}
