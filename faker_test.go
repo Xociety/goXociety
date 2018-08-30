@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/globalsign/mgo/bson"
 	"github.com/go-redis/redis"
 	geo "github.com/kellydunn/golang-geo"
 	"github.com/manveru/faker"
@@ -387,37 +386,13 @@ func TestCategorySupCityPost(t *testing.T) {
 	}
 }
 
-func TestMongoPopularPostUserReadIndex(t *testing.T) {
-	startTimeTotal := time.Now()
-	startTime := time.Now()
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
-	if err != nil {
-		log.Println("mongo session", err)
-	}
-	defer c.session.Close()
-	log.Printf("connect total took %fs\n", time.Since(startTime).Seconds())
-	startTime = time.Now()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserReadIndex)
-	indexUserRead := postUserReadIndexAPI{}
-	q := bson.M{"user_id": 1, "category_id": "0"}
-	collection.Find(q).One(&indexUserRead)
-	log.Printf("get total took %fs\n", time.Since(startTime).Seconds())
-	startTime = time.Now()
-	if _, err := collection.Upsert(
-		bson.M{"user_id": 1, "category_id": "0"},
-		bson.M{"$set": bson.M{"popular_post.index": 1}}); err != nil {
-		log.Println("upsert", err)
-	}
-	log.Printf("set total took %fs\n", time.Since(startTime).Seconds())
-	log.Printf("total took %fs\n", time.Since(startTimeTotal).Seconds())
-}
 func TestRedisPopularPostUserReadIndex(t *testing.T) {
 	startTimeTotal := time.Now()
 	startTime := time.Now()
 	client := redis.NewClient(&redis.Options{
 		Addr:     globalConfig[env].RedisConStr,
 		Password: "",
-		DB:       10,
+		DB:       redisDBPopularPostUserReadIndex,
 	})
 	defer client.Close()
 	log.Printf("connect total took %fs\n", time.Since(startTime).Seconds())
@@ -444,7 +419,7 @@ func TestRedisBenchmark(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     globalConfig[env].RedisConStr,
 		Password: "",
-		DB:       10,
+		DB:       redisDBPopularPostUserReadIndex,
 	})
 	defer client.Close()
 	var wg sync.WaitGroup

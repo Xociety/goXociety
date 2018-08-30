@@ -7,9 +7,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"strconv"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/go-redis/redis"
 	_ "github.com/lib/pq"
 )
 
@@ -21,23 +23,26 @@ type connPostgres struct {
 type connMongo struct {
 	session *mgo.Session
 }
+type connRedis struct {
+	client *redis.Client
+}
 
-func connectPostgres(dbinfo string) (connPostgres, error) {
+func connectPostgres() (connPostgres, error) {
 	var err error
 	c := connPostgres{}
-	c.db, err = sql.Open("postgres", dbinfo)
+	c.db, err = sql.Open("postgres", postgresConStr)
 	if err != nil {
 		log.Println("postgres connect", err)
 		return c, err
 	}
 	return c, nil
 }
-func connectMongoDB(dbinfo string) (connMongo, error) {
+func connectMongoDB() (connMongo, error) {
 	var err error
 	c := connMongo{}
 	switch env {
 	case "development":
-		c.session, err = mgo.Dial(dbinfo)
+		c.session, err = mgo.Dial(globalConfig[env].MongoConStr)
 	case "staging":
 		// https://godoc.org/github.com/globalsign/mgo#example-Dial--TlsConfig
 		clientCertPEM, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretCertFilename)
@@ -58,9 +63,9 @@ func connectMongoDB(dbinfo string) (connMongo, error) {
 			InsecureSkipVerify: true,
 		}
 		c.session, err = mgo.DialWithInfo(&mgo.DialInfo{
-			Addrs: []string{dbinfo},
+			Addrs: []string{globalConfig[env].MongoConStr},
 			DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
-				return tls.Dial("tcp", dbinfo, tlsConfig)
+				return tls.Dial("tcp", globalConfig[env].MongoConStr, tlsConfig)
 			},
 			Database: globalSecret.Mongo.MongoDatabase,
 			Username: globalSecret.Mongo.MongoUsername,
@@ -86,9 +91,9 @@ func connectMongoDB(dbinfo string) (connMongo, error) {
 			InsecureSkipVerify: true,
 		}
 		c.session, err = mgo.DialWithInfo(&mgo.DialInfo{
-			Addrs: []string{dbinfo},
+			Addrs: []string{globalConfig[env].MongoConStr},
 			DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
-				return tls.Dial("tcp", dbinfo, tlsConfig)
+				return tls.Dial("tcp", globalConfig[env].MongoConStr, tlsConfig)
 			},
 			Database: globalSecret.Mongo.MongoDatabase,
 			Username: globalSecret.Mongo.MongoUsername,
@@ -101,10 +106,19 @@ func connectMongoDB(dbinfo string) (connMongo, error) {
 	}
 	return c, nil
 }
+func connectRedis() (connRedis, error) {
+	c := connRedis{}
+	c.client = redis.NewClient(&redis.Options{
+		Addr:     globalConfig[env].RedisConStr,
+		Password: "",
+		DB:       redisDBPopularPostUserReadIndex,
+	})
+	return c, nil
+}
 
 // auth
 func checkSession(userToken string) (user xuserAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return user, errors.New("db connection")
 	}
@@ -142,7 +156,7 @@ func checkSession(userToken string) (user xuserAPI, err error) {
 
 // [query]
 func login(email, password string) (lc loginAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return lc, errors.New("db connection")
 	}
@@ -160,7 +174,7 @@ func login(email, password string) (lc loginAPI, err error) {
 
 // common
 func getCategories() (categories []categoryAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return categories, errors.New("db connection")
 	}
@@ -194,7 +208,7 @@ func getCategories() (categories []categoryAPI, err error) {
 	return categories, nil
 }
 func getGender() (genderList []genderAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return genderList, errors.New("db connection")
 	}
@@ -228,7 +242,7 @@ func getGender() (genderList []genderAPI, err error) {
 	return genderList, nil
 }
 func getLanguages() (languages []languageAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return languages, errors.New("db connection")
 	}
@@ -263,7 +277,7 @@ func getLanguages() (languages []languageAPI, err error) {
 	return languages, nil
 }
 func getPostType() (postTypeList []postTypeAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return postTypeList, errors.New("db connection")
 	}
@@ -303,7 +317,7 @@ func getPostType() (postTypeList []postTypeAPI, err error) {
 	return postTypeList, nil
 }
 func getReaction() (reactionList []reactionAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return reactionList, errors.New("db connection")
 	}
@@ -339,7 +353,7 @@ func getReaction() (reactionList []reactionAPI, err error) {
 
 // user
 func getUserByUserID(userID int64) (user xuserAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return user, errors.New("db connection")
 	}
@@ -376,7 +390,7 @@ func getUserByUserID(userID int64) (user xuserAPI, err error) {
 	return user, nil
 }
 func getUserByUsername(username string) (user xuserAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return user, errors.New("db connection")
 	}
@@ -415,7 +429,7 @@ func getUserByUsername(username string) (user xuserAPI, err error) {
 
 // follow
 func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return users, errors.New("db connection")
 	}
@@ -453,7 +467,7 @@ func getUsersByFollowing(followerUserID int64, page int) (users []userFollowingA
 	return users, nil
 }
 func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return users, errors.New("db connection")
 	}
@@ -491,7 +505,7 @@ func getUsersByFollower(followerUserID int64, page int) (users []userFollowerAPI
 	return users, nil
 }
 func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bool, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return isFollowing, errors.New("db connection")
 	}
@@ -507,7 +521,7 @@ func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bo
 
 // country, city
 func getCountries() (countries []countryAPI, err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return countries, err
@@ -522,7 +536,7 @@ func getCountries() (countries []countryAPI, err error) {
 	return countries, nil
 }
 func getCountry(countryCode string) (country countryAPI, err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return country, err
@@ -537,7 +551,7 @@ func getCountry(countryCode string) (country countryAPI, err error) {
 	return country, nil
 }
 func getCityLevel(level string, cityID string) (cityLevel cityLevelAPI, err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return cityLevel, err
@@ -552,7 +566,7 @@ func getCityLevel(level string, cityID string) (cityLevel cityLevelAPI, err erro
 	return cityLevel, nil
 }
 func getCitiesLevelByCityIDLike(level string, cityID string) (citiesLevel []cityLevelAPI, err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return citiesLevel, err
@@ -567,7 +581,7 @@ func getCitiesLevelByCityIDLike(level string, cityID string) (citiesLevel []city
 	return citiesLevel, nil
 }
 func getCityByLocation(lat, lon float64) (cities []cityAPI, err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return cities, err
@@ -614,7 +628,7 @@ func getCityByLocation(lat, lon float64) (cities []cityAPI, err error) {
 
 // place
 func getPlacesByPlacesGCP(placesGCP []placeAPI) (places []placeAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return places, errors.New("db connection")
 	}
@@ -662,7 +676,7 @@ func getPlacesByPlacesGCP(placesGCP []placeAPI) (places []placeAPI, err error) {
 
 // post
 func getPostsByRecent(categoryID, page int) (posts []postAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -742,7 +756,7 @@ func getPostsByRecent(categoryID, page int) (posts []postAPI, err error) {
 }
 func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 	// combine this with func getPostsByRecent
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -821,7 +835,7 @@ func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 	return posts, nil
 }
 func getPostsByRecentWithCountry(countryCode string, categoryID, page int) (posts []postAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -906,7 +920,7 @@ func getPostsByRecentWithCountry(countryCode string, categoryID, page int) (post
 }
 func getPostsByRecentWithCountryNum(countryCode string, categoryID, numPost int) (posts []postAPI, err error) {
 	// combine this with func getPostsByRecentWithCountry
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -988,7 +1002,7 @@ func getPostsByRecentWithCountryNum(countryCode string, categoryID, numPost int)
 	return posts, nil
 }
 func getPostsByRecentWithCity(level, cityID string, categoryID, page int) (posts []postAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -1075,7 +1089,7 @@ func getPostsByRecentWithCity(level, cityID string, categoryID, page int) (posts
 func getPostsByRecentWithCityNum(level, cityID string, categoryID, numPost int) (posts []postAPI, err error) {
 	// combine this with func getPostsByRecentWithCity
 	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -1154,7 +1168,7 @@ func getPostsByRecentWithCityNum(level, cityID string, categoryID, numPost int) 
 }
 func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err error) { // not done yet
 	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -1236,7 +1250,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 }
 func getPostsByFollowingUsersWithCountry(userID int64, countryCode string, page int) (posts []postAPI, err error) { // not done yet
 	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -1318,7 +1332,7 @@ func getPostsByFollowingUsersWithCountry(userID int64, countryCode string, page 
 }
 func getPostsByFollowingUsersWithCity(userID int64, level, cityID string, page int) (posts []postAPI, err error) { // not done yet
 	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -1399,7 +1413,7 @@ func getPostsByFollowingUsersWithCity(userID int64, level, cityID string, page i
 	return posts, nil
 }
 func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // not done yet
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -1479,7 +1493,7 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 	return posts, nil
 }
 func getPostByPostIDUserID(postID, userID int64) (count int, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return count, errors.New("db connection")
 	}
@@ -1499,7 +1513,7 @@ func getPostByPostIDUserID(postID, userID int64) (count int, err error) {
 	return count, err
 }
 func getPostsByPlaceID(placeID int64, page int) (posts []postAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -1569,21 +1583,33 @@ func getPostsByPlaceID(placeID int64, page int) (posts []postAPI, err error) {
 	return posts, nil
 }
 func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return posts, err
 	}
 	defer c.session.Close()
+	cr, err := connectRedis()
+	if err != nil {
+		return posts, err
+	}
+	defer cr.client.Close()
 	// read_index
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserReadIndex)
-	indexUserRead := postUserReadIndexAPI{}
-	q := bson.M{"user_id": userID, "category_id": categoryID}
-	collection.Find(q).One(&indexUserRead)
+	popularPostUserReadIndexStr, err := cr.client.HGet(parseHashPopularPostUserReadIndex(userID), strconv.Itoa(categoryID)).Result()
+	if err == redis.Nil {
+		// log.Println("key does not exist")
+		popularPostUserReadIndexStr = "0"
+	} else if err != nil {
+		return posts, err
+	}
+	popularPostUserReadIndex, err := strconv.Atoi(popularPostUserReadIndexStr)
+	if err != nil {
+		return posts, errors.New("popularPostUserReadIndexStr convert " + "userID " + strconv.FormatInt(userID, 10) + "categoryID " + strconv.Itoa(categoryID))
+	}
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	q = bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+	q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp}
 	r := postUserReadAPI{}
 	collection.Find(q).One(&r)
 	// popular_common
@@ -1595,7 +1621,7 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 		return posts, err
 	}
 	count := 0
-	for i := indexUserRead.PopularPost.Index; i < len(p.PopularPosts); i++ {
+	for i := popularPostUserReadIndex; i < len(p.PopularPosts); i++ {
 		if count >= numPerRequest {
 			break
 		}
@@ -1607,7 +1633,7 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	return posts, nil
 }
 func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) { // not done yet
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -1666,7 +1692,7 @@ func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) {
 	return posts, nil
 }
 func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
 	}
@@ -1727,7 +1753,7 @@ func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 
 // hashtags
 func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return hashtags, errors.New("db connection")
 	}
@@ -1768,7 +1794,7 @@ func getHashtags(value string, page int) (hashtags []hashtagAPI, err error) {
 
 // tags
 func getAllTagsByPost(postID int64) (tags []tagOnPostAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return tags, errors.New("db connection")
 	}
@@ -1818,7 +1844,7 @@ func getAllTagsByPost(postID int64) (tags []tagOnPostAPI, err error) {
 
 // comment
 func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return comments, errors.New("db connection")
 	}
@@ -1866,7 +1892,7 @@ func getCommentsOnPost(postID int64, page int) (comments []commentAPI, err error
 
 // reply
 func getRepliesOnComment(commentID int64, page int) (replies []replyAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return replies, errors.New("db connection")
 	}
@@ -1913,7 +1939,7 @@ func getRepliesOnComment(commentID int64, page int) (replies []replyAPI, err err
 
 // reaction
 func getReactionsOnPost(postID int64, page int) (reactionsOnPost []reactionOnPostAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return reactionsOnPost, errors.New("db connection")
 	}
@@ -1952,7 +1978,7 @@ func getReactionsOnPost(postID int64, page int) (reactionsOnPost []reactionOnPos
 	return reactionsOnPost, nil
 }
 func getReactionsOnComment(commentID int64, page int) (reactionsOnComment []reactionOnCommentAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return reactionsOnComment, errors.New("db connection")
 	}
@@ -1991,7 +2017,7 @@ func getReactionsOnComment(commentID int64, page int) (reactionsOnComment []reac
 	return reactionsOnComment, nil
 }
 func getReactionsOnReply(replyID int64, page int) (reactionsOnReply []reactionOnReplyAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return reactionsOnReply, errors.New("db connection")
 	}
@@ -2032,7 +2058,7 @@ func getReactionsOnReply(replyID int64, page int) (reactionsOnReply []reactionOn
 
 // [mutation]
 func userInsert(user userDB) (userID int64, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return userID, errors.New("db connection")
 	}
@@ -2073,7 +2099,7 @@ func userInsert(user userDB) (userID int64, err error) {
 
 // follow
 func follow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2096,7 +2122,7 @@ func follow(followingUserID, followerUserID int64) (us updateStatusAPI, err erro
 	return us, nil
 }
 func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2120,7 +2146,7 @@ func unfollow(followingUserID, followerUserID int64) (us updateStatusAPI, err er
 
 // place
 func placeInsert(place placeAPI) (placeID int64, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return placeID, errors.New("db connection")
 	}
@@ -2152,7 +2178,7 @@ func placeInsert(place placeAPI) (placeID int64, err error) {
 
 // post
 func postInsert(post postAPI) (postID int64, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return postID, errors.New("db connection")
 	}
@@ -2193,7 +2219,7 @@ func postInsert(post postAPI) (postID int64, err error) {
 	return postID, err
 }
 func postUpdate(post postAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2223,7 +2249,7 @@ func postUpdate(post postAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 func postDelete(post postAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2245,21 +2271,33 @@ func postDelete(post postAPI) (us updateStatusAPI, err error) {
 }
 func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postAPI, err error) {
 	// you can wrap func as a transaction
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return posts, err
 	}
 	defer c.session.Close()
+	cr, err := connectRedis()
+	if err != nil {
+		return posts, err
+	}
+	defer cr.client.Close()
 	// read_index
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserReadIndex)
-	indexUserRead := postUserReadIndexAPI{}
-	q := bson.M{"user_id": userID, "category_id": categoryID}
-	collection.Find(q).One(&indexUserRead)
+	popularPostUserReadIndexStr, err := cr.client.HGet(parseHashPopularPostUserReadIndex(userID), strconv.Itoa(categoryID)).Result()
+	if err == redis.Nil {
+		// log.Println("key does not exist")
+		popularPostUserReadIndexStr = "0"
+	} else if err != nil {
+		return posts, err
+	}
+	popularPostUserReadIndex, err := strconv.Atoi(popularPostUserReadIndexStr)
+	if err != nil {
+		return posts, errors.New("PopularPostUserReadIndexStr convert " + "userID " + strconv.FormatInt(userID, 10) + "categoryID " + strconv.Itoa(categoryID))
+	}
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
 	postsRead := make(map[int64]int)
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
 	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
 		u := postUserReadAPI{}
 		q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}
@@ -2272,7 +2310,7 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 	// post_common
 	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostCommon)
 	u := postCommonAPI{}
-	q = bson.M{"category_id": categoryID}
+	q := bson.M{"category_id": categoryID}
 	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postPopularRead", err)
 		return posts, err
@@ -2281,11 +2319,11 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 	postsReadNew := make(map[int64]int)
 	count := 0
 	if indexRead >= 0 {
-		last := indexUserRead.PopularPost.Index + indexRead + 1
+		last := popularPostUserReadIndex + indexRead + 1
 		if last >= len(u.PopularPosts) {
 			last = len(u.PopularPosts)
 		}
-		for i := indexUserRead.PopularPost.Index; i < last; i++ {
+		for i := popularPostUserReadIndex; i < last; i++ {
 			postsReadNew[u.PopularPosts[i].PostID] = timestamp // for record read post
 		}
 	}
@@ -2300,7 +2338,7 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 	for k, v := range postsReadNew {
 		postsRead[k] = v
 	}
-	for i := indexUserRead.PopularPost.Index + indexRead + 1; i < len(u.PopularPosts); i++ {
+	for i := popularPostUserReadIndex + indexRead + 1; i < len(u.PopularPosts); i++ {
 		if count > numPerRequest {
 			break
 		}
@@ -2310,11 +2348,9 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 		}
 	}
 	if count > 0 {
-		collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserReadIndex)
-		if _, err := collection.Upsert(
-			bson.M{"user_id": userID, "category_id": categoryID},
-			bson.M{"$set": bson.M{"popular_post.index": indexUserRead.PopularPost.Index + indexRead + 1}}); err != nil {
-			log.Println("upsert", err)
+		err = cr.client.HSet(parseHashPopularPostUserReadIndex(userID), strconv.Itoa(categoryID), strconv.Itoa(popularPostUserReadIndex+indexRead+1)).Err()
+		if err != nil {
+			return posts, err
 		}
 	}
 	return posts, nil
@@ -2322,7 +2358,7 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 
 // hashtags
 func hashtagInsert(hashtags []string) (hashtagsID []int64, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return hashtagsID, errors.New("db connection")
 	}
@@ -2354,7 +2390,7 @@ func hashtagInsert(hashtags []string) (hashtagsID []int64, err error) {
 	return hashtagsID, err
 }
 func hashtagOnPostSet(postID int64, hashtagsID []int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2379,7 +2415,7 @@ func hashtagOnPostSet(postID int64, hashtagsID []int64) (us updateStatusAPI, err
 
 // post_tags
 func tagOnPostUpdate(postID int64, tag tagOnPostSetAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2435,7 +2471,7 @@ func tagsOnPostSet(postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, er
 	if len(tags) == 0 {
 		return us, nil
 	}
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2453,7 +2489,7 @@ func tagsOnPostSet(postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, er
 	return us, nil
 }
 func tagOnPostConfirm(postID, userID int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2479,7 +2515,7 @@ func tagOnPostConfirm(postID, userID int64) (us updateStatusAPI, err error) {
 	return us, nil
 }
 func tagOnPostDelete(postID, userID int64) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2503,7 +2539,7 @@ func tagOnPostDelete(postID, userID int64) (us updateStatusAPI, err error) {
 
 // comment
 func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return commentID, errors.New("db connection")
 	}
@@ -2544,7 +2580,7 @@ func commentOnPostInsert(comment commentAPI) (commentID int64, err error) {
 	return commentID, nil
 }
 func commentOnPostUpdate(comment commentAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2569,7 +2605,7 @@ func commentOnPostUpdate(comment commentAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 func commentOnPostDelete(comment commentAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2604,7 +2640,7 @@ func commentOnPostDelete(comment commentAPI) (us updateStatusAPI, err error) {
 
 // reply
 func replyOnCommentInsert(reply replyAPI) (replyID int64, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return replyID, errors.New("db connection")
 	}
@@ -2644,7 +2680,7 @@ func replyOnCommentInsert(reply replyAPI) (replyID int64, err error) {
 	return replyID, nil
 }
 func replyOnCommentUpdate(reply replyAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2669,7 +2705,7 @@ func replyOnCommentUpdate(reply replyAPI) (us updateStatusAPI, err error) {
 	return us, nil
 }
 func replyOnCommentDelete(reply replyAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2704,7 +2740,7 @@ func replyOnCommentDelete(reply replyAPI) (us updateStatusAPI, err error) {
 
 // reaction
 func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2736,7 +2772,7 @@ func reactionOnPostSet(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, er
 	return us, nil
 }
 func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2765,7 +2801,7 @@ func reactionOnPostDelete(reactionOnPost reactionOnPostAPI) (us updateStatusAPI,
 }
 
 func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2797,7 +2833,7 @@ func reactionOnCommentSet(reactionOnComment reactionOnCommentAPI) (us updateStat
 	return us, nil
 }
 func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2826,7 +2862,7 @@ func reactionOnCommentDelete(reactionOnComment reactionOnCommentAPI) (us updateS
 }
 
 func reactionOnReplySet(reactionOnReply reactionOnReplyAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2858,7 +2894,7 @@ func reactionOnReplySet(reactionOnReply reactionOnReplyAPI) (us updateStatusAPI,
 	return us, nil
 }
 func reactionOnReplyDelete(reactionOnReply reactionOnReplyAPI) (us updateStatusAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return us, errors.New("db connection")
 	}
@@ -2888,7 +2924,7 @@ func reactionOnReplyDelete(reactionOnReply reactionOnReplyAPI) (us updateStatusA
 
 // cronjob
 func getAllUserID() (users []xuserAPI, err error) {
-	c, err := connectPostgres(postgresConStr)
+	c, err := connectPostgres()
 	if err != nil {
 		return users, errors.New("db connection")
 	}
@@ -2921,7 +2957,7 @@ func getAllUserID() (users []xuserAPI, err error) {
 	return users, nil
 }
 func getPostsReadByUser(categoryID, weekTimestamp int, userID int64) (posts map[int64]int, err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return posts, err
@@ -2942,7 +2978,7 @@ func getPostsReadByUser(categoryID, weekTimestamp int, userID int64) (posts map[
 }
 
 func upsertPopularPostOnPostCommon(categoryID int, posts []postAPI) (err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return err
@@ -2958,7 +2994,7 @@ func upsertPopularPostOnPostCommon(categoryID int, posts []postAPI) (err error) 
 }
 
 func upsertPopularPostOnCountry(countryCode string, posts []postAPI) (err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return err
@@ -2973,7 +3009,7 @@ func upsertPopularPostOnCountry(countryCode string, posts []postAPI) (err error)
 	return nil
 }
 func upsertPopularPostOnCity(level, cityID string, posts []postAPI) (err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return err
@@ -2988,17 +3024,14 @@ func upsertPopularPostOnCity(level, cityID string, posts []postAPI) (err error) 
 	return nil
 }
 func upsertInitPostUserReadIndex(categoryID int, usersID []int64) (err error) {
-	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	cr, err := connectRedis()
 	if err != nil {
-		log.Println("mongo session", err)
 		return err
 	}
-	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserReadIndex)
+	defer cr.client.Close()
 	for i := 0; i < len(usersID); i++ {
-		selector := bson.M{"user_id": usersID[i], "category_id": categoryID}
-		if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"popular_post.index": 0}}); err != nil {
-			log.Println("upsertInitPostPopularIndex", err)
+		err = cr.client.HSet(parseHashPopularPostUserReadIndex(usersID[i]), strconv.Itoa(categoryID), "0").Err()
+		if err != nil {
 			return err
 		}
 	}
