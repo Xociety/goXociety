@@ -79,6 +79,13 @@ const (
 	cityLevelRangeLast               = 5
 )
 
+// Redis
+
+const (
+	redisDBPopularPostUserReadIndex   = 10
+	redisHashPopularPostUserReadIndex = "popular_post_user_read_index"
+)
+
 const numPopularPostPerRefresh = 10000
 const numPerRequest = 10
 

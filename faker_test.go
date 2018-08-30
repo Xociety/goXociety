@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/globalsign/mgo/bson"
 	"github.com/go-redis/redis"
 	geo "github.com/kellydunn/golang-geo"
 	"github.com/manveru/faker"
@@ -386,26 +387,80 @@ func TestCategorySupCityPost(t *testing.T) {
 	}
 }
 
-func TestRedis(t *testing.T) {
+func TestMongoPopularPostUserReadIndex(t *testing.T) {
+	startTimeTotal := time.Now()
+	startTime := time.Now()
+	c, err := connectMongoDB(globalConfig[env].MongoConStr)
+	if err != nil {
+		log.Println("mongo session", err)
+	}
+	defer c.session.Close()
+	log.Printf("connect total took %fs\n", time.Since(startTime).Seconds())
+	startTime = time.Now()
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserReadIndex)
+	indexUserRead := postUserReadIndexAPI{}
+	q := bson.M{"user_id": 1, "category_id": "0"}
+	collection.Find(q).One(&indexUserRead)
+	log.Printf("get total took %fs\n", time.Since(startTime).Seconds())
+	startTime = time.Now()
+	if _, err := collection.Upsert(
+		bson.M{"user_id": 1, "category_id": "0"},
+		bson.M{"$set": bson.M{"popular_post.index": 1}}); err != nil {
+		log.Println("upsert", err)
+	}
+	log.Printf("set total took %fs\n", time.Since(startTime).Seconds())
+	log.Printf("total took %fs\n", time.Since(startTimeTotal).Seconds())
+}
+func TestRedisPopularPostUserReadIndex(t *testing.T) {
+	startTimeTotal := time.Now()
 	startTime := time.Now()
 	client := redis.NewClient(&redis.Options{
 		Addr:     globalConfig[env].RedisConStr,
 		Password: "",
-		DB:       7,
+		DB:       10,
+	})
+	defer client.Close()
+	log.Printf("connect total took %fs\n", time.Since(startTime).Seconds())
+	startTime = time.Now()
+	val, err := client.HGet(parseHashPopularPostUserReadIndex(1), "0").Result()
+	if err == redis.Nil {
+		log.Println("key does not exist")
+	} else if err != nil {
+		panic(err)
+	} else {
+		log.Println(val)
+	}
+	log.Printf("get total took %fs\n", time.Since(startTime).Seconds())
+	startTime = time.Now()
+	err = client.HSet(parseHashPopularPostUserReadIndex(1), "0", 1).Err()
+	if err != nil {
+		log.Println(err)
+	}
+	log.Printf("set total took %fs\n", time.Since(startTime).Seconds())
+	log.Printf("total took %fs\n", time.Since(startTimeTotal).Seconds())
+}
+func TestRedisBenchmark(t *testing.T) {
+	startTime := time.Now()
+	client := redis.NewClient(&redis.Options{
+		Addr:     globalConfig[env].RedisConStr,
+		Password: "",
+		DB:       10,
 	})
 	defer client.Close()
 	var wg sync.WaitGroup
-	numReq := 13 * 10000
+	numReq := 1
 	wg.Add(numReq)
 	log.Printf("connect total took %fs\n", time.Since(startTime).Seconds())
 	for i := 0; i < numReq; i++ {
 		go func() {
 			defer wg.Done()
-			_, err := client.Get("0:1").Result()
+			val, err := client.HGet("user1", "3").Result()
 			if err == redis.Nil {
 				log.Println("key does not exist")
 			} else if err != nil {
 				panic(err)
+			} else {
+				log.Println(val)
 			}
 		}()
 	}

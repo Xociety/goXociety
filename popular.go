@@ -32,3 +32,7 @@ func filterReadedPost(postsRead map[int64]int, posts []postAPI) (filteredPost []
 	}
 	return filteredPost
 }
+
+func parseHashPopularPostUserReadIndex(userID int64) string {
+	return redisHashPopularPostUserReadIndex + ":user_id_" + strconv.FormatInt(userID, 10)
+}
