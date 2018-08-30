@@ -9,7 +9,9 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/go-redis/redis"
@@ -385,17 +387,28 @@ func TestCategorySupCityPost(t *testing.T) {
 }
 
 func TestRedis(t *testing.T) {
+	startTime := time.Now()
 	client := redis.NewClient(&redis.Options{
 		Addr:     globalConfig[env].RedisConStr,
 		Password: "",
 		DB:       7,
 	})
-	for i := 0; i < 10000; i++ {
-		_, err := client.Get("0:1").Result()
-		if err == redis.Nil {
-			log.Println("key does not exist")
-		} else if err != nil {
-			panic(err)
-		}
+	defer client.Close()
+	var wg sync.WaitGroup
+	numReq := 13 * 10000
+	wg.Add(numReq)
+	log.Printf("connect total took %fs\n", time.Since(startTime).Seconds())
+	for i := 0; i < numReq; i++ {
+		go func() {
+			defer wg.Done()
+			_, err := client.Get("0:1").Result()
+			if err == redis.Nil {
+				log.Println("key does not exist")
+			} else if err != nil {
+				panic(err)
+			}
+		}()
 	}
+	wg.Wait()
+	log.Printf("get total took %fs\n", time.Since(startTime).Seconds())
 }
