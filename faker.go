@@ -150,21 +150,37 @@ func genPopularPostUpsert() {
 		}
 	}
 	log.Println("finish common posts")
+}
+func genSupPopularPostUpsert() {
+	users, err := getAllUserID()
+	if err != nil {
+		log.Println("user", err)
+	}
+	usersID := []int64{}
+	usersIDStr := []string{}
+	hf := make(map[string]interface{})
+	for i := 0; i < len(users); i++ {
+		usersID = append(usersID, users[i].UserID)
+		userIDStr := strconv.FormatInt(users[i].UserID, 10)
+		usersIDStr = append(usersIDStr, userIDStr)
+		hf[userIDStr] = "0"
+	}
+	categorySupStr := strconv.Itoa(categorySup)
 	countries, err := getCountries()
 	if err != nil {
 		log.Println(err)
 	}
 	for i := 0; i < len(countries); i++ {
-		if countries[i].CountryCode != "TWN" {
-			continue
-		}
 		postsCountry, err := getPostsByRecentWithCountryNum(countries[i].CountryCode, categorySup, numPopularPostPerRefresh)
 		if err != nil {
 			continue
 		}
 		sort.Sort(postByPopular(postsCountry))
 		// init post_user_read_index
-		if err := upsertInitCountryPostUserReadIndex(countries[i].CountryCode, categorySup, usersID); err != nil {
+		cr := connectRedis()
+		hk := redisHashCountryPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":category_id_" + categorySupStr
+		err = cr.client.HMSet(hk, hf).Err()
+		if err != nil {
 			log.Println(err)
 		}
 		// country.sup_popular_posts
@@ -184,7 +200,9 @@ func genPopularPostUpsert() {
 				}
 				sort.Sort(postByPopular(posts))
 				// init post_user_read_index
-				if err := upsertInitCityPostUserReadIndex(citiesLevel[k].CityID, categorySup, usersID); err != nil {
+				hk := redisHashCityPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":category_id_" + categorySupStr
+				err = cr.client.HMSet(hk, hf).Err()
+				if err != nil {
 					log.Println(err)
 				}
 				// city.sup_popular_posts
@@ -193,6 +211,7 @@ func genPopularPostUpsert() {
 				}
 			}
 		}
+		cr.client.Close()
 		log.Println("finish " + countries[i].CountryName + " posts")
 	}
 }

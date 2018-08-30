@@ -203,12 +203,14 @@ func TestFakeDataSample(t *testing.T) {
 	// gen popular post
 	log.Println("start popular post")
 	genPopularPostUpsert()
+	genSupPopularPostUpsert()
 }
 func TestPopularPostUpsert(t *testing.T) {
 	if os.Getenv("test_fakedata") != "true" || os.Getenv("test_fakedata") == "" {
 		t.Skip("skip TestSortPostPopular")
 	}
 	genPopularPostUpsert()
+	genSupPopularPostUpsert()
 }
 func TestRedisPopularPostUserReadIndex(t *testing.T) {
 	startTimeTotal := time.Now()
@@ -235,6 +237,7 @@ func TestRedisPopularPostUserReadIndex(t *testing.T) {
 	log.Printf("set total took %fs\n", time.Since(startTime).Seconds())
 	log.Printf("total took %fs\n", time.Since(startTimeTotal).Seconds())
 }
+
 func TestRedisBenchmark(t *testing.T) {
 	startTime := time.Now()
 	cr := connectRedis()

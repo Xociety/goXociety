@@ -3305,27 +3305,3 @@ func upsertInitCommonPostUserReadIndex(categoryID int, usersID []int64) (err err
 	}
 	return nil
 }
-func upsertInitCountryPostUserReadIndex(countryCode string, categoryID int, usersID []int64) (err error) {
-	cr := connectRedis()
-	defer cr.client.Close()
-	for i := 0; i < len(usersID); i++ {
-		hk, hf := parseHashKeyFieldCountryPopularPostUserReadIndex(countryCode, categoryID, usersID[i])
-		err = cr.client.HSet(hk, hf, "0").Err()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-func upsertInitCityPostUserReadIndex(cityID string, categoryID int, usersID []int64) (err error) {
-	cr := connectRedis()
-	defer cr.client.Close()
-	for i := 0; i < len(usersID); i++ {
-		hk, hf := parseHashKeyFieldCityPopularPostUserReadIndex(cityID, categoryID, usersID[i])
-		err = cr.client.HSet(hk, hf, "0").Err()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
