@@ -106,14 +106,14 @@ func connectMongoDB() (connMongo, error) {
 	}
 	return c, nil
 }
-func connectRedis() (connRedis, error) {
+func connectRedis() connRedis {
 	c := connRedis{}
 	c.client = redis.NewClient(&redis.Options{
 		Addr:     globalConfig[env].RedisConStr,
 		Password: "",
 		DB:       redisDBPopularPostUserReadIndex,
 	})
-	return c, nil
+	return c
 }
 
 // auth
@@ -1589,13 +1589,11 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 		return posts, err
 	}
 	defer c.session.Close()
-	cr, err := connectRedis()
-	if err != nil {
-		return posts, err
-	}
+	cr := connectRedis()
 	defer cr.client.Close()
 	// read_index
-	popularPostUserReadIndexStr, err := cr.client.HGet(parseHashPopularPostUserReadIndex(userID), strconv.Itoa(categoryID)).Result()
+	hk, hf := parseHashPopularPostUserReadIndex(userID, categoryID)
+	popularPostUserReadIndexStr, err := cr.client.HGet(hk, hf).Result()
 	if err == redis.Nil {
 		// log.Println("key does not exist")
 		popularPostUserReadIndexStr = "0"
@@ -2277,13 +2275,11 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 		return posts, err
 	}
 	defer c.session.Close()
-	cr, err := connectRedis()
-	if err != nil {
-		return posts, err
-	}
+	cr := connectRedis()
 	defer cr.client.Close()
 	// read_index
-	popularPostUserReadIndexStr, err := cr.client.HGet(parseHashPopularPostUserReadIndex(userID), strconv.Itoa(categoryID)).Result()
+	hk, hf := parseHashPopularPostUserReadIndex(userID, categoryID)
+	popularPostUserReadIndexStr, err := cr.client.HGet(hk, hf).Result()
 	if err == redis.Nil {
 		// log.Println("key does not exist")
 		popularPostUserReadIndexStr = "0"
@@ -2348,7 +2344,8 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 		}
 	}
 	if count > 0 {
-		err = cr.client.HSet(parseHashPopularPostUserReadIndex(userID), strconv.Itoa(categoryID), strconv.Itoa(popularPostUserReadIndex+indexRead+1)).Err()
+		hk, hf := parseHashPopularPostUserReadIndex(userID, categoryID)
+		err = cr.client.HSet(hk, hf, strconv.Itoa(popularPostUserReadIndex+indexRead+1)).Err()
 		if err != nil {
 			return posts, err
 		}
@@ -3024,13 +3021,11 @@ func upsertPopularPostOnCity(level, cityID string, posts []postAPI) (err error) 
 	return nil
 }
 func upsertInitPostUserReadIndex(categoryID int, usersID []int64) (err error) {
-	cr, err := connectRedis()
-	if err != nil {
-		return err
-	}
+	cr := connectRedis()
 	defer cr.client.Close()
 	for i := 0; i < len(usersID); i++ {
-		err = cr.client.HSet(parseHashPopularPostUserReadIndex(usersID[i]), strconv.Itoa(categoryID), "0").Err()
+		hk, hf := parseHashPopularPostUserReadIndex(usersID[i], categoryID)
+		err = cr.client.HSet(hk, hf, "0").Err()
 		if err != nil {
 			return err
 		}

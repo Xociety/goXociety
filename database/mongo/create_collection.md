@@ -98,27 +98,7 @@ db.post_user_read.createIndex({ "user_id": 1, "category_id": 1, "week_timestamp"
 }
 ```
 
-## 
-
-* init
-
-```javascript
-db.createCollection("post_user_read_index");
-db.post_user_read_index.createIndex({ "user_id": 1, "category_id": 1 });
-```
-
-* document sample
-
-```json
-{
-    "_id" : ObjectId("5b84c7b6a6d3157bc2d44195"),
-    "category_id" : 4,
-    "user_id" : NumberLong(1909),
-    "popular_post" : {
-        "index" : 5
-    }
-}
-```
+##
 
 
 ## city

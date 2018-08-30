@@ -385,19 +385,14 @@ func TestCategorySupCityPost(t *testing.T) {
 		}
 	}
 }
-
 func TestRedisPopularPostUserReadIndex(t *testing.T) {
 	startTimeTotal := time.Now()
 	startTime := time.Now()
-	client := redis.NewClient(&redis.Options{
-		Addr:     globalConfig[env].RedisConStr,
-		Password: "",
-		DB:       redisDBPopularPostUserReadIndex,
-	})
-	defer client.Close()
+	cr := connectRedis()
+	defer cr.client.Close()
 	log.Printf("connect total took %fs\n", time.Since(startTime).Seconds())
 	startTime = time.Now()
-	val, err := client.HGet(parseHashPopularPostUserReadIndex(1), "0").Result()
+	val, err := cr.client.HGet(parseHashPopularPostUserReadIndex(1), "0").Result()
 	if err == redis.Nil {
 		log.Println("key does not exist")
 	} else if err != nil {
@@ -407,7 +402,7 @@ func TestRedisPopularPostUserReadIndex(t *testing.T) {
 	}
 	log.Printf("get total took %fs\n", time.Since(startTime).Seconds())
 	startTime = time.Now()
-	err = client.HSet(parseHashPopularPostUserReadIndex(1), "0", 1).Err()
+	err = cr.client.HSet(parseHashPopularPostUserReadIndex(1), "0", 1).Err()
 	if err != nil {
 		log.Println(err)
 	}
@@ -416,12 +411,8 @@ func TestRedisPopularPostUserReadIndex(t *testing.T) {
 }
 func TestRedisBenchmark(t *testing.T) {
 	startTime := time.Now()
-	client := redis.NewClient(&redis.Options{
-		Addr:     globalConfig[env].RedisConStr,
-		Password: "",
-		DB:       redisDBPopularPostUserReadIndex,
-	})
-	defer client.Close()
+	cr := connectRedis()
+	defer cr.client.Close()
 	var wg sync.WaitGroup
 	numReq := 1
 	wg.Add(numReq)
@@ -429,7 +420,7 @@ func TestRedisBenchmark(t *testing.T) {
 	for i := 0; i < numReq; i++ {
 		go func() {
 			defer wg.Done()
-			val, err := client.HGet("user1", "3").Result()
+			val, err := cr.client.HGet("user1", "3").Result()
 			if err == redis.Nil {
 				log.Println("key does not exist")
 			} else if err != nil {
