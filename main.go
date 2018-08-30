@@ -81,8 +81,10 @@ const (
 // Redis
 
 const (
-	redisDBPopularPostUserReadIndex   = 10
-	redisHashPopularPostUserReadIndex = "popular_post_user_read_index"
+	redisDBPopularPostUserReadIndex          = 10
+	redisHashCommonPopularPostUserReadIndex  = "common"
+	redisHashCountryPopularPostUserReadIndex = "country"
+	redisHashCityPopularPostUserReadIndex    = "city"
 )
 
 const numPopularPostPerRefresh = 10000

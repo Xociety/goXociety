@@ -1191,6 +1191,10 @@ var graphqlQueryType = graphql.NewObject(
 						Type:        graphql.String,
 						Description: "country_code",
 					},
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
 					"page": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
 						Description: "page",
@@ -1205,12 +1209,16 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("country_code format")
 					}
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
 					page, isOK := p.Args["page"].(int)
 					if !isOK {
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByFollowingUsersWithCountry(user.UserID, countryCode, page)
+					posts, err := getPostsByFollowingUsersWithCountry(user.UserID, countryCode, categoryID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1225,6 +1233,10 @@ var graphqlQueryType = graphql.NewObject(
 					"city_id": &graphql.ArgumentConfig{
 						Type:        graphql.String,
 						Description: "city_id",
+					},
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
 					},
 					"page": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
@@ -1247,12 +1259,16 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("city_id format")
 					}
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
 					page, isOK := p.Args["page"].(int)
 					if !isOK {
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByFollowingUsersWithCity(user.UserID, strconv.Itoa(level), cityID, page)
+					posts, err := getPostsByFollowingUsersWithCity(user.UserID, strconv.Itoa(level), cityID, categoryID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1313,6 +1329,83 @@ var graphqlQueryType = graphql.NewObject(
 					// block check
 					posts, err := getPostsByPopular(user.UserID, categoryID, page)
 					log.Printf("posts_by_popular total took %fs\n", time.Since(startTime).Seconds())
+					return posts, err
+				},
+				Description: "",
+			},
+			"sup_posts_by_popular_with_country": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"country_code": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "country_code",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					countryCode, isOK := p.Args["country_code"].(string)
+					if !isOK {
+						return nil, errors.New("country_code format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getSupPostsByPopularWithCountry(countryCode, user.UserID, page)
+					log.Printf("sup_posts_by_popular_with_country total took %fs\n", time.Since(startTime).Seconds())
+					return posts, err
+				},
+				Description: "",
+			},
+			"sup_posts_by_popular_with_city": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"level": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "level",
+					},
+					"city_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "city_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					level, isOK := p.Args["level"].(int)
+					if !isOK {
+						return nil, errors.New("level format")
+					}
+					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
+						return nil, errors.New("level format")
+					}
+					cityID, isOK := p.Args["city_id"].(string)
+					if !isOK {
+						return nil, errors.New("city_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getSupPostsByPopularWithCity(strconv.Itoa(level), cityID, user.UserID, page)
+					log.Printf("sup_posts_by_popular_with_country total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
 				Description: "",
@@ -1949,6 +2042,87 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					posts, err := postPopularRead(categoryID, indexRead, user.UserID)
 					log.Printf("post_popular_read total took %fs\n", time.Since(startTime).Seconds())
+					return posts, err
+				},
+				Description: "",
+			},
+			"sup_post_popular_read_with_country": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"country_code": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "country_code",
+					},
+					"index_read": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "index_read, [0 - ∞)",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					countryCode, isOK := p.Args["country_code"].(string)
+					if !isOK {
+						return nil, errors.New("country_code format")
+					}
+					indexRead, isOK := p.Args["index_read"].(int)
+					if !isOK {
+						return nil, errors.New("index_read format")
+					}
+					if indexRead < 0 {
+						return nil, errors.New("index_read format")
+					}
+					posts, err := supPostPopularReadCountry(countryCode, indexRead, user.UserID)
+					log.Printf("sup_post_popular_read_with_country total took %fs\n", time.Since(startTime).Seconds())
+					return posts, err
+				},
+				Description: "",
+			},
+			"sup_post_popular_read_with_city": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"level": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "level",
+					},
+					"city_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "city_id",
+					},
+					"index_read": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "index_read, [0 - ∞)",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					level, isOK := p.Args["level"].(int)
+					if !isOK {
+						return nil, errors.New("level format")
+					}
+					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
+						return nil, errors.New("level format")
+					}
+					cityID, isOK := p.Args["city_id"].(string)
+					if !isOK {
+						return nil, errors.New("city_id format")
+					}
+					indexRead, isOK := p.Args["index_read"].(int)
+					if !isOK {
+						return nil, errors.New("index_read format")
+					}
+					if indexRead < 0 {
+						return nil, errors.New("index_read format")
+					}
+					posts, err := supPostPopularReadCity(strconv.Itoa(level), cityID, indexRead, user.UserID)
+					log.Printf("sup_post_popular_read_with_city total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
 				Description: "",

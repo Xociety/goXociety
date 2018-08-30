@@ -71,15 +71,17 @@ type cityAPI struct {
 	Properties propertiesCityAPI `json:"properties" bson:"properties"`
 }
 type countryAPI struct {
-	CountryCode string `json:"country_code" bson:"country_code"`
-	CountryName string `json:"country_name" bson:"country_name"`
-	PostCount   int    `json:"post_count" bson:"post_count"`
+	CountryCode     string    `json:"country_code" bson:"country_code"`
+	CountryName     string    `json:"country_name" bson:"country_name"`
+	PostCount       int       `json:"post_count" bson:"post_count"`
+	SupPopularPosts []postAPI `json:"sup_popular_posts" bson:"sup_popular_posts"`
 }
 type cityLevelAPI struct {
-	Name      string `json:"name" bson:"name"`
-	CityID    string `json:"city_id" bson:"city_id"`
-	Type      string `json:"type" bson:"type"`
-	PostCount int    `json:"post_count" bson:"post_count"`
+	Name            string    `json:"name" bson:"name"`
+	CityID          string    `json:"city_id" bson:"city_id"`
+	Type            string    `json:"type" bson:"type"`
+	PostCount       int       `json:"post_count" bson:"post_count"`
+	SupPopularPosts []postAPI `json:"sup_popular_posts" bson:"sup_popular_posts"`
 }
 
 // place
@@ -231,27 +233,11 @@ type categoryAPI struct {
 }
 
 // cronjob
-type userPostPopular struct {
-	ID         bson.ObjectId `bson:"_id"`
-	UserID     int64         `bson:"user_id"`
-	CategoryID int           `bson:"category_id"`
-	Posts      []postAPI     `bson:"posts"`
-}
 
 type postCommonAPI struct {
 	ID           bson.ObjectId `bson:"_id"`
 	CategoryID   int           `bson:"category_id"`
 	PopularPosts []postAPI     `bson:"popular_posts"`
-}
-
-type postUserReadIndexPopularAPI struct {
-	Index int `bson:"index"`
-}
-type postUserReadIndexAPI struct {
-	ID          bson.ObjectId               `bson:"_id"`
-	UserID      int                         `bson:"user_id"`
-	CategoryID  int                         `bson:"category_id"`
-	PopularPost postUserReadIndexPopularAPI `bson:"popular_post"`
 }
 
 type postUserReadAPI struct {

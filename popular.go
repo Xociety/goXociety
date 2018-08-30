@@ -33,8 +33,18 @@ func filterReadedPost(postsRead map[int64]int, posts []postAPI) (filteredPost []
 	return filteredPost
 }
 
-func parseHashPopularPostUserReadIndex(userID int64, categoryID int) (hashKey, hashfield string) {
-	hashKey = redisHashPopularPostUserReadIndex + ":user_id_" + strconv.FormatInt(userID, 10)
-	hashfield = "category_id_" + strconv.Itoa(categoryID)
+func parseHashKeyFieldCommonPopularPostUserReadIndex(categoryID int, userID int64) (hashKey, hashfield string) {
+	hashKey = redisHashCommonPopularPostUserReadIndex + ":category_id_" + strconv.Itoa(categoryID)
+	hashfield = "user_id_" + strconv.FormatInt(userID, 10)
+	return
+}
+func parseHashKeyFieldCountryPopularPostUserReadIndex(countryCode string, categoryID int, userID int64) (hashKey, hashfield string) {
+	hashKey = redisHashCountryPopularPostUserReadIndex + ":" + countryCode + ":category_id_" + strconv.Itoa(categoryID)
+	hashfield = "user_id_" + strconv.FormatInt(userID, 10)
+	return
+}
+func parseHashKeyFieldCityPopularPostUserReadIndex(cityID string, categoryID int, userID int64) (hashKey, hashfield string) {
+	hashKey = redisHashCityPopularPostUserReadIndex + ":" + cityID + ":category_id_" + strconv.Itoa(categoryID)
+	hashfield = "user_id_" + strconv.FormatInt(userID, 10)
 	return
 }
