@@ -111,7 +111,7 @@ db.city.createIndex({"geometry":"2dsphere"})
 
 * data source gadm
 
-please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity)
+please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/releases/tag/v0.0.1)
 
 * document sample
 
@@ -160,7 +160,7 @@ please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity)
 
 * data source gadm
 
-please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity)
+please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/releases/tag/v0.0.1)
 
 ```javascript
 db.createCollection("country")
