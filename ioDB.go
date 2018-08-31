@@ -529,7 +529,8 @@ func getCountries() (countries []countryAPI, err error) {
 	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
 	q := bson.M{}
-	if err := collection.Find(q).All(&countries); err != nil {
+	selector := bson.M{"country_code": 1, "country_name": 1}
+	if err := collection.Find(q).Select(selector).All(&countries); err != nil {
 		log.Println("getCountries", err)
 		return countries, err
 	}
@@ -544,11 +545,27 @@ func getCountry(countryCode string) (country countryAPI, err error) {
 	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
 	q := bson.M{"country_code": countryCode}
-	if err := collection.Find(q).One(&country); err != nil {
+	selector := bson.M{"country_code": 1, "country_name": 1}
+	if err := collection.Find(q).Select(selector).One(&country); err != nil {
 		log.Println("getCountry", err)
 		return country, err
 	}
 	return country, nil
+}
+func getCitiesLevel(level string) (citiesLevel []cityLevelAPI, err error) {
+	c, err := connectMongoDB()
+	if err != nil {
+		log.Println("mongo session", err)
+		return citiesLevel, err
+	}
+	defer c.session.Close()
+	collection := c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
+	q := bson.M{}
+	if err := collection.Find(q).All(&citiesLevel); err != nil {
+		log.Println("getCitiesLevel", err)
+		return citiesLevel, err
+	}
+	return citiesLevel, nil
 }
 func getCityLevel(level string, cityID string) (cityLevel cityLevelAPI, err error) {
 	c, err := connectMongoDB()
@@ -559,7 +576,8 @@ func getCityLevel(level string, cityID string) (cityLevel cityLevelAPI, err erro
 	defer c.session.Close()
 	collection := c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
 	q := bson.M{"city_id": cityID}
-	if err := collection.Find(q).One(&cityLevel); err != nil {
+	selector := bson.M{"city_id": 1, "name": 1, "type": 1}
+	if err := collection.Find(q).Select(selector).One(&cityLevel); err != nil {
 		log.Println("getCityLevel", err)
 		return cityLevel, err
 	}
@@ -948,7 +966,7 @@ func getPostsByRecentWithCountryNum(countryCode string, categoryID, numPost int)
 	`
 	rows, err := c.db.Query(sqlStr, categoryID, countryCode, timestamp, 0, numPost)
 	if err != nil {
-		log.Println("getPostsRecent", err)
+		log.Println("getPostsByRecentWithCountryNum", err)
 		return posts, err
 	}
 	defer rows.Close()
@@ -1114,6 +1132,92 @@ func getPostsByRecentWithCityNum(level, cityID string, categoryID, numPost int) 
 	rows, err := c.db.Query(sqlStr, categoryID, cityID, timestamp, 0, numPost)
 	if err != nil {
 		log.Println("getPostsByRecentWithCityNum", err)
+		return posts, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		post := postAPI{}
+		place := placeAPI{}
+		var placeID interface{}
+		if err := rows.Scan(
+			&post.PostID,
+			&post.User.UserID,
+			&post.User.Username,
+			&post.User.Name,
+			&post.User.PhotoURL,
+			&post.Content,
+			&post.Blob.BlobID,
+			&post.Blob.OriginWidth,
+			&post.Blob.OriginHeight,
+			&post.Type,
+			&post.LikeCount,
+			&post.DislikeCount,
+			&post.CommentCount,
+			&placeID,
+			&place.CountryCode,
+			&place.CityID1,
+			&place.CityID2,
+			&place.CityID3,
+			&place.CityID4,
+			&place.CityID5,
+			&place.Lat,
+			&place.Lon,
+			&place.Name,
+			&post.CategoryID,
+			&post.Createtime,
+			&post.Updatetime,
+		); err != nil {
+			log.Println("errrr", err)
+			return posts, err
+		}
+		placeIDCheck, isOK := placeID.(int64)
+		if isOK {
+			place.PlaceID = placeIDCheck
+		}
+		post.Place = place
+		post.Blob.BlobID = makeBlobURL(post)
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return posts, err
+	}
+	return posts, nil
+}
+func getPostsByRecentWithPlaceLikeNum(countryCode string, categoryID, numPost int) (posts []postAPI, err error) {
+	// combine this with func getPostsByRecentWithPlaceLikeNum
+	c, err := connectPostgres()
+	if err != nil {
+		return posts, errors.New("db connection")
+	}
+	defer c.db.Close()
+	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
+	// if categoryID == categorySup {
+	// 	timestamp = getNowUnixTimestamp() - twentyFourHoursInSecond
+	// }
+	sqlStr := `
+		SELECT 
+		post.post_id,
+		post.user_id, xuser.username, xuser.name, xuser.photo_url,
+		post.content, post.blob_id, post.origin_width, post.origin_height, post.type, 
+		post.like_count, post.dislike_count, post.comment_count,
+		place.place_id, place.country_code,
+		place.city_id_1, place.city_id_2, place.city_id_3,
+		place.city_id_4, place.city_id_5,
+		place.lat, place.lon, place.name,
+		post.category_id, post.createtime, post.updatetime 
+		FROM post 
+		JOIN xuser ON xuser.user_id = post.user_id
+		JOIN place ON place.place_id = post.place_id
+		WHERE post.category_id=$1 AND 
+		(place.country_code = $2 OR place.city_id_1 LIKE $2 || '%' OR place.city_id_2 LIKE $2 || '%' OR
+		place.city_id_3 LIKE $2 || '%' OR place.city_id_4 LIKE $2 || '%' OR place.city_id_5 LIKE $2 || '%') AND 
+		post.createtime >= $3
+		ORDER BY post.createtime DESC OFFSET $4 LIMIT $5;
+	`
+	rows, err := c.db.Query(sqlStr, categoryID, countryCode, timestamp, 0, numPost)
+	if err != nil {
+		log.Println("getPostsByRecentWithPlaceLikeNum", err)
 		return posts, err
 	}
 	defer rows.Close()
@@ -3256,37 +3360,6 @@ func upsertPopularPostOnPostCommon(categoryID int, posts []postAPI) (err error) 
 	selector := bson.M{"category_id": categoryID}
 	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"popular_posts": posts}}); err != nil {
 		log.Println("upsertPopularPostOnPostCommon", err)
-		return err
-	}
-	return nil
-}
-
-func upsertSupPopularPostOnCountry(countryCode string, posts []postAPI) (err error) {
-	c, err := connectMongoDB()
-	if err != nil {
-		log.Println("mongo session", err)
-		return err
-	}
-	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
-	selector := bson.M{"country_code": countryCode}
-	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": posts}}); err != nil {
-		log.Println("upsertPopularPostOnCountry", err)
-		return err
-	}
-	return nil
-}
-func upsertSupPopularPostOnCity(level, cityID string, posts []postAPI) (err error) {
-	c, err := connectMongoDB()
-	if err != nil {
-		log.Println("mongo session", err)
-		return err
-	}
-	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
-	selector := bson.M{"city_id": cityID}
-	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": posts}}); err != nil {
-		log.Println("upsertPopularPostOnCity", err)
 		return err
 	}
 	return nil

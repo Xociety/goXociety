@@ -5,7 +5,9 @@ import (
 	"math/rand"
 	"sort"
 	"strconv"
+	"strings"
 
+	"github.com/globalsign/mgo/bson"
 	geo "github.com/kellydunn/golang-geo"
 	"github.com/manveru/faker"
 )
@@ -163,19 +165,25 @@ func genSupPopularPostUpsert() {
 		usersID = append(usersID, users[i].UserID)
 		userIDStr := strconv.FormatInt(users[i].UserID, 10)
 		usersIDStr = append(usersIDStr, userIDStr)
-		hf[userIDStr] = "0"
+		hf["user_id_"+userIDStr] = "0"
 	}
 	categorySupStr := strconv.Itoa(categorySup)
 	countries, err := getCountries()
 	if err != nil {
 		log.Println(err)
 	}
-	for i := 0; i < len(countries); i++ {
-		postsCountry, err := getPostsByRecentWithCountryNum(countries[i].CountryCode, categorySup, numPopularPostPerRefresh)
+	citiesLevelAll := [][]cityLevelAPI{}
+	for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
+		level := strconv.Itoa(j)
+		citiesLevel, err := getCitiesLevel(level)
 		if err != nil {
-			continue
+			log.Panicln(err)
 		}
-		sort.Sort(postByPopular(postsCountry))
+		citiesLevelAll = append(citiesLevelAll, citiesLevel)
+	}
+	for i := 0; i < len(countries); i++ {
+		posts, err := getPostsByRecentWithPlaceLikeNum(countries[i].CountryCode, categorySup, numPopularPostPerRefresh)
+		sort.Sort(postByPopular(posts))
 		// init post_user_read_index
 		cr := connectRedis()
 		hk := redisHashCountryPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":category_id_" + categorySupStr
@@ -184,34 +192,60 @@ func genSupPopularPostUpsert() {
 			log.Println(err)
 		}
 		// country.sup_popular_posts
-		if err := upsertSupPopularPostOnCountry(countries[i].CountryCode, postsCountry); err != nil {
-			log.Println(err)
+		c, err := connectMongoDB()
+		if err != nil {
+			log.Println("mongo session", err)
+		}
+		collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
+		selector := bson.M{"country_code": countries[i].CountryCode}
+		if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": posts}}); err != nil {
+			log.Println("upsertPopularPostOnCountry", err)
 		}
 		for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
 			level := strconv.Itoa(j)
-			citiesLevel, err := getCitiesLevelByCityIDLike(level, countries[i].CountryCode)
-			if err != nil {
-				log.Println(err)
-			}
-			for k := 0; k < len(citiesLevel); k++ {
-				posts, err := getPostsByRecentWithCityNum(level, citiesLevel[k].CityID, categorySup, numPopularPostPerRefresh)
-				if err != nil {
-					log.Println(err)
+			filteredCityLevel := []cityLevelAPI{}
+			for k := 0; k < len(citiesLevelAll[j-1]); k++ {
+				if strings.Index(citiesLevelAll[j-1][k].CityID, countries[i].CountryCode) != -1 {
+					filteredCityLevel = append(filteredCityLevel, citiesLevelAll[j-1][k])
 				}
-				sort.Sort(postByPopular(posts))
+			}
+			for k := 0; k < len(filteredCityLevel); k++ {
+				filteredPosts := []postAPI{}
+				for l := 0; l < len(posts); l++ {
+					cityID := ""
+					switch j {
+					case 1:
+						cityID = posts[l].Place.CityID1
+					case 2:
+						cityID = posts[l].Place.CityID2
+					case 3:
+						cityID = posts[l].Place.CityID3
+					case 4:
+						cityID = posts[l].Place.CityID4
+					case 5:
+						cityID = posts[l].Place.CityID5
+					}
+					if strings.Index(cityID, filteredCityLevel[k].CityID) != -1 {
+						filteredPosts = append(filteredPosts, posts[l])
+					}
+				}
 				// init post_user_read_index
-				hk := redisHashCityPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":category_id_" + categorySupStr
+				hk := redisHashCityPopularPostUserReadIndex + ":" + filteredCityLevel[k].CityID + ":category_id_" + categorySupStr
 				err = cr.client.HMSet(hk, hf).Err()
 				if err != nil {
 					log.Println(err)
 				}
 				// city.sup_popular_posts
-				if err := upsertSupPopularPostOnCity(level, citiesLevel[k].CityID, posts); err != nil {
-					log.Println(err)
+				collection := c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
+				selector := bson.M{"city_id": filteredCityLevel[k].CityID}
+				if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": filteredPosts}}); err != nil {
+					log.Println("upsertPopularPostOnCity", err)
 				}
 			}
 		}
+		c.session.Close()
 		cr.client.Close()
 		log.Println("finish " + countries[i].CountryName + " posts")
 	}
+	log.Println("finish sup city posts")
 }
