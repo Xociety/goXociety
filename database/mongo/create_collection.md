@@ -60,8 +60,7 @@ db.post_popular_common.createIndex({ "category_id": 1 });
                 "city_id_5" : "",
                 "lat" : 23.5148062139715,
                 "lon" : 120.513088892444,
-                "name" : "test",
-                "total_check_count" : NumberLong(0)
+                "name" : "test"
             },
             "public" : false,
             "createtime" : 1535422675,
@@ -214,8 +213,7 @@ db.city_level_5.createIndex({"city_id": 1})
                 "city_id_5" : "",
                 "lat" : 24.925484571123,
                 "lon" : 121.594154318746,
-                "name" : "test",
-                "total_check_count" : NumberLong(0)
+                "name" : "test"
             },
             "public" : false,
             "createtime" : 1535534681,
@@ -250,8 +248,7 @@ db.city_level_5.createIndex({"city_id": 1})
                 "city_id_5" : "",
                 "lat" : 24.4471369550699,
                 "lon" : 121.659258757779,
-                "name" : "test",
-                "total_check_count" : NumberLong(0)
+                "name" : "test"
             },
             "public" : false,
             "createtime" : 1535535129,
@@ -286,8 +283,7 @@ db.city_level_5.createIndex({"city_id": 1})
                 "city_id_5" : "",
                 "lat" : 24.6212753455064,
                 "lon" : 121.846896867223,
-                "name" : "test",
-                "total_check_count" : NumberLong(0)
+                "name" : "test"
             },
             "public" : false,
             "createtime" : 1535535117,
@@ -332,8 +328,7 @@ db.city_level_5.createIndex({"city_id": 1})
                 "city_id_5" : "",
                 "lat" : 22.7074064740869,
                 "lon" : 120.321345974127,
-                "name" : "test",
-                "total_check_count" : NumberLong(0)
+                "name" : "test"
             },
             "public" : false,
             "createtime" : 1535535331,

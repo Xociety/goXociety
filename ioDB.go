@@ -2193,8 +2193,8 @@ func placeInsert(place placeAPI) (placeID int64, err error) {
 	defer c.db.Close()
 	sqlStr := `
 		INSERT INTO place 
-		(country_code, city_id_1, city_id_2, city_id_3, city_id_4, city_id_5, lat, lon, name, address, total_check_count) 
-		values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning place_id;
+		(country_code, city_id_1, city_id_2, city_id_3, city_id_4, city_id_5, lat, lon, name) 
+		values($1,$2,$3,$4,$5,$6,$7,$8,$9) returning place_id;
 	`
 	err = c.db.QueryRow(sqlStr,
 		place.CountryCode,
@@ -2206,8 +2206,6 @@ func placeInsert(place placeAPI) (placeID int64, err error) {
 		place.Lat,
 		place.Lon,
 		place.Name,
-		"",
-		place.TotalCheckCount,
 	).Scan(&placeID)
 	if err != nil {
 		// log.Println(err)
