@@ -246,3 +246,10 @@ type postUserReadAPI struct {
 	WeekTimestamp int           `bson:"week_timestamp"`
 	PopularPosts  map[int64]int `bson:"popular_posts"` // k: PostID, v: timestamp
 }
+
+type popularPostUserReadIndexAPI struct {
+	UserID                     string         `json:"user_id" bson:"user_id"`
+	CommonPopularPostIndex     map[string]int `json:"common_popular_post_index" bson:"common_popular_post_index"`           // category_id: index
+	CitySupPopularPostIndex    map[string]int `json:"city_sup_popular_post_index" bson:"city_sup_popular_post_index"`       // city_id: index
+	CountrySupPopularPostIndex map[string]int `json:"country_sup_popular_post_index" bson:"country_sup_popular_post_index"` // country_code: index
+}
