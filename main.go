@@ -30,7 +30,7 @@ const (
 
 // api
 var (
-	countryConfigAPI  []countryAPI
+	countryConfigAPI  []city2API
 	languageConfigAPI []languageAPI
 	genderConfigAPI   []genderAPI
 	reactionConfigAPI []reactionAPI
@@ -66,16 +66,16 @@ var (
 
 // MongoDB
 const (
-	mongoDBXociety              = "xociety"
-	mongoCollectionCity         = "city"
-	mongoCollectionCountry      = "country"
-	mongoCollectionCityLevel    = "city_level_"
-	mongoCollectionPostCommon   = "post_common"
-	mongoCollectionPostUserRead = "post_user_read"
-	mongoGeoNearSearchInKM      = 100 * 1000
-	mongoTimeout                = 0
-	cityLevelRangeFirst         = 1
-	cityLevelRangeLast          = 5
+	mongoDBXociety                   = "xociety"
+	mongoCollectionCityGeometry      = "city_geometry"
+	mongoCollectionCity2             = "city2"
+	mongoCollectionPostCommon        = "post_common"
+	mongoCollectionPostUserRead      = "post_user_read"
+	mongoCollectionPostUserReadIndex = "post_user_read_index"
+	mongoGeoNearSearchInKM           = 100 * 1000
+	mongoTimeout                     = 0
+	cityLevelRangeFirst              = 1
+	cityLevelRangeLast               = 5
 )
 
 // Redis

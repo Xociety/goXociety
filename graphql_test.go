@@ -38,14 +38,14 @@ func TestGraphqlQueryReaction(t *testing.T) {
 	log.Println(string(b))
 }
 
-func TestGraphqlQueryCityLevelPostCount(t *testing.T) {
+func TestGraphqlQueryCityPostCount(t *testing.T) {
 	level := 1
-	cityID := "AFG.1_1"
+	cityID := "AFG_1_1"
 	str := `
 	{
 		"operationName":"",
 		"variables":{"level":` + strconv.Itoa(level) + ` ,"city_id":"` + cityID + `"},
-		"query": "query ($level: Int, $city_id: String) {\n city_level_post_count(level: $level, city_id: $city_id) {\n post_count\n city_id\n name\n }\n}\n"
+		"query": "query ($level: Int, $city_id: String) {\n city_post_count(level: $level, city_id: $city_id) {\n post_count\n city_id\n name\n }\n}\n"
 	}`
 	q := []byte(str)
 	resp, err := http.Post(uriGraphqlTest, "Content-Type: application/json", bytes.NewBuffer(q))

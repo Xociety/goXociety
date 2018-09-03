@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -86,9 +85,9 @@ func TestFakeDataSample(t *testing.T) {
 		t.Skip("skip TestFakeData")
 	}
 	log.Println("start")
-	scale := 500
+	scale := 100
 	totalNumUser := 1 * scale
-	totalNumPost := 10 * scale
+	totalNumPost := 3 * scale
 	totalNumPlace := 1 * scale
 	usersID := []int64{}
 	fake, err := faker.New("en")
@@ -204,7 +203,7 @@ func TestFakeDataSample(t *testing.T) {
 	// gen popular post
 	log.Println("start popular post")
 	genPopularPostUpsert()
-	genSupPopularPostUpsert()
+	// genSupPopularPostUpsert()
 }
 func TestPopularPostUpsert(t *testing.T) {
 	if os.Getenv("test_fakedata") != "true" || os.Getenv("test_fakedata") == "" {
@@ -239,18 +238,6 @@ func TestRedisPopularPostUserReadIndex(t *testing.T) {
 	log.Printf("total took %fs\n", time.Since(startTimeTotal).Seconds())
 }
 
-func TestMongoGetAllCity(t *testing.T) {
-	startTime := time.Now()
-	cl, _ := getCitiesLevel("2")
-	filteredCityLevel := []cityLevelAPI{}
-	for i := 0; i < len(cl); i++ {
-		if strings.Index(cl[i].CityID, "TWN") != -1 {
-			filteredCityLevel = append(filteredCityLevel, cl[i])
-		}
-	}
-	log.Println("all city: ", len(cl), len(filteredCityLevel))
-	log.Printf("total took %fs\n", time.Since(startTime).Seconds())
-}
 func TestRedisBenchmark(t *testing.T) {
 	startTime := time.Now()
 	cr := connectRedis()

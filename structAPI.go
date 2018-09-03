@@ -67,18 +67,19 @@ type propertiesCityAPI struct {
 	Type4       string `json:"type_4,omitempty" bson:"type_4,omitempty"`
 	Type5       string `json:"type_5,omitempty" bson:"type_5,omitempty"`
 }
-type cityAPI struct {
+type cityGeometryAPI struct {
 	Properties propertiesCityAPI `json:"properties" bson:"properties"`
 }
-type countryAPI struct {
+type city2API struct {
+	Level           string    `json:"level" bson:"level"`
 	CountryCode     string    `json:"country_code" bson:"country_code"`
 	CountryName     string    `json:"country_name" bson:"country_name"`
-	PostCount       int       `json:"post_count" bson:"post_count"`
-	SupPopularPosts []postAPI `json:"sup_popular_posts" bson:"sup_popular_posts"`
-}
-type cityLevelAPI struct {
+	CityID1         string    `json:"city_id_1" bson:"city_id_1"`
+	CityID2         string    `json:"city_id_2" bson:"city_id_2"`
+	CityID3         string    `json:"city_id_3" bson:"city_id_3"`
+	CityID4         string    `json:"city_id_4" bson:"city_id_4"`
+	CityID5         string    `json:"city_id_5" bson:"city_id_5"`
 	Name            string    `json:"name" bson:"name"`
-	CityID          string    `json:"city_id" bson:"city_id"`
 	Type            string    `json:"type" bson:"type"`
 	PostCount       int       `json:"post_count" bson:"post_count"`
 	SupPopularPosts []postAPI `json:"sup_popular_posts" bson:"sup_popular_posts"`

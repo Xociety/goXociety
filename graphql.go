@@ -323,19 +323,19 @@ var usersFollowerGraphqlType = graphql.NewList(
 )
 
 // city
-var cityGraphqlType = graphql.NewList(
+var cityGeometryGraphqlType = graphql.NewList(
 	graphql.NewObject(
 		graphql.ObjectConfig{
-			Name: "city",
+			Name: "city_geometry",
 			Fields: graphql.Fields{
-				"properties": &graphql.Field{Type: cityPropertiesGraphqlType},
+				"properties": &graphql.Field{Type: cityGeometryPropertiesGraphqlType},
 			},
 		},
 	),
 )
-var cityPropertiesGraphqlType = graphql.NewObject(
+var cityGeometryPropertiesGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "city_properties",
+		Name: "city_geometry_properties",
 		Fields: graphql.Fields{
 			"country_code": &graphql.Field{Type: graphql.String},
 			"city_id_1":    &graphql.Field{Type: graphql.String},
@@ -357,24 +357,22 @@ var cityPropertiesGraphqlType = graphql.NewObject(
 		},
 	},
 )
-var cityLevelGraphqlType = graphql.NewObject(
+var cityGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "city_level",
+		Name: "city2",
 		Fields: graphql.Fields{
-			"city_id":    &graphql.Field{Type: graphql.String},
-			"name":       &graphql.Field{Type: graphql.String},
-			"type":       &graphql.Field{Type: graphql.String},
-			"post_count": &graphql.Field{Type: int64GraphqlScalar},
-		},
-	},
-)
-var countryGraphqlType = graphql.NewObject(
-	graphql.ObjectConfig{
-		Name: "country",
-		Fields: graphql.Fields{
-			"country_code": &graphql.Field{Type: graphql.String},
-			"country_name": &graphql.Field{Type: graphql.String},
-			"post_count":   &graphql.Field{Type: int64GraphqlScalar},
+			"level":             &graphql.Field{Type: graphql.String},
+			"country_code":      &graphql.Field{Type: graphql.String},
+			"country_name":      &graphql.Field{Type: graphql.String},
+			"city_id_1":         &graphql.Field{Type: graphql.String},
+			"city_id_2":         &graphql.Field{Type: graphql.String},
+			"city_id_3":         &graphql.Field{Type: graphql.String},
+			"city_id_4":         &graphql.Field{Type: graphql.String},
+			"city_id_5":         &graphql.Field{Type: graphql.String},
+			"name":              &graphql.Field{Type: graphql.String},
+			"type":              &graphql.Field{Type: graphql.String},
+			"post_count":        &graphql.Field{Type: int64GraphqlScalar},
+			"sup_popular_posts": &graphql.Field{Type: postsGraphqlType},
 		},
 	},
 )
@@ -859,7 +857,7 @@ var graphqlQueryType = graphql.NewObject(
 				Description: "get all taged user in post",
 			},
 			"city_by_location": &graphql.Field{
-				Type: cityGraphqlType,
+				Type: cityGeometryGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"lat": &graphql.ArgumentConfig{
 						Type:        graphql.Float,
@@ -885,7 +883,7 @@ var graphqlQueryType = graphql.NewObject(
 				Description: "",
 			},
 			"country_post_count": &graphql.Field{
-				Type: countryGraphqlType,
+				Type: cityGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"country_code": &graphql.ArgumentConfig{
 						Type:        graphql.String,
@@ -897,13 +895,13 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("country_code format")
 					}
-					countries, err := getCountry(countryCode)
-					return countries, err
+					country, err := getCountry(countryCode)
+					return country, err
 				},
 				Description: "",
 			},
-			"city_level_post_count": &graphql.Field{
-				Type: cityLevelGraphqlType,
+			"city_post_count": &graphql.Field{
+				Type: cityGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"level": &graphql.ArgumentConfig{
 						Type:        graphql.Int,
@@ -926,8 +924,8 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("city_id id format")
 					}
-					cityLevel, err := getCityLevel(strconv.Itoa(level), cityID)
-					return cityLevel, err
+					city, err := getCity(strconv.Itoa(level), cityID)
+					return city, err
 				},
 				Description: "",
 			},

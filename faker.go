@@ -165,28 +165,28 @@ func genSupPopularPostUpsert() {
 		usersID = append(usersID, users[i].UserID)
 		userIDStr := strconv.FormatInt(users[i].UserID, 10)
 		usersIDStr = append(usersIDStr, userIDStr)
-		hf["user_id_"+userIDStr] = "0"
+		hf[userIDStr] = "0"
 	}
 	categorySupStr := strconv.Itoa(categorySup)
 	countries, err := getCountries()
 	if err != nil {
 		log.Println(err)
 	}
-	citiesLevelAll := [][]cityLevelAPI{}
+	citiesAll := [][]city2API{}
 	for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
 		level := strconv.Itoa(j)
-		citiesLevel, err := getCitiesLevel(level)
+		cities, err := getCities(level)
 		if err != nil {
 			log.Panicln(err)
 		}
-		citiesLevelAll = append(citiesLevelAll, citiesLevel)
+		citiesAll = append(citiesAll, cities)
 	}
 	for i := 0; i < len(countries); i++ {
 		posts, err := getPostsByRecentWithPlaceLikeNum(countries[i].CountryCode, categorySup, numPopularPostPerRefresh)
 		sort.Sort(postByPopular(posts))
 		// init post_user_read_index
 		cr := connectRedis()
-		hk := redisHashCountryPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":category_id_" + categorySupStr
+		hk := redisHashCountryPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":" + categorySupStr
 		err = cr.client.HMSet(hk, hf).Err()
 		if err != nil {
 			log.Println(err)
@@ -196,20 +196,46 @@ func genSupPopularPostUpsert() {
 		if err != nil {
 			log.Println("mongo session", err)
 		}
-		collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
-		selector := bson.M{"country_code": countries[i].CountryCode}
-		if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": posts}}); err != nil {
+		collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+		selector := bson.M{"level": "0", "country_code": countries[i].CountryCode}
+		if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": posts, "post_count": len(posts)}}); err != nil {
 			log.Println("upsertPopularPostOnCountry", err)
 		}
 		for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
 			level := strconv.Itoa(j)
-			filteredCityLevel := []cityLevelAPI{}
-			for k := 0; k < len(citiesLevelAll[j-1]); k++ {
-				if strings.Index(citiesLevelAll[j-1][k].CityID, countries[i].CountryCode) != -1 {
-					filteredCityLevel = append(filteredCityLevel, citiesLevelAll[j-1][k])
+			filteredCity := []city2API{}
+			for k := 0; k < len(citiesAll[j-1]); k++ {
+				cityID := ""
+				switch j {
+				case 1:
+					cityID = citiesAll[j-1][k].CityID1
+				case 2:
+					cityID = citiesAll[j-1][k].CityID2
+				case 3:
+					cityID = citiesAll[j-1][k].CityID3
+				case 4:
+					cityID = citiesAll[j-1][k].CityID4
+				case 5:
+					cityID = citiesAll[j-1][k].CityID5
+				}
+				if strings.Index(cityID, countries[i].CountryCode) != -1 {
+					filteredCity = append(filteredCity, citiesAll[j-1][k])
 				}
 			}
-			for k := 0; k < len(filteredCityLevel); k++ {
+			for k := 0; k < len(filteredCity); k++ {
+				fCityID := ""
+				switch j {
+				case 1:
+					fCityID = filteredCity[k].CityID1
+				case 2:
+					fCityID = filteredCity[k].CityID2
+				case 3:
+					fCityID = filteredCity[k].CityID3
+				case 4:
+					fCityID = filteredCity[k].CityID4
+				case 5:
+					fCityID = filteredCity[k].CityID5
+				}
 				filteredPosts := []postAPI{}
 				for l := 0; l < len(posts); l++ {
 					cityID := ""
@@ -225,20 +251,20 @@ func genSupPopularPostUpsert() {
 					case 5:
 						cityID = posts[l].Place.CityID5
 					}
-					if strings.Index(cityID, filteredCityLevel[k].CityID) != -1 {
+					if strings.Index(cityID, fCityID) != -1 {
 						filteredPosts = append(filteredPosts, posts[l])
 					}
 				}
 				// init post_user_read_index
-				hk := redisHashCityPopularPostUserReadIndex + ":" + filteredCityLevel[k].CityID + ":category_id_" + categorySupStr
+				hk := redisHashCityPopularPostUserReadIndex + ":" + fCityID + ":" + categorySupStr
 				err = cr.client.HMSet(hk, hf).Err()
 				if err != nil {
 					log.Println(err)
 				}
 				// city.sup_popular_posts
-				collection := c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
-				selector := bson.M{"city_id": filteredCityLevel[k].CityID}
-				if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": filteredPosts}}); err != nil {
+				collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+				selector := bson.M{"level": level, "city_id": fCityID}
+				if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": filteredPosts, "post_count": len(filteredPosts)}}); err != nil {
 					log.Println("upsertPopularPostOnCity", err)
 				}
 			}

@@ -520,15 +520,15 @@ func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bo
 }
 
 // country, city
-func getCountries() (countries []countryAPI, err error) {
+func getCountries() (countries []city2API, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return countries, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
-	q := bson.M{}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	q := bson.M{"level": "0"}
 	selector := bson.M{"country_code": 1, "country_name": 1}
 	if err := collection.Find(q).Select(selector).All(&countries); err != nil {
 		log.Println("getCountries", err)
@@ -536,15 +536,15 @@ func getCountries() (countries []countryAPI, err error) {
 	}
 	return countries, nil
 }
-func getCountry(countryCode string) (country countryAPI, err error) {
+func getCountry(countryCode string) (country city2API, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return country, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
-	q := bson.M{"country_code": countryCode}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	q := bson.M{"level": "0", "country_code": countryCode}
 	selector := bson.M{"country_code": 1, "country_name": 1}
 	if err := collection.Find(q).Select(selector).One(&country); err != nil {
 		log.Println("getCountry", err)
@@ -552,53 +552,54 @@ func getCountry(countryCode string) (country countryAPI, err error) {
 	}
 	return country, nil
 }
-func getCitiesLevel(level string) (citiesLevel []cityLevelAPI, err error) {
+func getCities(level string) (cities []city2API, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
-		return citiesLevel, err
+		return cities, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
-	q := bson.M{}
-	if err := collection.Find(q).All(&citiesLevel); err != nil {
-		log.Println("getCitiesLevel", err)
-		return citiesLevel, err
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	q := bson.M{"level": level}
+	if err := collection.Find(q).All(&cities); err != nil {
+		log.Println("getCities", err)
+		return cities, err
 	}
-	return citiesLevel, nil
+	return cities, nil
 }
-func getCityLevel(level string, cityID string) (cityLevel cityLevelAPI, err error) {
+func getCity(level string, cityID string) (city city2API, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
-		return cityLevel, err
+		return city, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
-	q := bson.M{"city_id": cityID}
-	selector := bson.M{"city_id": 1, "name": 1, "type": 1}
-	if err := collection.Find(q).Select(selector).One(&cityLevel); err != nil {
-		log.Println("getCityLevel", err)
-		return cityLevel, err
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	q := bson.M{"level": level, "city_id_" + level: cityID}
+	if err := collection.Find(q).One(&city); err != nil {
+		log.Println("getCity", err)
+		return city, err
 	}
-	return cityLevel, nil
+	return city, nil
 }
-func getCitiesLevelByCityIDLike(level string, cityID string) (citiesLevel []cityLevelAPI, err error) {
+func getCitiesLevelByCityIDLike(level string, cityID string) (cities []city2API, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
-		return citiesLevel, err
+		return cities, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
-	q := bson.M{"city_id": bson.M{"$regex": bson.RegEx{Pattern: cityID, Options: ""}}}
-	if err := collection.Find(q).All(&citiesLevel); err != nil {
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	q := bson.M{
+		"level":            level,
+		"city_id_" + level: bson.M{"$regex": bson.RegEx{Pattern: cityID, Options: ""}}}
+	if err := collection.Find(q).All(&cities); err != nil {
 		log.Println("getCitiesLevelByCityIDLike", err)
-		return citiesLevel, err
+		return cities, err
 	}
-	return citiesLevel, nil
+	return cities, nil
 }
-func getCityByLocation(lat, lon float64) (cities []cityAPI, err error) {
+func getCityByLocation(lat, lon float64) (cities []cityGeometryAPI, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
@@ -606,7 +607,7 @@ func getCityByLocation(lat, lon float64) (cities []cityAPI, err error) {
 	}
 	defer c.session.Close()
 	numPerRequest := 5
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCityGeometry)
 	s := bson.M{"properties": 1}
 	// geoIntersects
 	q := bson.M{
@@ -1604,9 +1605,9 @@ func getSupPostsByPopularWithCountry(countryCode string, userID int64, page int)
 	r := postUserReadAPI{}
 	collection.Find(q).One(&r)
 	// sup popular post on country
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
-	q = bson.M{"country_code": countryCode}
-	p := countryAPI{}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	q = bson.M{"level": "0", "country_code": countryCode}
+	p := city2API{}
 	if err := collection.Find(q).One(&p); err != nil {
 		log.Println("getPostsBySupPopularWithCountry2", err)
 		return posts, err
@@ -1653,9 +1654,9 @@ func getSupPostsByPopularWithCity(level, cityID string, userID int64, page int) 
 	r := postUserReadAPI{}
 	collection.Find(q).One(&r)
 	// sup popular post on city
-	collection = c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
-	q = bson.M{"city_id": cityID}
-	p := countryAPI{}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	q = bson.M{"level": level, "city_id_" + level: cityID}
+	p := city2API{}
 	if err := collection.Find(q).One(&p); err != nil {
 		log.Println("getPostsBySupPopularWithCity2", err)
 		return posts, err
@@ -2428,9 +2429,9 @@ func supPostPopularReadCountry(countryCode string, indexRead int, userID int64) 
 		}
 	}
 	// post_common
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCountry)
-	u := countryAPI{}
-	q := bson.M{"country_code": countryCode}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	u := city2API{}
+	q := bson.M{"level": "0", "country_code": countryCode}
 	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postSupPopularReadCountry", err)
 		return posts, err
@@ -2512,9 +2513,9 @@ func supPostPopularReadCity(level, cityID string, indexRead int, userID int64) (
 		}
 	}
 	// post_common
-	collection = c.session.DB(mongoDBXociety).C(parseMongoCollectionNameCityLevel(level))
-	u := cityLevelAPI{}
-	q := bson.M{"city_id": cityID}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	u := city2API{}
+	q := bson.M{"level": level, "city_id_" + level: cityID}
 	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postPopularRead", err)
 		return posts, err
