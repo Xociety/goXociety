@@ -100,18 +100,18 @@ db.post_user_read.createIndex({ "user_id": 1, "category_id": 1, "week_timestamp"
 ##
 
 
-## city
+## city_geometry
 
 * init
 
 ```javascript
-db.createCollection("city")
-db.city.createIndex({"geometry":"2dsphere"})
+db.createCollection("city_geometry")
+db.city_geometry.createIndex({"geometry":"2dsphere"})
 ```
 
 * data source gadm
 
-please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/releases/tag/v0.0.1)
+please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/releases/tag/v0.0.2)
 
 * document sample
 
@@ -156,184 +156,30 @@ please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/re
 }
 ```
 
-## city_level
+## city info
 
 * data source gadm
 
-please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/releases/tag/v0.0.1)
+please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/releases/tag/v0.0.2)
 
 ```javascript
-db.createCollection("country")
-db.country.createIndex({"country_code": 1})
-db.createCollection("city_level_1")
-db.city_level_1.createIndex({"city_id": 1})
-db.createCollection("city_level_2")
-db.city_level_2.createIndex({"city_id": 1})
-db.createCollection("city_level_3")
-db.city_level_3.createIndex({"city_id": 1})
-db.createCollection("city_level_4")
-db.city_level_4.createIndex({"city_id": 1})
-db.createCollection("city_level_5")
-db.city_level_5.createIndex({"city_id": 1})
+db.createCollection("city2")
+db.city2.createIndex({"level": 1, "country_code": 1, "city_id_1": 1, "city_id_2": 1, "city_id_3": 1, "city_id_4": 1, "city_id_5": 1})
 ```
 
 * document sample
 ```json
 {
-    "_id" : ObjectId("5b7d0d11a6d3157bc2d2eed8"),
-    "country_name" : "Taiwan",
-    "country_code" : "TWN",
-    "sup_popular_posts" : [ 
-        {
-            "post_id" : NumberLong(457),
-            "user" : {
-                "user_id" : NumberLong(453),
-                "username" : "jackson",
-                "name" : "Yolanda Torp DDS",
-                "photo_url" : ""
-            },
-            "content" : "test post",
-            "blob" : {
-                "blob_id" : "http://storage2.1mthechildbride.com/posts/images/sample/0/1/0.jpg",
-                "origin_width" : 1920,
-                "origin_height" : 1280
-            },
-            "type" : 0,
-            "like_count" : NumberLong(47),
-            "dislike_count" : NumberLong(50),
-            "comment_count" : NumberLong(96),
-            "category_id" : 0,
-            "place" : {
-                "place_id" : NumberLong(127),
-                "country_code" : "TWN",
-                "city_id_1" : "TWN.3_1",
-                "city_id_2" : "TWN.3.1_1",
-                "city_id_3" : "",
-                "city_id_4" : "",
-                "city_id_5" : "",
-                "lat" : 24.925484571123,
-                "lon" : 121.594154318746,
-                "name" : "test"
-            },
-            "public" : false,
-            "createtime" : 1535534681,
-            "updatetime" : 1535534681
-        }, 
-        {
-            "post_id" : NumberLong(650),
-            "user" : {
-                "user_id" : NumberLong(411),
-                "username" : "jermain_howell",
-                "name" : "Tristin Kessler",
-                "photo_url" : ""
-            },
-            "content" : "test post",
-            "blob" : {
-                "blob_id" : "http://storage2.1mthechildbride.com/posts/images/sample/0/1/0.jpg",
-                "origin_width" : 1920,
-                "origin_height" : 1280
-            },
-            "type" : 0,
-            "like_count" : NumberLong(44),
-            "dislike_count" : NumberLong(43),
-            "comment_count" : NumberLong(94),
-            "category_id" : 0,
-            "place" : {
-                "place_id" : NumberLong(186),
-                "country_code" : "TWN",
-                "city_id_1" : "TWN.7_1",
-                "city_id_2" : "TWN.7.14_1",
-                "city_id_3" : "",
-                "city_id_4" : "",
-                "city_id_5" : "",
-                "lat" : 24.4471369550699,
-                "lon" : 121.659258757779,
-                "name" : "test"
-            },
-            "public" : false,
-            "createtime" : 1535535129,
-            "updatetime" : 1535535129
-        }, 
-        {
-            "post_id" : NumberLong(647),
-            "user" : {
-                "user_id" : NumberLong(472),
-                "username" : "daren.stehr",
-                "name" : "Mrs. Roberta Beahan",
-                "photo_url" : ""
-            },
-            "content" : "test post",
-            "blob" : {
-                "blob_id" : "http://storage2.1mthechildbride.com/posts/images/sample/0/1/0.jpg",
-                "origin_width" : 1920,
-                "origin_height" : 1280
-            },
-            "type" : 0,
-            "like_count" : NumberLong(46),
-            "dislike_count" : NumberLong(36),
-            "comment_count" : NumberLong(88),
-            "category_id" : 0,
-            "place" : {
-                "place_id" : NumberLong(166),
-                "country_code" : "TWN",
-                "city_id_1" : "TWN.7_1",
-                "city_id_2" : "TWN.7.14_1",
-                "city_id_3" : "",
-                "city_id_4" : "",
-                "city_id_5" : "",
-                "lat" : 24.6212753455064,
-                "lon" : 121.846896867223,
-                "name" : "test"
-            },
-            "public" : false,
-            "createtime" : 1535535117,
-            "updatetime" : 1535535117
-        }
-    ]
-}
-```
-```json
-{
-    "_id" : ObjectId("5b7d0d11a6d3157bc2d2ee9c"),
-    "city_id" : "TWN.2.1_1",
-    "type" : "Special Municipality",
-    "name" : "Kaohsiung",
-    "sup_popular_posts" : [ 
-        {
-            "post_id" : NumberLong(731),
-            "user" : {
-                "user_id" : NumberLong(457),
-                "username" : "kennedy",
-                "name" : "Larry Murray",
-                "photo_url" : ""
-            },
-            "content" : "test post",
-            "blob" : {
-                "blob_id" : "http://storage2.1mthechildbride.com/posts/images/sample/0/1/0.jpg",
-                "origin_width" : 1920,
-                "origin_height" : 1280
-            },
-            "type" : 0,
-            "like_count" : NumberLong(48),
-            "dislike_count" : NumberLong(47),
-            "comment_count" : NumberLong(68),
-            "category_id" : 0,
-            "place" : {
-                "place_id" : NumberLong(107),
-                "country_code" : "TWN",
-                "city_id_1" : "TWN.2_1",
-                "city_id_2" : "TWN.2.1_1",
-                "city_id_3" : "",
-                "city_id_4" : "",
-                "city_id_5" : "",
-                "lat" : 22.7074064740869,
-                "lon" : 120.321345974127,
-                "name" : "test"
-            },
-            "public" : false,
-            "createtime" : 1535535331,
-            "updatetime" : 1535535331
-        }
-    ]
+    "_id" : ObjectId("5b891bc56ed3c50a23ebbe14"),
+    "name" : "",
+    "country_code" : "AFG",
+    "level" : "2",
+    "country_name" : "Afghanistan",
+    "type" : "District",
+    "city_id_5" : "",
+    "city_id_4" : "",
+    "city_id_3" : "",
+    "city_id_2" : "AFG_1_11",
+    "city_id_1" : "AFG_1"
 }
 ```
