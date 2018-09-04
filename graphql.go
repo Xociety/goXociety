@@ -185,6 +185,7 @@ var countryBasicGraphqlType = graphql.NewList(
 				"country_code": &graphql.Field{Type: graphql.String},
 				"country_name": &graphql.Field{Type: graphql.String},
 			},
+			Description: "basic info about country",
 		},
 	),
 )
@@ -230,6 +231,7 @@ var postTypeGraphqlType = graphql.NewList(
 				"value":        &graphql.Field{Type: graphql.String},
 				"file_format":  &graphql.Field{Type: graphql.NewList(graphql.String)},
 			},
+			Description: "post media type and file format",
 		},
 	),
 )
@@ -289,6 +291,7 @@ var userBasicGraphqlType = graphql.NewObject(
 			"name":      &graphql.Field{Type: graphql.String},
 			"photo_url": &graphql.Field{Type: graphql.String},
 		},
+		Description: "basic info about user",
 	},
 )
 var usersFollowingGraphqlType = graphql.NewList(
@@ -300,7 +303,7 @@ var usersFollowingGraphqlType = graphql.NewList(
 				"username":       &graphql.Field{Type: graphql.String},
 				"name":           &graphql.Field{Type: graphql.String},
 				"photo_url":      &graphql.Field{Type: graphql.String},
-				"following_time": &graphql.Field{Type: graphql.Int},
+				"following_time": &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 			},
 		},
 	),
@@ -316,7 +319,7 @@ var usersFollowerGraphqlType = graphql.NewList(
 				"username":       &graphql.Field{Type: graphql.String},
 				"name":           &graphql.Field{Type: graphql.String},
 				"photo_url":      &graphql.Field{Type: graphql.String},
-				"following_time": &graphql.Field{Type: graphql.Int},
+				"following_time": &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 			},
 		},
 	),
@@ -355,6 +358,7 @@ var cityGeometryPropertiesGraphqlType = graphql.NewObject(
 			"type_4":       &graphql.Field{Type: graphql.String},
 			"type_5":       &graphql.Field{Type: graphql.String},
 		},
+		Description: "city properties in geometry",
 	},
 )
 var cityGraphqlType = graphql.NewObject(
@@ -374,6 +378,7 @@ var cityGraphqlType = graphql.NewObject(
 			"post_count":        &graphql.Field{Type: int64GraphqlScalar},
 			"sup_popular_posts": &graphql.Field{Type: postsGraphqlType},
 		},
+		Description: "city info includes post related",
 	},
 )
 
@@ -386,6 +391,7 @@ var blobGraphqlType = graphql.NewObject(
 			"origin_width":  &graphql.Field{Type: graphql.Int},
 			"origin_height": &graphql.Field{Type: graphql.Int},
 		},
+		Description: "post media uri and size",
 	},
 )
 
@@ -397,7 +403,7 @@ var placesLookupGraphql = graphql.NewObject(
 			"place":           &graphql.Field{Type: placesGraphqlType},
 			"next_page_token": &graphql.Field{Type: graphql.String},
 		},
-		Description: "if place_id equals 0, it means that it's not existed in our db",
+		Description: "use next_page_token as page_token if you need to lookup futher results",
 	},
 )
 var placeGraphqlType = graphql.NewObject(
@@ -415,6 +421,7 @@ var placeGraphqlType = graphql.NewObject(
 			"lon":          &graphql.Field{Type: graphql.Float},
 			"name":         &graphql.Field{Type: graphql.String},
 		},
+		Description: "if place_id equals 0, it means that it's not existed in our db",
 	},
 )
 var placesGraphqlType = graphql.NewList(placeGraphqlType)
@@ -444,17 +451,18 @@ var postWithoutPlaceGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "post_without_place",
 		Fields: graphql.Fields{
-			"post_id":       &graphql.Field{Type: int64GraphqlScalar},
-			"user":          &graphql.Field{Type: userBasicGraphqlType},
-			"content":       &graphql.Field{Type: graphql.String},
-			"blob":          &graphql.Field{Type: blobGraphqlType},
-			"type":          &graphql.Field{Type: graphql.Int, Description: "post type"},
-			"like_count":    &graphql.Field{Type: int64GraphqlScalar},
-			"dislike_count": &graphql.Field{Type: int64GraphqlScalar},
-			"comment_count": &graphql.Field{Type: int64GraphqlScalar},
-			"category_id":   &graphql.Field{Type: graphql.Int},
-			"createtime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
-			"updatetime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			"post_id":                &graphql.Field{Type: int64GraphqlScalar},
+			"user":                   &graphql.Field{Type: userBasicGraphqlType},
+			"content":                &graphql.Field{Type: graphql.String},
+			"blob":                   &graphql.Field{Type: blobGraphqlType},
+			"type":                   &graphql.Field{Type: graphql.Int, Description: "post type"},
+			"like_count":             &graphql.Field{Type: int64GraphqlScalar},
+			"dislike_count":          &graphql.Field{Type: int64GraphqlScalar},
+			"reaction_by_query_user": &graphql.Field{Type: graphql.Int, Description: "-1: no reaction, other: reaction_id"},
+			"comment_count":          &graphql.Field{Type: int64GraphqlScalar},
+			"category_id":            &graphql.Field{Type: graphql.Int},
+			"createtime":             &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			"updatetime":             &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 		},
 	},
 )
@@ -481,8 +489,8 @@ var tagGraphqlType = graphql.NewObject(
 		Fields: graphql.Fields{
 			"post_id":    &graphql.Field{Type: int64GraphqlScalar},
 			"user":       &graphql.Field{Type: userBasicGraphqlType},
-			"x":          &graphql.Field{Type: graphql.Int},
-			"y":          &graphql.Field{Type: graphql.Int},
+			"x":          &graphql.Field{Type: graphql.Int, Description: "horizontal position percentage"},
+			"y":          &graphql.Field{Type: graphql.Int, Description: "vertical position percentage"},
 			"valid":      &graphql.Field{Type: graphql.Boolean},
 			"createtime": &graphql.Field{Type: graphql.Int},
 			"updatetime": &graphql.Field{Type: graphql.Int},
@@ -752,7 +760,7 @@ var graphqlQueryType = graphql.NewObject(
 					user, err := getUserByUserID(userID)
 					return user, err
 				},
-				Description: "",
+				Description: "query user by user_id",
 			},
 			"user_by_username": &graphql.Field{
 				Type: userGraphqlType,
@@ -770,7 +778,7 @@ var graphqlQueryType = graphql.NewObject(
 					user, err := getUserByUsername(username)
 					return user, err
 				},
-				Description: "",
+				Description: "query user by username",
 			},
 			"users_by_following": &graphql.Field{
 				Type: usersFollowingGraphqlType,
@@ -792,7 +800,7 @@ var graphqlQueryType = graphql.NewObject(
 					users, err := getUsersByFollowing(user.UserID, page)
 					return users, err
 				},
-				Description: "",
+				Description: "get users you're following",
 			},
 			"users_by_follower": &graphql.Field{
 				Type: usersFollowerGraphqlType,
@@ -814,7 +822,7 @@ var graphqlQueryType = graphql.NewObject(
 					users, err := getUsersByFollower(user.UserID, page)
 					return users, err
 				},
-				Description: "",
+				Description: "get users who follow you",
 			},
 			"user_is_following": &graphql.Field{
 				Type: graphql.Boolean,
@@ -836,7 +844,7 @@ var graphqlQueryType = graphql.NewObject(
 					isFollowing, err := checkUserIfFollowing(userID, user.UserID)
 					return isFollowing, err
 				},
-				Description: "",
+				Description: "check if the user you're following",
 			},
 			"taged_users_by_post": &graphql.Field{
 				Type: tagsGraphqlType,
@@ -881,7 +889,7 @@ var graphqlQueryType = graphql.NewObject(
 					cities, err := getCityByLocation(lat, lon)
 					return cities, err
 				},
-				Description: "",
+				Description: "get city where location locate at or nearby",
 			},
 			"country_post_count": &graphql.Field{
 				Type: cityGraphqlType,
@@ -899,7 +907,7 @@ var graphqlQueryType = graphql.NewObject(
 					country, err := getCountry(countryCode)
 					return country, err
 				},
-				Description: "",
+				Description: "get country post count",
 			},
 			"city_post_count": &graphql.Field{
 				Type: cityGraphqlType,
@@ -928,7 +936,7 @@ var graphqlQueryType = graphql.NewObject(
 					city, err := getCity(strconv.Itoa(level), cityID)
 					return city, err
 				},
-				Description: "",
+				Description: "get city post count",
 			},
 			"place_by_location": &graphql.Field{
 				Type: placesLookupGraphql,
@@ -998,7 +1006,7 @@ var graphqlQueryType = graphql.NewObject(
 					}
 					return placesLookupAPI{places, nextPageToken}, err
 				},
-				Description: "",
+				Description: "get location info by lat, lon, name",
 			},
 			"place_by_name": &graphql.Field{
 				Type: placesLookupGraphql,
@@ -1050,7 +1058,7 @@ var graphqlQueryType = graphql.NewObject(
 					}
 					return placesLookupAPI{places, nextPageToken}, err
 				},
-				Description: "",
+				Description: "get location info by name",
 			},
 			// post_detail
 			"posts_by_recent": &graphql.Field{
@@ -1081,7 +1089,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByRecent(user.UserID, categoryID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get recent posts",
 			},
 			"posts_by_recent_with_country": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1120,7 +1128,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByRecentWithCountry(user.UserID, countryCode, categoryID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get recent posts by country",
 			},
 			"posts_by_recent_with_city": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1170,7 +1178,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByRecentWithCity(user.UserID, strconv.Itoa(level), cityID, categoryID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get recent posts by city",
 			},
 			"posts_by_following_users": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1193,7 +1201,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByFollowingUsers(user.UserID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get posts by following users",
 			},
 			"posts_by_following_users_with_country": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1232,7 +1240,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByFollowingUsersWithCountry(user.UserID, countryCode, categoryID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get posts by following users and country",
 			},
 			"posts_by_following_users_with_city": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1282,7 +1290,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByFollowingUsersWithCity(user.UserID, strconv.Itoa(level), cityID, categoryID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get posts by following users and city",
 			},
 			"posts_by_user": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1309,7 +1317,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByUser(userID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get posts by user",
 			},
 			"posts_by_popular": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1342,7 +1350,7 @@ var graphqlQueryType = graphql.NewObject(
 					log.Printf("posts_by_popular total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
-				Description: "",
+				Description: "get popular posts by category",
 			},
 			"sup_posts_by_popular_with_country": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1375,7 +1383,7 @@ var graphqlQueryType = graphql.NewObject(
 					log.Printf("sup_posts_by_popular_with_country total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
-				Description: "",
+				Description: "get sup popular posts with country",
 			},
 			"sup_posts_by_popular_with_city": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1419,7 +1427,7 @@ var graphqlQueryType = graphql.NewObject(
 					log.Printf("sup_posts_by_popular_with_country total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
-				Description: "",
+				Description: "get sup popular posts with city",
 			},
 			"posts_by_hashtag": &graphql.Field{
 				Type: postsWithoutPlaceGraphqlType,
@@ -1450,7 +1458,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByHashtag(user.UserID, hashtagID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get posts by hashtag",
 			},
 			"posts_by_tag": &graphql.Field{
 				Type: postsWithoutPlaceGraphqlType,
@@ -1477,7 +1485,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByTag(userID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get posts by tag",
 			},
 			"posts_by_place": &graphql.Field{
 				Type: postsGraphqlType,
@@ -1508,7 +1516,7 @@ var graphqlQueryType = graphql.NewObject(
 					posts, err := getPostsByPlaceID(user.UserID, placeID, page)
 					return posts, err
 				},
-				Description: "",
+				Description: "get posts by place",
 			},
 			"hashtags": &graphql.Field{
 				Type: hashtagsGraphqlType,
@@ -1534,7 +1542,7 @@ var graphqlQueryType = graphql.NewObject(
 					hashtags, err := getHashtags(value, page)
 					return hashtags, err
 				},
-				Description: "",
+				Description: "search hashtags",
 			},
 			"reactions_on_post": &graphql.Field{
 				Type: postReactionGraphqlType,
@@ -1560,7 +1568,7 @@ var graphqlQueryType = graphql.NewObject(
 					reactionsPost, err := getReactionsOnPost(postID, page)
 					return reactionsPost, err
 				},
-				Description: "",
+				Description: "get reactions on post",
 			},
 			"reactions_on_comment": &graphql.Field{
 				Type: commentReactionGraphqlType,
@@ -1586,7 +1594,7 @@ var graphqlQueryType = graphql.NewObject(
 					reactionsComment, err := getReactionsOnComment(commentID, page)
 					return reactionsComment, err
 				},
-				Description: "",
+				Description: "get reactions on comment",
 			},
 			"reactions_on_reply": &graphql.Field{
 				Type: replyReactionGraphqlType,
@@ -1612,7 +1620,7 @@ var graphqlQueryType = graphql.NewObject(
 					reactionsReply, err := getReactionsOnReply(replyID, page)
 					return reactionsReply, err
 				},
-				Description: "",
+				Description: "get reactions on reply",
 			},
 			"comments_on_post": &graphql.Field{
 				Type: commentsGraphqlType,
@@ -1638,7 +1646,7 @@ var graphqlQueryType = graphql.NewObject(
 					comments, err := getCommentsOnPost(postID, page)
 					return comments, err
 				},
-				Description: "",
+				Description: "get comments on post",
 			},
 			"replies_on_comment": &graphql.Field{
 				Type: repliesGraphqlType,
@@ -1664,7 +1672,7 @@ var graphqlQueryType = graphql.NewObject(
 					replies, err := getRepliesOnComment(commentID, page)
 					return replies, err
 				},
-				Description: "",
+				Description: "get replies on comment",
 			},
 		},
 	})
@@ -1693,7 +1701,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := follow(userID, user.UserID)
 					return us, err
 				},
-				Description: "",
+				Description: "follow user",
 			},
 			"unfollow": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -1715,7 +1723,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := unfollow(userID, user.UserID)
 					return us, err
 				},
-				Description: "",
+				Description: "unfollow user",
 			},
 			"place_insert": &graphql.Field{
 				Type: placeGraphqlType,
@@ -1766,7 +1774,7 @@ var graphqlMutationType = graphql.NewObject(
 					place.PlaceID, err = placeInsert(place)
 					return place, err
 				},
-				Description: "please enter data which query place provide",
+				Description: "insert place data into database, please send data which api query place provide",
 			},
 			"post_insert": &graphql.Field{
 				Type: postGraphqlType,
@@ -1863,7 +1871,7 @@ var graphqlMutationType = graphql.NewObject(
 					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
 					return post, err
 				},
-				Description: "place_id:0 => no place",
+				Description: "insert a post place_id:0 => no place",
 				DeprecationReason: `please use form-data to upload file, form-data key:
 						query: mutation{post(...:...){post_id}}
 						file: tar.gz file,
@@ -1934,7 +1942,7 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					return us, err
 				},
-				Description: "",
+				Description: "update a post",
 			},
 			"post_tag_conform": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2005,7 +2013,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := tagOnPostUpdate(postID, tag)
 					return us, err
 				},
-				Description: "",
+				Description: "update tag on post",
 			},
 			"post_delete": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2028,7 +2036,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := postDelete(post)
 					return us, err
 				},
-				Description: "",
+				Description: "delete a post",
 			},
 			"post_popular_read": &graphql.Field{
 				Type: postsGraphqlType,
@@ -2063,7 +2071,7 @@ var graphqlMutationType = graphql.NewObject(
 					log.Printf("post_popular_read total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
-				Description: "",
+				Description: "send post index you've read, returning next page popular posts",
 			},
 			"sup_post_popular_read_with_country": &graphql.Field{
 				Type: postsGraphqlType,
@@ -2098,7 +2106,7 @@ var graphqlMutationType = graphql.NewObject(
 					log.Printf("sup_post_popular_read_with_country total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
-				Description: "",
+				Description: "send post index you've read, returning next page country sup popular posts",
 			},
 			"sup_post_popular_read_with_city": &graphql.Field{
 				Type: postsGraphqlType,
@@ -2144,7 +2152,7 @@ var graphqlMutationType = graphql.NewObject(
 					log.Printf("sup_post_popular_read_with_city total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
-				Description: "",
+				Description: "send post index you've read, returning next page city sup popular posts",
 			},
 			"reaction_on_post": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2183,7 +2191,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := reactionOnPostSet(reactionOnPost)
 					return us, err
 				},
-				Description: "",
+				Description: "set reaction on post",
 			},
 			"reaction_on_post_delete": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2209,7 +2217,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := reactionOnPostDelete(reactionOnPost)
 					return us, err
 				},
-				Description: "",
+				Description: "delete reaction on post",
 			},
 			"reaction_on_comment": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2248,7 +2256,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := reactionOnCommentSet(reactionOnComment)
 					return us, err
 				},
-				Description: "",
+				Description: "set reaction on comment",
 			},
 			"reaction_on_comment_delete": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2274,7 +2282,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := reactionOnCommentDelete(reactionOnComment)
 					return us, err
 				},
-				Description: "",
+				Description: "delete reaction on comment",
 			},
 			"reaction_on_reply": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2313,7 +2321,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := reactionOnReplySet(reactionOnReply)
 					return us, err
 				},
-				Description: "",
+				Description: "set reaction on reply",
 			},
 			"reaction_on_reply_delete": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2339,7 +2347,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := reactionOnReplyDelete(reactionOnReply)
 					return us, err
 				},
-				Description: "",
+				Description: "delete reaction on reply",
 			},
 			"comment_on_post_insert": &graphql.Field{
 				Type: commentGraphqlType,
@@ -2369,7 +2377,7 @@ var graphqlMutationType = graphql.NewObject(
 					comment.CommentID, err = commentOnPostInsert(comment)
 					return comment, err
 				},
-				Description: "",
+				Description: "insert a comment on post",
 			},
 			"comment_on_post_update": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2399,7 +2407,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := commentOnPostUpdate(comment)
 					return us, err
 				},
-				Description: "",
+				Description: "update a comment on post",
 			},
 			"comment_on_post_delete": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2425,7 +2433,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := commentOnPostDelete(comment)
 					return us, err
 				},
-				Description: "",
+				Description: "delete a comment on post",
 			},
 			"reply_on_comment_insert": &graphql.Field{
 				Type: replyGraphqlType,
@@ -2455,7 +2463,7 @@ var graphqlMutationType = graphql.NewObject(
 					reply.ReplyID, err = replyOnCommentInsert(reply)
 					return reply, err
 				},
-				Description: "",
+				Description: "insert a comment on post",
 			},
 			"reply_on_comment_update": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2485,7 +2493,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := replyOnCommentUpdate(reply)
 					return us, err
 				},
-				Description: "",
+				Description: "update a comment on post",
 			},
 			"reply_on_comment_delete": &graphql.Field{
 				Type: updateStatusGraphqlType,
@@ -2511,7 +2519,7 @@ var graphqlMutationType = graphql.NewObject(
 					us, err := replyOnCommentDelete(reply)
 					return us, err
 				},
-				Description: "",
+				Description: "delete a comment on post",
 			},
 		},
 	},
