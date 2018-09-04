@@ -694,7 +694,7 @@ func getPlacesByPlacesGCP(placesGCP []placeAPI) (places []placeAPI, err error) {
 }
 
 // post
-func getPostsByRecent(categoryID, page int) (posts []postAPI, err error) {
+func getPostsByRecent(userID int64, categoryID, page int) (posts []postAPI, err error) {
 	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -724,6 +724,7 @@ func getPostsByRecent(categoryID, page int) (posts []postAPI, err error) {
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		place := placeAPI{}
@@ -766,10 +767,18 @@ func getPostsByRecent(categoryID, page int) (posts []postAPI, err error) {
 		post.Place = place
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
+	}
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
 	}
 	return posts, err
 }
@@ -853,7 +862,7 @@ func getPostsByRecentNum(categoryID, numPost int) (posts []postAPI, err error) {
 	}
 	return posts, nil
 }
-func getPostsByRecentWithCountry(countryCode string, categoryID, page int) (posts []postAPI, err error) {
+func getPostsByRecentWithCountry(userID int64, countryCode string, categoryID, page int) (posts []postAPI, err error) {
 	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -887,6 +896,7 @@ func getPostsByRecentWithCountry(countryCode string, categoryID, page int) (post
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		place := placeAPI{}
@@ -929,15 +939,22 @@ func getPostsByRecentWithCountry(countryCode string, categoryID, page int) (post
 		post.Place = place
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
 	}
-	// log.Println("posts", posts)
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
-func getPostsByRecentWithCity(level, cityID string, categoryID, page int) (posts []postAPI, err error) {
+func getPostsByRecentWithCity(userID int64, level, cityID string, categoryID, page int) (posts []postAPI, err error) {
 	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -972,6 +989,7 @@ func getPostsByRecentWithCity(level, cityID string, categoryID, page int) (posts
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		place := placeAPI{}
@@ -1014,12 +1032,19 @@ func getPostsByRecentWithCity(level, cityID string, categoryID, page int) (posts
 		post.Place = place
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
 	}
-	// log.Println("posts", posts)
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
 func getPostsByRecentWithPlaceLikeNum(countryCode string, categoryID, numPost int) (posts []postAPI, err error) {
@@ -1140,6 +1165,7 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		place := placeAPI{}
@@ -1182,12 +1208,19 @@ func getPostsByFollowingUsers(userID int64, page int) (posts []postAPI, err erro
 		post.Place = place
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
 	}
-	// log.Println("posts", posts)
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
 func getPostsByFollowingUsersWithCountry(userID int64, countryCode string, categoryID, page int) (posts []postAPI, err error) { // not done yet
@@ -1223,6 +1256,7 @@ func getPostsByFollowingUsersWithCountry(userID int64, countryCode string, categ
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		place := placeAPI{}
@@ -1265,12 +1299,19 @@ func getPostsByFollowingUsersWithCountry(userID int64, countryCode string, categ
 		post.Place = place
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
 	}
-	// log.Println("posts", posts)
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
 func getPostsByFollowingUsersWithCity(userID int64, level, cityID string, categoryID, page int) (posts []postAPI, err error) { // not done yet
@@ -1306,6 +1347,7 @@ func getPostsByFollowingUsersWithCity(userID int64, level, cityID string, catego
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		place := placeAPI{}
@@ -1348,12 +1390,19 @@ func getPostsByFollowingUsersWithCity(userID int64, level, cityID string, catego
 		post.Place = place
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
 	}
-	// log.Println("posts", posts)
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
 func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // not done yet
@@ -1386,6 +1435,7 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		place := placeAPI{}
@@ -1428,12 +1478,19 @@ func getPostsByUser(userID int64, page int) (posts []postAPI, err error) { // no
 		post.Place = place
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
 	}
-	// log.Println("posts", posts)
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
 func getPostByPostIDUserID(postID, userID int64) (count int, err error) {
@@ -1456,7 +1513,7 @@ func getPostByPostIDUserID(postID, userID int64) (count int, err error) {
 	}
 	return count, err
 }
-func getPostsByPlaceID(placeID int64, page int) (posts []postAPI, err error) {
+func getPostsByPlaceID(userID int64, placeID int64, page int) (posts []postAPI, err error) {
 	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -1492,6 +1549,7 @@ func getPostsByPlaceID(placeID int64, page int) (posts []postAPI, err error) {
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		if err := rows.Scan(
@@ -1518,12 +1576,19 @@ func getPostsByPlaceID(placeID int64, page int) (posts []postAPI, err error) {
 		post.Blob.BlobID = makeBlobURL(post)
 		post.Place = place
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
 	}
-	// log.Println("posts", posts)
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
 func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
@@ -1557,18 +1622,27 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 		return posts, err
 	}
 	count := 0
+	postsID := []int64{}
 	for i := popularPostUserReadIndex; i < len(p.PopularPosts); i++ {
 		if count >= numPerRequest {
 			break
 		}
 		if r.PopularPosts[p.PopularPosts[i].PostID] == 0 {
 			posts = append(posts, p.PopularPosts[i])
+			postsID = append(postsID, p.PopularPosts[i].PostID)
 			count++
 		}
 	}
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
-func getSupPostsByPopularWithCountry(countryCode string, userID int64, page int) (posts []postAPI, err error) { // not done yet
+func getSupPostsByPopularWithCountry(userID int64, countryCode string, page int) (posts []postAPI, err error) { // not done yet
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
@@ -1597,18 +1671,27 @@ func getSupPostsByPopularWithCountry(countryCode string, userID int64, page int)
 		return posts, err
 	}
 	count := 0
+	postsID := []int64{}
 	for i := popularPostUserReadIndex; i < len(p.SupPopularPosts); i++ {
 		if count >= numPerRequest {
 			break
 		}
 		if r.PopularPosts[p.SupPopularPosts[i].PostID] == 0 {
 			posts = append(posts, p.SupPopularPosts[i])
+			postsID = append(postsID, p.SupPopularPosts[i].PostID)
 			count++
 		}
 	}
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
-func getSupPostsByPopularWithCity(level, cityID string, userID int64, page int) (posts []postAPI, err error) { // not done yet
+func getSupPostsByPopularWithCity(userID int64, level, cityID string, page int) (posts []postAPI, err error) { // not done yet
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
@@ -1637,18 +1720,27 @@ func getSupPostsByPopularWithCity(level, cityID string, userID int64, page int) 
 		return posts, err
 	}
 	count := 0
+	postsID := []int64{}
 	for i := popularPostUserReadIndex; i < len(p.SupPopularPosts); i++ {
 		if count >= numPerRequest {
 			break
 		}
 		if r.PopularPosts[p.SupPopularPosts[i].PostID] == 0 {
 			posts = append(posts, p.SupPopularPosts[i])
+			postsID = append(postsID, p.SupPopularPosts[i].PostID)
 			count++
 		}
 	}
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
-func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) { // not done yet
+func getPostsByHashtag(userID int64, hashtagID int64, page int) (posts []postAPI, err error) { // not done yet
 	c, err := connectPostgres()
 	if err != nil {
 		return posts, errors.New("db connection")
@@ -1674,6 +1766,7 @@ func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) {
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		if err := rows.Scan(
@@ -1699,12 +1792,19 @@ func getPostsByHashtag(hashtagID int64, page int) (posts []postAPI, err error) {
 		}
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
 	}
-	// log.Println("posts", posts)
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
 }
 func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
@@ -1733,6 +1833,7 @@ func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 		return posts, err
 	}
 	defer rows.Close()
+	postsID := []int64{}
 	for rows.Next() {
 		post := postAPI{}
 		if err := rows.Scan(
@@ -1758,13 +1859,68 @@ func getPostsByTag(userID int64, page int) (posts []postAPI, err error) {
 		}
 		post.Blob.BlobID = makeBlobURL(post)
 		posts = append(posts, post)
+		postsID = append(postsID, post.PostID)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println(err)
 		return posts, err
 	}
-	// log.Println("posts", posts)
+	postReactionMap, err := getPostReactionMap(userID, postsID)
+	if err != nil {
+		return posts, err
+	}
+	for i := 0; i < len(posts); i++ {
+		posts[i].ReactionByQueryUser = postReactionMap[posts[i].PostID]
+	}
 	return posts, nil
+}
+func getPostReactionMap(userID int64, postsID []int64) (postsIDChecked map[int64]int, err error) {
+	postsIDChecked = make(map[int64]int) // -1 ~ reaction type
+	c, err := connectPostgres()
+	if err != nil {
+		return postsIDChecked, errors.New("db connection")
+	}
+	defer c.db.Close()
+	sqlStr := `
+		SELECT post_id, reaction_id
+		FROM post_reaction
+		WHERE user_id=$1 AND post_id IN (
+	`
+	shiftIndex := 2
+	var args []interface{}
+	args = append(args, userID)
+	for i := 0; i < len(postsID); i++ {
+		postsIDChecked[postsID[i]] = -1
+		sqlStr += `$` + strconv.Itoa(i+shiftIndex)
+		args = append(args, postsID[i])
+		if i != len(postsID)-1 {
+			sqlStr += `,`
+		}
+	}
+	sqlStr += `);`
+	rows, err := c.db.Query(sqlStr, args...)
+	if err != nil {
+		log.Println("getPostReactionList", err)
+		return postsIDChecked, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var postID int64
+		var reactionID int
+		if err := rows.Scan(
+			&postID,
+			&reactionID,
+		); err != nil {
+			log.Println(err)
+			return postsIDChecked, err
+		}
+		postsIDChecked[postID] = reactionID
+	}
+	if err := rows.Err(); err != nil {
+		log.Println(err)
+		return postsIDChecked, err
+	}
+	return postsIDChecked, err
 }
 
 // hashtags

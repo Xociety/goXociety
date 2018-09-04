@@ -116,19 +116,20 @@ type blobAPI struct {
 	OriginHeight int    `json:"origin_height" bson:"origin_height"`
 }
 type postAPI struct {
-	PostID       int64        `json:"post_id" bson:"post_id"`
-	User         userBasicAPI `json:"user" bson:"user"`
-	Content      string       `json:"content" bson:"content"`
-	Blob         blobAPI      `json:"blob" bson:"blob"`
-	Type         int          `json:"type" bson:"type"`
-	LikeCount    int64        `json:"like_count" bson:"like_count"`
-	DislikeCount int64        `json:"dislike_count" bson:"dislike_count"`
-	CommentCount int64        `json:"comment_count" bson:"comment_count"`
-	CategoryID   int          `json:"category_id" bson:"category_id"`
-	Place        placeAPI     `json:"place" bson:"place"`
-	Public       bool         `json:"public" bson:"public"`
-	Createtime   int          `json:"createtime" bson:"createtime"`
-	Updatetime   int          `json:"updatetime" bson:"updatetime"`
+	PostID              int64        `json:"post_id" bson:"post_id"`
+	User                userBasicAPI `json:"user" bson:"user"`
+	Content             string       `json:"content" bson:"content"`
+	Blob                blobAPI      `json:"blob" bson:"blob"`
+	Type                int          `json:"type" bson:"type"`
+	LikeCount           int64        `json:"like_count" bson:"like_count"`
+	DislikeCount        int64        `json:"dislike_count" bson:"dislike_count"`
+	ReactionByQueryUser int          `json:"reaction_by_query_user" bson:"reaction_by_query_user"`
+	CommentCount        int64        `json:"comment_count" bson:"comment_count"`
+	CategoryID          int          `json:"category_id" bson:"category_id"`
+	Place               placeAPI     `json:"place" bson:"place"`
+	Public              bool         `json:"public" bson:"public"`
+	Createtime          int          `json:"createtime" bson:"createtime"`
+	Updatetime          int          `json:"updatetime" bson:"updatetime"`
 }
 
 // hashtag

@@ -424,18 +424,19 @@ var postGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
 		Name: "post",
 		Fields: graphql.Fields{
-			"post_id":       &graphql.Field{Type: int64GraphqlScalar},
-			"user":          &graphql.Field{Type: userBasicGraphqlType},
-			"content":       &graphql.Field{Type: graphql.String},
-			"blob":          &graphql.Field{Type: blobGraphqlType},
-			"type":          &graphql.Field{Type: graphql.Int, Description: "post type"},
-			"like_count":    &graphql.Field{Type: int64GraphqlScalar},
-			"dislike_count": &graphql.Field{Type: int64GraphqlScalar},
-			"comment_count": &graphql.Field{Type: int64GraphqlScalar},
-			"place":         &graphql.Field{Type: placeGraphqlType},
-			"category_id":   &graphql.Field{Type: graphql.Int},
-			"createtime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
-			"updatetime":    &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			"post_id":                &graphql.Field{Type: int64GraphqlScalar},
+			"user":                   &graphql.Field{Type: userBasicGraphqlType},
+			"content":                &graphql.Field{Type: graphql.String},
+			"blob":                   &graphql.Field{Type: blobGraphqlType},
+			"type":                   &graphql.Field{Type: graphql.Int, Description: "post type"},
+			"like_count":             &graphql.Field{Type: int64GraphqlScalar},
+			"dislike_count":          &graphql.Field{Type: int64GraphqlScalar},
+			"reaction_by_query_user": &graphql.Field{Type: graphql.Int, Description: "-1: no reaction, other: reaction_id"},
+			"comment_count":          &graphql.Field{Type: int64GraphqlScalar},
+			"place":                  &graphql.Field{Type: placeGraphqlType},
+			"category_id":            &graphql.Field{Type: graphql.Int},
+			"createtime":             &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
+			"updatetime":             &graphql.Field{Type: graphql.Int, Description: "Unix Timestamp"},
 		},
 	},
 )
@@ -1065,6 +1066,10 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
 					categoryID, isOK := p.Args["category_id"].(int)
 					if !isOK {
 						return nil, errors.New("category format")
@@ -1073,7 +1078,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
-					posts, err := getPostsByRecent(categoryID, page)
+					posts, err := getPostsByRecent(user.UserID, categoryID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1095,6 +1100,10 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
 					categoryID, isOK := p.Args["category_id"].(int)
 					if !isOK {
 						return nil, errors.New("category format")
@@ -1108,7 +1117,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByRecentWithCountry(countryCode, categoryID, page)
+					posts, err := getPostsByRecentWithCountry(user.UserID, countryCode, categoryID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1134,6 +1143,10 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
 					categoryID, isOK := p.Args["category_id"].(int)
 					if !isOK {
 						return nil, errors.New("category format")
@@ -1154,7 +1167,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByRecentWithCity(strconv.Itoa(level), cityID, categoryID, page)
+					posts, err := getPostsByRecentWithCity(user.UserID, strconv.Itoa(level), cityID, categoryID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1358,7 +1371,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getSupPostsByPopularWithCountry(countryCode, user.UserID, page)
+					posts, err := getSupPostsByPopularWithCountry(user.UserID, countryCode, page)
 					log.Printf("sup_posts_by_popular_with_country total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
@@ -1402,7 +1415,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getSupPostsByPopularWithCity(strconv.Itoa(level), cityID, user.UserID, page)
+					posts, err := getSupPostsByPopularWithCity(user.UserID, strconv.Itoa(level), cityID, page)
 					log.Printf("sup_posts_by_popular_with_country total took %fs\n", time.Since(startTime).Seconds())
 					return posts, err
 				},
@@ -1421,6 +1434,10 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
 					hashtagID, isOK := p.Args["hashtag_id"].(int64)
 					if !isOK {
 						return nil, errors.New("hashtag_id format")
@@ -1430,7 +1447,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByHashtag(hashtagID, page)
+					posts, err := getPostsByHashtag(user.UserID, hashtagID, page)
 					return posts, err
 				},
 				Description: "",
@@ -1475,6 +1492,10 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
 					placeID, isOK := p.Args["place_id"].(int64)
 					if !isOK {
 						return nil, errors.New("place_id format")
@@ -1484,7 +1505,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts, err := getPostsByPlaceID(placeID, page)
+					posts, err := getPostsByPlaceID(user.UserID, placeID, page)
 					return posts, err
 				},
 				Description: "",
