@@ -1061,125 +1061,6 @@ var graphqlQueryType = graphql.NewObject(
 				Description: "get location info by name",
 			},
 			// post_detail
-			"posts_by_recent": &graphql.Field{
-				Type: postsGraphqlType,
-				Args: graphql.FieldConfigArgument{
-					"category_id": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "category_id",
-					},
-					"page": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "page",
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					user, err := parseAuth(p)
-					if err != nil {
-						return nil, err
-					}
-					categoryID, isOK := p.Args["category_id"].(int)
-					if !isOK {
-						return nil, errors.New("category format")
-					}
-					page, isOK := p.Args["page"].(int)
-					if !isOK {
-						return nil, errors.New("page format")
-					}
-					posts, err := getPostsByRecent(user.UserID, categoryID, page)
-					return posts, err
-				},
-				Description: "get recent posts",
-			},
-			"posts_by_recent_with_country": &graphql.Field{
-				Type: postsGraphqlType,
-				Args: graphql.FieldConfigArgument{
-					"category_id": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "category_id",
-					},
-					"country_code": &graphql.ArgumentConfig{
-						Type:        graphql.String,
-						Description: "country_code",
-					},
-					"page": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "page",
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					user, err := parseAuth(p)
-					if err != nil {
-						return nil, err
-					}
-					categoryID, isOK := p.Args["category_id"].(int)
-					if !isOK {
-						return nil, errors.New("category format")
-					}
-					countryCode, isOK := p.Args["country_code"].(string)
-					if !isOK {
-						return nil, errors.New("country_code format")
-					}
-					page, isOK := p.Args["page"].(int)
-					if !isOK {
-						return nil, errors.New("page format")
-					}
-					// block check
-					posts, err := getPostsByRecentWithCountry(user.UserID, countryCode, categoryID, page)
-					return posts, err
-				},
-				Description: "get recent posts by country",
-			},
-			"posts_by_recent_with_city": &graphql.Field{
-				Type: postsGraphqlType,
-				Args: graphql.FieldConfigArgument{
-					"category_id": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "category_id",
-					},
-					"level": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "level",
-					},
-					"city_id": &graphql.ArgumentConfig{
-						Type:        graphql.String,
-						Description: "city_id",
-					},
-					"page": &graphql.ArgumentConfig{
-						Type:        graphql.Int,
-						Description: "page",
-					},
-				},
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					user, err := parseAuth(p)
-					if err != nil {
-						return nil, err
-					}
-					categoryID, isOK := p.Args["category_id"].(int)
-					if !isOK {
-						return nil, errors.New("category format")
-					}
-					level, isOK := p.Args["level"].(int)
-					if !isOK {
-						return nil, errors.New("level format")
-					}
-					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
-						return nil, errors.New("level format")
-					}
-					cityID, isOK := p.Args["city_id"].(string)
-					if !isOK {
-						return nil, errors.New("city_id format")
-					}
-					page, isOK := p.Args["page"].(int)
-					if !isOK {
-						return nil, errors.New("page format")
-					}
-					// block check
-					posts, err := getPostsByRecentWithCity(user.UserID, strconv.Itoa(level), cityID, categoryID, page)
-					return posts, err
-				},
-				Description: "get recent posts by city",
-			},
 			"posts_by_following_users": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
@@ -1319,7 +1200,169 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Description: "get posts by user",
 			},
-			"posts_by_popular": &graphql.Field{
+			"posts_by_recent_category": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					posts, err := getPostsByRecent(user.UserID, categoryID, page)
+					return posts, err
+				},
+				Description: "get recent posts",
+			},
+			"posts_by_recent_categories": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_ids": &graphql.ArgumentConfig{
+						Type:        graphql.NewList(graphql.Int),
+						Description: "category_ids",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryIDs := []int{}
+					interfaceSlice, err := convertInterfaceSlice(p.Args["category_ids"])
+					if err != nil {
+						return nil, errors.New("category_ids format")
+					}
+					for i := 0; i < len(interfaceSlice); i++ {
+						categoryID, isOK := interfaceSlice[i].(int)
+						if isOK {
+							categoryIDs = append(categoryIDs, categoryID)
+						}
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					posts := []postAPI{}
+					for i := 0; i < len(categoryIDs); i++ {
+						postsCategory, err := getPostsByRecent(user.UserID, categoryIDs[i], page)
+						if err == nil {
+							posts = append(posts, postsCategory...)
+						}
+					}
+					return posts, nil
+				},
+				Description: "get recent posts with categories",
+			},
+			"posts_by_recent_with_country": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"country_code": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "country_code",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
+					countryCode, isOK := p.Args["country_code"].(string)
+					if !isOK {
+						return nil, errors.New("country_code format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByRecentWithCountry(user.UserID, countryCode, categoryID, page)
+					return posts, err
+				},
+				Description: "get recent posts by country",
+			},
+			"posts_by_recent_with_city": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_id": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "category_id",
+					},
+					"level": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "level",
+					},
+					"city_id": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "city_id",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryID, isOK := p.Args["category_id"].(int)
+					if !isOK {
+						return nil, errors.New("category format")
+					}
+					level, isOK := p.Args["level"].(int)
+					if !isOK {
+						return nil, errors.New("level format")
+					}
+					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
+						return nil, errors.New("level format")
+					}
+					cityID, isOK := p.Args["city_id"].(string)
+					if !isOK {
+						return nil, errors.New("city_id format")
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts, err := getPostsByRecentWithCity(user.UserID, strconv.Itoa(level), cityID, categoryID, page)
+					return posts, err
+				},
+				Description: "get recent posts by city",
+			},
+			"posts_by_popular_category": &graphql.Field{
 				Type: postsGraphqlType,
 				Args: graphql.FieldConfigArgument{
 					"category_id": &graphql.ArgumentConfig{
@@ -1351,6 +1394,52 @@ var graphqlQueryType = graphql.NewObject(
 					return posts, err
 				},
 				Description: "get popular posts by category",
+			},
+			"posts_by_popular_categories": &graphql.Field{
+				Type: postsGraphqlType,
+				Args: graphql.FieldConfigArgument{
+					"category_ids": &graphql.ArgumentConfig{
+						Type:        graphql.NewList(graphql.Int),
+						Description: "category_ids",
+					},
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "page",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					startTime := time.Now()
+					user, err := parseAuth(p)
+					if err != nil {
+						return nil, err
+					}
+					categoryIDs := []int{}
+					interfaceSlice, err := convertInterfaceSlice(p.Args["category_ids"])
+					if err != nil {
+						return nil, errors.New("category_ids format")
+					}
+					for i := 0; i < len(interfaceSlice); i++ {
+						categoryID, isOK := interfaceSlice[i].(int)
+						if isOK {
+							categoryIDs = append(categoryIDs, categoryID)
+						}
+					}
+					page, isOK := p.Args["page"].(int)
+					if !isOK {
+						return nil, errors.New("page format")
+					}
+					// block check
+					posts := []postAPI{}
+					for i := 0; i < len(categoryIDs); i++ {
+						postsCategory, err := getPostsByPopular(user.UserID, categoryIDs[i], page)
+						if err == nil {
+							posts = append(posts, postsCategory...)
+						}
+					}
+					log.Printf("posts_by_popular total took %fs\n", time.Since(startTime).Seconds())
+					return posts, err
+				},
+				Description: "get sup popular posts with country and categories",
 			},
 			"sup_posts_by_popular_with_country": &graphql.Field{
 				Type: postsGraphqlType,

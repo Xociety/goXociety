@@ -3,6 +3,8 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"reflect"
 	"time"
 )
 
@@ -29,4 +31,16 @@ func convertIDAndValue(IDs []int, values []string, isReverse bool, forward map[i
 			}
 		}
 	}
+}
+
+func convertInterfaceSlice(slice interface{}) ([]interface{}, error) {
+	s := reflect.ValueOf(slice)
+	if s.Kind() != reflect.Slice {
+		return nil, errors.New("convertInterfaceSlice() given a non-slice type")
+	}
+	ret := make([]interface{}, s.Len())
+	for i := 0; i < s.Len(); i++ {
+		ret[i] = s.Index(i).Interface()
+	}
+	return ret, nil
 }
