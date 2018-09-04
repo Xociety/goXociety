@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	geo "github.com/kellydunn/golang-geo"
@@ -141,10 +142,6 @@ func genPopularPostUpsert() {
 			log.Println("post", err)
 		}
 		sort.Sort(postByPopular(posts))
-		// init post_user_read_index
-		if err := upsertInitCommonPostUserReadIndex(categoryID, usersID); err != nil {
-			log.Println(err)
-		}
 		// post_common
 		if err := upsertPopularPostOnPostCommon(categoryID, posts); err != nil {
 			log.Println(err)
@@ -157,7 +154,6 @@ func genSupPopularPostUpsert() {
 	if err != nil {
 		log.Println("user", err)
 	}
-	log.Println("users", len(users))
 	usersID := []int64{}
 	usersIDStr := []string{}
 	hf := make(map[string]interface{})
@@ -172,7 +168,7 @@ func genSupPopularPostUpsert() {
 	if err != nil {
 		log.Println(err)
 	}
-	citiesAll := [][]city2API{}
+	citiesAll := [][]cityAPI{}
 	for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
 		level := strconv.Itoa(j)
 		cities, err := getCities(level)
@@ -181,31 +177,32 @@ func genSupPopularPostUpsert() {
 		}
 		citiesAll = append(citiesAll, cities)
 	}
-	// redis version of post user read index
-	/*
-		for i := 0; i < len(countries); i++ {
-			posts, err := getPostsByRecentWithPlaceLikeNum(countries[i].CountryCode, categorySup, numPopularPostPerRefresh)
-			sort.Sort(postByPopular(posts))
-			// init post_user_read_index
-			cr := connectRedis()
-			hk := redisHashCountryPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":" + categorySupStr
-			err = cr.client.HMSet(hk, hf).Err()
-			if err != nil {
-				log.Println(err)
-			}
-			// country.sup_popular_posts
-			c, err := connectMongoDB()
-			if err != nil {
-				log.Println("mongo session", err)
-			}
-			collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
-			selector := bson.M{"level": "0", "country_code": countries[i].CountryCode}
-			if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": posts, "post_count": len(posts)}}); err != nil {
-				log.Println("upsertPopularPostOnCountry", err)
-			}
+	log.Println("city popular post")
+	for i := 0; i < len(countries); i++ {
+		posts, err := getPostsByRecentWithPlaceLikeNum(countries[i].CountryCode, categorySup, numPopularPostPerRefresh)
+		sort.Sort(postByPopular(posts))
+		// init post_user_read_index
+		// cr := connectRedis()
+		// hk := redisHashCountryPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":" + categorySupStr
+		// err = cr.client.HMSet(hk, hf).Err()
+		// if err != nil {
+		// 	log.Println(err)
+		// }
+		// country.sup_popular_posts
+		c, err := connectMongoDB()
+		if err != nil {
+			log.Println("mongo session", err)
+		}
+		collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+		selector := bson.M{"level": "0", "country_code": countries[i].CountryCode}
+		if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": posts, "post_count": len(posts)}}); err != nil {
+			log.Println("upsertPopularPostOnCountry", err)
+		}
+		if len(posts) > 0 {
+
 			for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
 				level := strconv.Itoa(j)
-				filteredCity := []city2API{}
+				filteredCity := []cityAPI{}
 				for k := 0; k < len(citiesAll[j-1]); k++ {
 					cityID := ""
 					switch j {
@@ -258,71 +255,93 @@ func genSupPopularPostUpsert() {
 						}
 					}
 					// init post_user_read_index
-					hk := redisHashCityPopularPostUserReadIndex + ":" + fCityID + ":" + categorySupStr
-					err = cr.client.HMSet(hk, hf).Err()
-					if err != nil {
-						log.Println(err)
-					}
+					// hk := redisHashCityPopularPostUserReadIndex + ":" + fCityID + ":" + categorySupStr
+					// err = cr.client.HMSet(hk, hf).Err()
+					// if err != nil {
+					// 	log.Println(err)
+					// }
 					// city.sup_popular_posts
-					collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
-					selector := bson.M{"level": level, "city_id": fCityID}
+					collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+					selector := bson.M{"level": level, "city_id_" + level: fCityID}
 					if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": filteredPosts, "post_count": len(filteredPosts)}}); err != nil {
 						log.Println("upsertPopularPostOnCity", err)
 					}
 				}
 			}
-			c.session.Close()
-			cr.client.Close()
-			log.Println("finish " + countries[i].CountryName + " posts")
+		} else {
+			collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+			selector := bson.M{"country_code": countries[i].CountryCode}
+			if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": 0, "post_count": 0}}); err != nil {
+				log.Println("upsertPopularPostOnCity", err)
+			}
 		}
-	*/
+		c.session.Close()
+		// cr.client.Close()
+		log.Println("finish " + countries[i].CountryName + "," + strconv.Itoa(len(posts)) + " posts")
+	}
+	log.Println("init post user read index, users", len(users))
 	// mongo version of post user read index
-	for u := 0; u < len(usersIDStr); u++ {
+	for u := 0; u < len(usersID); u++ {
 		rID := popularPostUserReadIndexAPI{
-			UserID:                     usersIDStr[u],
-			CommonPopularPostIndex:     make(map[string]int),
+			UserID:                     usersID[u],
+			CommonPopularPostIndex:     make(map[int]int),
 			CitySupPopularPostIndex:    make(map[string]int),
 			CountrySupPopularPostIndex: make(map[string]int),
 		}
-		for categoryID := range categoryMapID2Name {
-			rID.CommonPopularPostIndex[strconv.Itoa(categoryID)] = 0
-		}
-		for i := 0; i < len(countries); i++ {
-			rID.CountrySupPopularPostIndex[countries[i].CountryCode] = 0
-		}
-		for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
-			for k := 0; k < len(citiesAll[j-1]); k++ {
-				CityID := ""
-				switch j {
-				case 1:
-					CityID = citiesAll[j-1][k].CityID1
-				case 2:
-					CityID = citiesAll[j-1][k].CityID2
-				case 3:
-					CityID = citiesAll[j-1][k].CityID3
-				case 4:
-					CityID = citiesAll[j-1][k].CityID4
-				case 5:
-					CityID = citiesAll[j-1][k].CityID5
-				}
-				rID.CitySupPopularPostIndex[CityID] = 0
-			}
-		}
-
 		c, err := connectMongoDB()
 		if err != nil {
 			log.Println("mongo session", err)
 		}
 		collection := c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
 		selector := bson.M{"user_id": rID.UserID}
-		if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{
-			"common_popular_post_index":      rID.CommonPopularPostIndex,
-			"city_sup_popular_post_index":    rID.CitySupPopularPostIndex,
-			"country_sup_popular_post_index": rID.CountrySupPopularPostIndex,
-		}}); err != nil {
+		if _, err := collection.Upsert(selector, bson.M{"user_id": rID.UserID}); err != nil {
 			log.Println("upser popular_post_user_read_index", err)
 		}
 		c.session.Close()
 	}
+
+	rID := popularPostUserReadIndexAPI{
+		UserID:                     0,
+		CommonPopularPostIndex:     make(map[int]int),
+		CitySupPopularPostIndex:    make(map[string]int),
+		CountrySupPopularPostIndex: make(map[string]int),
+	}
+	c, err := connectMongoDB()
+	if err != nil {
+		log.Println("mongo session", err)
+	}
+	for categoryID := range categoryMapID2Name {
+		rID.CommonPopularPostIndex[categoryID] = 0
+	}
+	for i := 0; i < len(countries); i++ {
+		rID.CountrySupPopularPostIndex[countries[i].CountryCode] = 0
+	}
+	for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
+		for k := 0; k < len(citiesAll[j-1]); k++ {
+			CityID := ""
+			switch j {
+			case 1:
+				CityID = citiesAll[j-1][k].CityID1
+			case 2:
+				CityID = citiesAll[j-1][k].CityID2
+			case 3:
+				CityID = citiesAll[j-1][k].CityID3
+			case 4:
+				CityID = citiesAll[j-1][k].CityID4
+			case 5:
+				CityID = citiesAll[j-1][k].CityID5
+			}
+			rID.CitySupPopularPostIndex[CityID] = 0
+		}
+	}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+	if _, err := collection.UpdateAll(bson.M{}, bson.M{"$set": bson.M{
+		"common_popular_post_index":      rID.CommonPopularPostIndex,
+		"city_sup_popular_post_index":    rID.CitySupPopularPostIndex,
+		"country_sup_popular_post_index": rID.CountrySupPopularPostIndex,
+	}}); err != nil {
+		log.Println("upser popular_post_user_read_index", err)
+	}
+	c.session.Close()
 	log.Println("finish sup city posts")
 }

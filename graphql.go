@@ -359,7 +359,7 @@ var cityGeometryPropertiesGraphqlType = graphql.NewObject(
 )
 var cityGraphqlType = graphql.NewObject(
 	graphql.ObjectConfig{
-		Name: "city2",
+		Name: "city",
 		Fields: graphql.Fields{
 			"level":             &graphql.Field{Type: graphql.String},
 			"country_code":      &graphql.Field{Type: graphql.String},

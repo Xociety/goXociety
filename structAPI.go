@@ -70,7 +70,7 @@ type propertiesCityAPI struct {
 type cityGeometryAPI struct {
 	Properties propertiesCityAPI `json:"properties" bson:"properties"`
 }
-type city2API struct {
+type cityAPI struct {
 	Level           string    `json:"level" bson:"level"`
 	CountryCode     string    `json:"country_code" bson:"country_code"`
 	CountryName     string    `json:"country_name" bson:"country_name"`
@@ -248,8 +248,8 @@ type postUserReadAPI struct {
 }
 
 type popularPostUserReadIndexAPI struct {
-	UserID                     string         `json:"user_id" bson:"user_id"`
-	CommonPopularPostIndex     map[string]int `json:"common_popular_post_index" bson:"common_popular_post_index"`           // category_id: index
+	UserID                     int64          `json:"user_id" bson:"user_id"`
+	CommonPopularPostIndex     map[int]int    `json:"common_popular_post_index" bson:"common_popular_post_index"`           // category_id: index
 	CitySupPopularPostIndex    map[string]int `json:"city_sup_popular_post_index" bson:"city_sup_popular_post_index"`       // city_id: index
 	CountrySupPopularPostIndex map[string]int `json:"country_sup_popular_post_index" bson:"country_sup_popular_post_index"` // country_code: index
 }

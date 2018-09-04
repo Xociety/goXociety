@@ -30,7 +30,7 @@ const (
 
 // api
 var (
-	countryConfigAPI  []city2API
+	countryConfigAPI  []cityAPI
 	languageConfigAPI []languageAPI
 	genderConfigAPI   []genderAPI
 	reactionConfigAPI []reactionAPI
@@ -68,7 +68,7 @@ var (
 const (
 	mongoDBXociety                          = "xociety"
 	mongoCollectionCityGeometry             = "city_geometry"
-	mongoCollectionCity2                    = "city2"
+	mongoCollectionCity                     = "city"
 	mongoCollectionPostCommon               = "post_common"
 	mongoCollectionPostUserRead             = "post_user_read"
 	mongoCollectionPopularPostUserReadIndex = "popular_post_user_read_index"

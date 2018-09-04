@@ -20,8 +20,8 @@ db.createUser(
 * init
 
 ```javascript
-db.createCollection("post_popular_common");
-db.post_popular_common.createIndex({ "category_id": 1 });
+db.createCollection("post_common");
+db.post_common.createIndex({ "category_id": 1 });
 ```
 
 * document sample
@@ -97,7 +97,58 @@ db.post_user_read.createIndex({ "user_id": 1, "category_id": 1, "week_timestamp"
 }
 ```
 
-##
+## popular_post_user_read_index
+
+* init
+
+```javascript
+db.createCollection("popular_post_user_read_index");
+db.popular_post_user_read_index.createIndex({ "user_id": 1 });
+```
+
+* sample data
+
+```json
+{
+    "_id" : ObjectId("5b8d0e106ed3c50a23fd2e7d"),
+    "user_id" : "3172",
+    "city_sup_popular_post_index" : {
+        "PRY_10_6" : 0,
+        "ETH_8_7_7" : 0,
+        "ITA_13_3_19" : 0,
+        "PHL_36_21_91" : 0,
+        "FRA_10_12_1_2" : 0,
+        "EST_16_11_46" : 0,
+        "KEN_26_6_2" : 0
+    },
+    "common_popular_post_index" : {
+        "0" : 0,
+        "7" : 0,
+        "1" : 0,
+        "10" : 0,
+        "2" : 0,
+        "4" : 0,
+        "13" : 0,
+        "8" : 0,
+        "11" : 0,
+        "15" : 0,
+        "12" : 0,
+        "6" : 0,
+        "5" : 0,
+        "14" : 0,
+        "3" : 0,
+        "9" : 0
+    },
+    "country_sup_popular_post_index" : {
+        "BVT" : 0,
+        "CCK" : 0,
+        "MWI" : 0,
+        "JOR" : 0,
+        "LSO" : 0,
+        "PAN" : 0
+    }
+}
+```
 
 
 ## city_geometry
@@ -109,7 +160,7 @@ db.createCollection("city_geometry")
 db.city_geometry.createIndex({"geometry":"2dsphere"})
 ```
 
-* data source gadm
+* data source gadmpost_popular_common
 
 please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/releases/tag/v0.0.2)
 
@@ -160,11 +211,11 @@ please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/re
 
 * data source gadm
 
-please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/releases/tag/v0.0.2)
+please check python repo [xGeoCity](https://github.com/chienfuchen32/xGeoCity/releases/tag/v0.0.3)
 
 ```javascript
-db.createCollection("city2")
-db.city2.createIndex({"level": 1, "country_code": 1, "city_id_1": 1, "city_id_2": 1, "city_id_3": 1, "city_id_4": 1, "city_id_5": 1})
+db.createCollection("city")
+db.city.createIndex({"level": 1, "country_code": 1, "city_id_1": 1, "city_id_2": 1, "city_id_3": 1, "city_id_4": 1, "city_id_5": 1})
 ```
 
 * document sample

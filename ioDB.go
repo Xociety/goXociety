@@ -520,14 +520,14 @@ func checkUserIfFollowing(followingUserID, followerUserID int64) (isFollowing bo
 }
 
 // country, city
-func getCountries() (countries []city2API, err error) {
+func getCountries() (countries []cityAPI, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return countries, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
 	q := bson.M{"level": "0"}
 	selector := bson.M{"country_code": 1, "country_name": 1}
 	if err := collection.Find(q).Select(selector).All(&countries); err != nil {
@@ -536,14 +536,14 @@ func getCountries() (countries []city2API, err error) {
 	}
 	return countries, nil
 }
-func getCountry(countryCode string) (country city2API, err error) {
+func getCountry(countryCode string) (country cityAPI, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return country, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
 	q := bson.M{"level": "0", "country_code": countryCode}
 	selector := bson.M{"country_code": 1, "country_name": 1}
 	if err := collection.Find(q).Select(selector).One(&country); err != nil {
@@ -552,14 +552,14 @@ func getCountry(countryCode string) (country city2API, err error) {
 	}
 	return country, nil
 }
-func getCities(level string) (cities []city2API, err error) {
+func getCities(level string) (cities []cityAPI, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return cities, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
 	q := bson.M{"level": level}
 	if err := collection.Find(q).All(&cities); err != nil {
 		log.Println("getCities", err)
@@ -567,14 +567,14 @@ func getCities(level string) (cities []city2API, err error) {
 	}
 	return cities, nil
 }
-func getCity(level string, cityID string) (city city2API, err error) {
+func getCity(level string, cityID string) (city cityAPI, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return city, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
 	q := bson.M{"level": level, "city_id_" + level: cityID}
 	if err := collection.Find(q).One(&city); err != nil {
 		log.Println("getCity", err)
@@ -582,14 +582,14 @@ func getCity(level string, cityID string) (city city2API, err error) {
 	}
 	return city, nil
 }
-func getCitiesLevelByCityIDLike(level string, cityID string) (cities []city2API, err error) {
+func getCitiesLevelByCityIDLike(level string, cityID string) (cities []cityAPI, err error) {
 	c, err := connectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 		return cities, err
 	}
 	defer c.session.Close()
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
 	q := bson.M{
 		"level":            level,
 		"city_id_" + level: bson.M{"$regex": bson.RegEx{Pattern: cityID, Options: ""}}}
@@ -1536,23 +1536,16 @@ func getPostsByPopular(userID int64, categoryID, page int) (posts []postAPI, err
 	cr := connectRedis()
 	defer cr.client.Close()
 	// read_index
-	hk, hf := parseHashKeyFieldCommonPopularPostUserReadIndex(categoryID, userID)
-	popularPostUserReadIndexStr, err := cr.client.HGet(hk, hf).Result()
-	if err == redis.Nil {
-		// log.Println("key does not exist")
-		popularPostUserReadIndexStr = "0"
-	} else if err != nil {
-		return posts, err
-	}
-	popularPostUserReadIndex, err := strconv.Atoi(popularPostUserReadIndexStr)
-	if err != nil {
-		return posts, errors.New("popularPostUserReadIndexStr convert " + "userID " + strconv.FormatInt(userID, 10) + "categoryID " + strconv.Itoa(categoryID))
-	}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+	ppuri := popularPostUserReadIndexAPI{}
+	q := bson.M{"user_id": userID}
+	collection.Find(q).One(&ppuri)
+	popularPostUserReadIndex := ppuri.CommonPopularPostIndex[categoryID]
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
 	// ** you can wrap func as a transaction
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+	q = bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp}
 	r := postUserReadAPI{}
 	collection.Find(q).One(&r)
 	// popular_common
@@ -1582,32 +1575,23 @@ func getSupPostsByPopularWithCountry(countryCode string, userID int64, page int)
 		return posts, err
 	}
 	defer c.session.Close()
-	cr := connectRedis()
-	defer cr.client.Close()
 	// read_index
-	hk, hf := parseHashKeyFieldCountryPopularPostUserReadIndex(countryCode, categorySup, userID)
-	popularPostUserReadIndexStr, err := cr.client.HGet(hk, hf).Result()
-	if err == redis.Nil {
-		// log.Println("key does not exist")
-		popularPostUserReadIndexStr = "0"
-	} else if err != nil {
-		return posts, err
-	}
-	popularPostUserReadIndex, err := strconv.Atoi(popularPostUserReadIndexStr)
-	if err != nil {
-		return posts, errors.New("popularPostUserReadIndexStr convert " + "userID " + strconv.FormatInt(userID, 10) + "categoryID " + strconv.Itoa(categorySup))
-	}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+	ppuri := popularPostUserReadIndexAPI{}
+	q := bson.M{"user_id": userID}
+	collection.Find(q).One(&ppuri)
+	popularPostUserReadIndex := ppuri.CountrySupPopularPostIndex[countryCode]
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
 	// ** you can wrap func as a transaction
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	q := bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": weekTimestamp}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+	q = bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": weekTimestamp}
 	r := postUserReadAPI{}
 	collection.Find(q).One(&r)
 	// sup popular post on country
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity)
 	q = bson.M{"level": "0", "country_code": countryCode}
-	p := city2API{}
+	p := cityAPI{}
 	if err := collection.Find(q).One(&p); err != nil {
 		log.Println("getPostsBySupPopularWithCountry2", err)
 		return posts, err
@@ -1631,34 +1615,25 @@ func getSupPostsByPopularWithCity(level, cityID string, userID int64, page int) 
 		return posts, err
 	}
 	defer c.session.Close()
-	cr := connectRedis()
-	defer cr.client.Close()
 	// read_index
-	hk, hf := parseHashKeyFieldCityPopularPostUserReadIndex(cityID, categorySup, userID)
-	popularPostUserReadIndexStr, err := cr.client.HGet(hk, hf).Result()
-	if err == redis.Nil {
-		// log.Println("key does not exist")
-		popularPostUserReadIndexStr = "0"
-	} else if err != nil {
-		return posts, err
-	}
-	popularPostUserReadIndex, err := strconv.Atoi(popularPostUserReadIndexStr)
-	if err != nil {
-		return posts, errors.New("popularPostUserReadIndex convert " + "userID " + strconv.FormatInt(userID, 10) + "categoryID " + strconv.Itoa(categorySup))
-	}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+	ppuri := popularPostUserReadIndexAPI{}
+	q := bson.M{"user_id": userID}
+	collection.Find(q).One(&ppuri)
+	popularPostUserReadIndex := ppuri.CitySupPopularPostIndex[cityID]
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
 	// ** you can wrap func as a transaction
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	q := bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": weekTimestamp}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+	q = bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": weekTimestamp}
 	r := postUserReadAPI{}
 	collection.Find(q).One(&r)
 	// sup popular post on city
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity)
 	q = bson.M{"level": level, "city_id_" + level: cityID}
-	p := city2API{}
+	p := cityAPI{}
 	if err := collection.Find(q).One(&p); err != nil {
-		log.Println("getPostsBySupPopularWithCity2", err)
+		log.Println("getPostsBySupPopularWithCity", err)
 		return posts, err
 	}
 	count := 0
@@ -2315,26 +2290,17 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 		return posts, err
 	}
 	defer c.session.Close()
-	cr := connectRedis()
-	defer cr.client.Close()
 	// read_index
-	hk, hf := parseHashKeyFieldCommonPopularPostUserReadIndex(categoryID, userID)
-	popularPostUserReadIndexStr, err := cr.client.HGet(hk, hf).Result()
-	if err == redis.Nil {
-		// log.Println("key does not exist")
-		popularPostUserReadIndexStr = "0"
-	} else if err != nil {
-		return posts, err
-	}
-	popularPostUserReadIndex, err := strconv.Atoi(popularPostUserReadIndexStr)
-	if err != nil {
-		return posts, errors.New("PopularPostUserReadIndexStr convert " + "userID " + strconv.FormatInt(userID, 10) + "categoryID " + strconv.Itoa(categoryID))
-	}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+	ppuri := popularPostUserReadIndexAPI{}
+	q := bson.M{"user_id": userID}
+	collection.Find(q).One(&ppuri)
+	popularPostUserReadIndex := ppuri.CommonPopularPostIndex[categoryID]
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
 	postsRead := make(map[int64]int)
 	// ** you can wrap func as a transaction
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
 	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
 		u := postUserReadAPI{}
 		q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}
@@ -2347,7 +2313,7 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 	// post_common
 	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostCommon)
 	u := postCommonAPI{}
-	q := bson.M{"category_id": categoryID}
+	q = bson.M{"category_id": categoryID}
 	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postPopularRead", err)
 		return posts, err
@@ -2385,9 +2351,13 @@ func postPopularRead(categoryID int, indexRead int, userID int64) (posts []postA
 		}
 	}
 	if count > 0 {
-		err = cr.client.HSet(hk, hf, strconv.Itoa(popularPostUserReadIndex+indexRead+1)).Err()
-		if err != nil {
-			return posts, err
+		collection = c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+		if _, err := collection.Upsert(
+			bson.M{"user_id": userID},
+			bson.M{"$set": bson.M{
+				"common_popular_post_index." + strconv.Itoa(categoryID): popularPostUserReadIndex + indexRead + 1,
+			}}); err != nil {
+			log.Println("upsert", err)
 		}
 	}
 	return posts, nil
@@ -2399,26 +2369,17 @@ func supPostPopularReadCountry(countryCode string, indexRead int, userID int64) 
 		return posts, err
 	}
 	defer c.session.Close()
-	cr := connectRedis()
-	defer cr.client.Close()
 	// read_index
-	hk, hf := parseHashKeyFieldCountryPopularPostUserReadIndex(countryCode, categorySup, userID)
-	popularPostUserReadIndexStr, err := cr.client.HGet(hk, hf).Result()
-	if err == redis.Nil {
-		// log.Println("key does not exist")
-		popularPostUserReadIndexStr = "0"
-	} else if err != nil {
-		return posts, err
-	}
-	popularPostUserReadIndex, err := strconv.Atoi(popularPostUserReadIndexStr)
-	if err != nil {
-		return posts, errors.New("PopularPostUserReadIndexStr convert " + "userID " + strconv.FormatInt(userID, 10) + "categoryID " + strconv.Itoa(categorySup))
-	}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+	ppuri := popularPostUserReadIndexAPI{}
+	q := bson.M{"user_id": userID}
+	collection.Find(q).One(&ppuri)
+	popularPostUserReadIndex := ppuri.CountrySupPopularPostIndex[countryCode]
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
 	postsRead := make(map[int64]int)
 	// ** you can wrap func as a transaction
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
 	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
 		u := postUserReadAPI{}
 		q := bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": t}
@@ -2429,9 +2390,9 @@ func supPostPopularReadCountry(countryCode string, indexRead int, userID int64) 
 		}
 	}
 	// post_common
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
-	u := city2API{}
-	q := bson.M{"level": "0", "country_code": countryCode}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+	u := cityAPI{}
+	q = bson.M{"level": "0", "country_code": countryCode}
 	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postSupPopularReadCountry", err)
 		return posts, err
@@ -2469,9 +2430,13 @@ func supPostPopularReadCountry(countryCode string, indexRead int, userID int64) 
 		}
 	}
 	if count > 0 {
-		err = cr.client.HSet(hk, hf, strconv.Itoa(popularPostUserReadIndex+indexRead+1)).Err()
-		if err != nil {
-			return posts, err
+		collection = c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+		if _, err := collection.Upsert(
+			bson.M{"user_id": userID},
+			bson.M{"$set": bson.M{
+				"country_sup_popular_post_index." + countryCode: popularPostUserReadIndex + indexRead + 1,
+			}}); err != nil {
+			log.Println("upsert", err)
 		}
 	}
 	return posts, nil
@@ -2483,26 +2448,17 @@ func supPostPopularReadCity(level, cityID string, indexRead int, userID int64) (
 		return posts, err
 	}
 	defer c.session.Close()
-	cr := connectRedis()
-	defer cr.client.Close()
 	// read_index
-	hk, hf := parseHashKeyFieldCityPopularPostUserReadIndex(cityID, categorySup, userID)
-	popularPostUserReadIndexStr, err := cr.client.HGet(hk, hf).Result()
-	if err == redis.Nil {
-		// log.Println("key does not exist")
-		popularPostUserReadIndexStr = "0"
-	} else if err != nil {
-		return posts, err
-	}
-	popularPostUserReadIndex, err := strconv.Atoi(popularPostUserReadIndexStr)
-	if err != nil {
-		return posts, errors.New("PopularPostUserReadIndexStr convert " + "userID " + strconv.FormatInt(userID, 10) + "categoryID " + strconv.Itoa(categorySup))
-	}
+	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+	ppuri := popularPostUserReadIndexAPI{}
+	q := bson.M{"user_id": userID}
+	collection.Find(q).One(&ppuri)
+	popularPostUserReadIndex := ppuri.CitySupPopularPostIndex[cityID]
 	// read
 	weekTimestamp := getNowUnixWeekTimestamp()
 	postsRead := make(map[int64]int)
 	// ** you can wrap func as a transaction
-	collection := c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
 	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
 		u := postUserReadAPI{}
 		q := bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": t}
@@ -2513,9 +2469,9 @@ func supPostPopularReadCity(level, cityID string, indexRead int, userID int64) (
 		}
 	}
 	// post_common
-	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity2)
-	u := city2API{}
-	q := bson.M{"level": level, "city_id_" + level: cityID}
+	collection = c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+	u := cityAPI{}
+	q = bson.M{"level": level, "city_id_" + level: cityID}
 	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postPopularRead", err)
 		return posts, err
@@ -2553,10 +2509,13 @@ func supPostPopularReadCity(level, cityID string, indexRead int, userID int64) (
 		}
 	}
 	if count > 0 {
-		hk, hf := parseHashKeyFieldCityPopularPostUserReadIndex(cityID, categorySup, userID)
-		err = cr.client.HSet(hk, hf, strconv.Itoa(popularPostUserReadIndex+indexRead+1)).Err()
-		if err != nil {
-			return posts, err
+		collection = c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+		if _, err := collection.Upsert(
+			bson.M{"user_id": userID},
+			bson.M{"$set": bson.M{
+				"city_sup_popular_post_index." + cityID: popularPostUserReadIndex + indexRead + 1,
+			}}); err != nil {
+			log.Println("upsert", err)
 		}
 	}
 	return posts, nil
@@ -3197,20 +3156,6 @@ func upsertPopularPostOnPostCommon(categoryID int, posts []postAPI) (err error) 
 	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"popular_posts": posts}}); err != nil {
 		log.Println("upsertPopularPostOnPostCommon", err)
 		return err
-	}
-	return nil
-}
-
-// user read index
-func upsertInitCommonPostUserReadIndex(categoryID int, usersID []int64) (err error) {
-	cr := connectRedis()
-	defer cr.client.Close()
-	for i := 0; i < len(usersID); i++ {
-		hk, hf := parseHashKeyFieldCommonPopularPostUserReadIndex(categoryID, usersID[i])
-		err = cr.client.HSet(hk, hf, "0").Err()
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
