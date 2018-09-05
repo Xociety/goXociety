@@ -7,12 +7,27 @@ import (
 
 func TestMongoConnection(t *testing.T) {
 	log.Println("popular post")
-	posts, err := getPostsByPopular(1, 0, 0)
+	c, err := connectPostgres()
+	if err != nil {
+		log.Println(err)
+	}
+	defer c.db.Close()
+	cm, err := connectMongoDB()
+	if err != nil {
+		log.Println(err)
+	}
+	defer cm.session.Close()
+	posts, err := getPostsByPopular(&c, &cm, 1, 0, 0)
 	log.Println(len(posts), err)
 }
 
 func TestPostgresConnection(t *testing.T) {
 	log.Println("search user")
-	user, err := getUserByUserID(1)
+	c, err := connectPostgres()
+	if err != nil {
+		log.Println(err)
+	}
+	defer c.db.Close()
+	user, err := getUserByUserID(&c, 1)
 	log.Println(user, err)
 }

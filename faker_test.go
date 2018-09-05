@@ -85,10 +85,15 @@ func TestFakeDataSample(t *testing.T) {
 		t.Skip("skip TestFakeData")
 	}
 	log.Println("start")
+	c, err := connectPostgres()
+	if err != nil {
+		log.Println(err)
+	}
+	defer c.db.Close()
 	scale := 100
-	totalNumUser := 1 * scale
-	totalNumPost := 3 * scale
-	totalNumPlace := 1 * scale
+	totalNumUser := 10 * scale
+	totalNumPost := 5 * scale
+	totalNumPlace := 5 * scale
 	usersID := []int64{}
 	fake, err := faker.New("en")
 	if err != nil {
@@ -99,7 +104,7 @@ func TestFakeDataSample(t *testing.T) {
 	log.Printf("start random %d people", totalNumUser)
 	for i := 0; i < totalNumUser; i++ {
 		user := genXuserFaker(fake, r)
-		userID, err := userInsert(user)
+		userID, err := userInsert(&c, user)
 		if err == nil {
 			usersID = append(usersID, userID)
 		}
@@ -118,7 +123,7 @@ func TestFakeDataSample(t *testing.T) {
 			if followingUserID == follwerUserID || followingUserIDCheck[followingUserID] {
 				continue
 			}
-			if _, err := follow(followingUserID, follwerUserID); err != nil {
+			if _, err := follow(&c, followingUserID, follwerUserID); err != nil {
 				log.Println("follow", err)
 				continue
 			}
@@ -158,13 +163,18 @@ func TestFakeDataSample(t *testing.T) {
 	}
 	geoPolygon := geo.NewPolygon(geoPoints)
 	placesID := []int64{}
+	cm, err := connectMongoDB()
+	if err != nil {
+		log.Println(err)
+	}
 	for i := 0; i < totalNumPlace; i++ {
-		place := genPlaceFaker(geoPolygon, lat0, latR, lon0, lonR, r)
-		placeID, err := placeInsert(place)
+		place := genPlaceFaker(&cm, geoPolygon, lat0, latR, lon0, lonR, r)
+		placeID, err := placeInsert(&c, place)
 		if err == nil {
 			placesID = append(placesID, placeID)
 		}
 	}
+	cm.session.Close()
 	// random post
 	log.Printf("start random total %d post", totalNumPost)
 	for i := 0; i < totalNumPost; i++ {
@@ -177,7 +187,7 @@ func TestFakeDataSample(t *testing.T) {
 			placeID = placesID[r.Intn(len(placesID))]
 		}
 		post := genPostFaker(userID, placeID, fake, r)
-		postID, err := postInsert(post)
+		postID, err := postInsert(&c, post)
 		if err != nil {
 			log.Println("post err", err)
 		}
@@ -186,7 +196,7 @@ func TestFakeDataSample(t *testing.T) {
 		for j := 0; j < totalNumPostReaction; j++ {
 			index := r.Intn(len(userIDsNewReaction))
 			reactionOnPost := genPostReactionFaker(postID, userIDsNewReaction[index], r)
-			if _, err = reactionOnPostSet(reactionOnPost); err != nil {
+			if _, err = reactionOnPostSet(&c, reactionOnPost); err != nil {
 				log.Println("reaction err", err)
 			}
 			userIDsNewReaction = append(userIDsNewReaction[:index], userIDsNewReaction[index+1:]...)
@@ -195,22 +205,32 @@ func TestFakeDataSample(t *testing.T) {
 		for j := 0; j < totalNumPostComment; j++ {
 			index := r.Intn(len(usersID))
 			commentOnPost := genPostCommentFaker(postID, usersID[index], fake, r)
-			if _, err = commentOnPostInsert(commentOnPost); err != nil {
+			if _, err = commentOnPostInsert(&c, commentOnPost); err != nil {
 				log.Println("comment err", err)
 			}
 		}
 	}
 	// gen popular post
 	log.Println("start popular post")
-	genPopularPostUpsert()
-	// genSupPopularPostUpsert()
+	genPopularPostUpsert(&c, &cm)
+	genSupPopularPostUpsert(&c)
 }
 func TestPopularPostUpsert(t *testing.T) {
 	if os.Getenv("test_fakedata") != "true" || os.Getenv("test_fakedata") == "" {
 		t.Skip("skip TestSortPostPopular")
 	}
-	genPopularPostUpsert()
-	genSupPopularPostUpsert()
+	c, err := connectPostgres()
+	if err != nil {
+		log.Println(err)
+	}
+	defer c.db.Close()
+	cm, err := connectMongoDB()
+	if err != nil {
+		log.Println(err)
+	}
+	defer cm.session.Close()
+	genPopularPostUpsert(&c, &cm)
+	genSupPopularPostUpsert(&c)
 }
 func TestRedisPopularPostUserReadIndex(t *testing.T) {
 	startTimeTotal := time.Now()

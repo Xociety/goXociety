@@ -169,13 +169,23 @@ func initGCP() {
 }
 func initData() {
 	var err error
-	if countryConfigAPI, err = getCountries(); err != nil {
+	c, err := connectPostgres()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer c.db.Close()
+	cm, err := connectMongoDB()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer cm.session.Close()
+	if countryConfigAPI, err = getCountries(&cm); err != nil {
 		log.Println("country config")
 	}
-	if languageConfigAPI, err = getLanguages(); err != nil {
+	if languageConfigAPI, err = getLanguages(&c); err != nil {
 		log.Fatalln("language config")
 	}
-	if postTypeConfigAPI, err = getPostType(); err == nil {
+	if postTypeConfigAPI, err = getPostType(&c); err == nil {
 		IDs := []int{}
 		values := []string{}
 		for i := 0; i < len(postTypeConfigAPI); i++ {
@@ -186,7 +196,7 @@ func initData() {
 	} else {
 		log.Fatalln("post type config")
 	}
-	if reactionConfigAPI, err = getReaction(); err == nil {
+	if reactionConfigAPI, err = getReaction(&c); err == nil {
 		IDs := []int{}
 		values := []string{}
 		for i := 0; i < len(reactionConfigAPI); i++ {
@@ -197,11 +207,11 @@ func initData() {
 	} else {
 		log.Println("reaction")
 	}
-	genderConfigAPI, err = getGender()
+	genderConfigAPI, err = getGender(&c)
 	if err != nil {
 		log.Println("gender")
 	}
-	if categoryConfigAPI, err = getCategories(); err == nil {
+	if categoryConfigAPI, err = getCategories(&c); err == nil {
 		IDs := []int{}
 		values := []string{}
 		for i := 0; i < len(categoryConfigAPI); i++ {
