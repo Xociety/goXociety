@@ -191,35 +191,32 @@ func TestGraphqlMutationPostInsert(t *testing.T) {
 	req, err := http.NewRequest("POST", uriGraphqlTest, body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("User-Token", "1")
-	r := reqLock{
-		req:   req,
-		mutex: sync.Mutex{},
-	}
-	var wg sync.WaitGroup
-	numReq := 100000
-	for i := 0; i < numReq; i++ {
-		wg.Add(1)
-		go func(j int, rj *reqLock) {
-			defer wg.Done()
+	r2 := make(chan *http.Request)
+	numReq := 10000
+	quit := make(chan bool)
+	go func() {
+		for i := 0; i < numReq; i++ {
+			req2 := <-r2
 			client := &http.Client{}
-			rj.mutex.Lock()
-			resp, err := client.Do(rj.req)
-			rj.mutex.Unlock()
+			resp, err := client.Do(req2)
 			_, err = ioutil.ReadAll(resp.Body)
 			if err != nil {
 				log.Panicln(err)
 			}
-			if j%100 == 0 {
-				log.Println(j)
-			}
-			// log.Println(string(b))
-		}(i, &r)
-		if i%100 == 0 {
-			log.Println(i)
+		}
+		quit <- true
+	}()
+	s(r2, req, quit)
+	log.Println("finished")
+}
+func s(r2 chan *http.Request, req *http.Request, quit chan bool) {
+	for {
+		select {
+		case r2 <- req:
+		case <-quit:
+			return
 		}
 	}
-	wg.Wait()
-	log.Println("finished")
 }
 func TestGraphqlMutationPostPopularRead(t *testing.T) {
 	for i := 0; i < 20; i++ {

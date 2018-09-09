@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"time"
 
 	"cloud.google.com/go/storage"
 )
@@ -28,7 +27,7 @@ func writeAndMakePublicCloudStorageGCP(client *storage.Client, bucket, object st
 	return nil
 }
 func writeDiscardIOGCP(f io.Reader) error {
-	time.Sleep(time.Duration(randSeed.Intn(5)) * time.Millisecond)
+	// time.Sleep(time.Duration(randSeed.Intn(5)) * time.Millisecond)
 	if _, err := io.Copy(ioutil.Discard, f); err != nil {
 		return err
 	}
