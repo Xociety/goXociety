@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"testing"
 )
 
@@ -146,7 +147,7 @@ func TestGraphqlMutationPostInsert(t *testing.T) {
 	q := `
 		mutation {
 			post_insert(
-				type:0,
+				type:1,
 				origin_width:1920,
 				origin_height:1280,
 				content: "ya",
@@ -160,44 +161,61 @@ func TestGraphqlMutationPostInsert(t *testing.T) {
 	params := make(map[string]string)
 	params["query"] = q
 	paramName := "file"
-	path := "./development/upload/sample/image.tar.gz"
-	for i := 0; i < 10000; i++ {
-		file, err := os.Open(path)
-		if err != nil {
-			log.Panicln(err)
-		}
-		// defer file.Close()
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-		part, err := writer.CreateFormFile(paramName, filepath.Base(path))
-		if err != nil {
-			log.Panicln(err)
-		}
-		_, err = io.Copy(part, file)
-
-		file.Close()
-		for key, val := range params {
-			_ = writer.WriteField(key, val)
-		}
-		err = writer.Close()
-		if err != nil {
-			log.Panicln(err)
-		}
-		if i%100 == 0 {
-			log.Println(i)
-		}
-		client := &http.Client{}
-		req, err := http.NewRequest("POST", uriGraphqlTest, body)
-		req.Header.Set("Content-Type", writer.FormDataContentType())
-		req.Header.Set("User-Token", "1")
-		resp, err := client.Do(req)
-		_, err = ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Println("res", err)
-			log.Panicln(err)
-		}
-		// log.Println(string(b))
+	// path := "./development/upload/sample/image.tar.gz"
+	path := "./development/upload/sample/playlist.tar.gz"
+	file, err := os.Open(path)
+	if err != nil {
+		log.Panicln(err)
 	}
+	// defer file.Close()
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(paramName, filepath.Base(path))
+	if err != nil {
+		log.Panicln(err)
+	}
+	_, err = io.Copy(part, file)
+
+	for key, val := range params {
+		_ = writer.WriteField(key, val)
+	}
+	file.Close()
+	err = writer.Close()
+	if err != nil {
+		log.Panicln(err)
+	}
+	type reqLock struct {
+		req   *http.Request
+		mutex sync.Mutex
+	}
+	req, err := http.NewRequest("POST", uriGraphqlTest, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("User-Token", "1")
+	r := reqLock{
+		req:   req,
+		mutex: sync.Mutex{},
+	}
+	var wg sync.WaitGroup
+	numReq := 100000
+	for i := 0; i < numReq; i++ {
+		wg.Add(1)
+		go func(j int, rj *reqLock) {
+			defer wg.Done()
+			client := &http.Client{}
+			rj.mutex.Lock()
+			resp, err := client.Do(rj.req)
+			rj.mutex.Unlock()
+			_, err = ioutil.ReadAll(resp.Body)
+			if err != nil {
+				log.Panicln(err)
+			}
+			if j%100 == 0 {
+				log.Println(j)
+			}
+			// log.Println(string(b))
+		}(i, &r)
+	}
+	wg.Wait()
 	log.Println("finished")
 }
 func TestGraphqlMutationPostPopularRead(t *testing.T) {
