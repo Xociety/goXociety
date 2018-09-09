@@ -214,6 +214,9 @@ func TestGraphqlMutationPostInsert(t *testing.T) {
 			}
 			// log.Println(string(b))
 		}(i, &r)
+		if i%100 == 0 {
+			log.Println(i)
+		}
 	}
 	wg.Wait()
 	log.Println("finished")

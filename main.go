@@ -7,6 +7,7 @@ import (
 	_ "image/png"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -95,6 +96,9 @@ var clientOptionGoogleAPI option.ClientOption
 
 // Google map
 var googleMapKey string
+
+// random seed
+var randSeed = rand.New(rand.NewSource(99))
 
 const radiusGoogleMap = 200
 
