@@ -7,14 +7,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/chienfuchen32/goXociety/x/common"
+	"github.com/chienfuchen32/goXociety/x/config"
+	"github.com/chienfuchen32/goXociety/x/io"
 	"github.com/globalsign/mgo/bson"
 	geo "github.com/kellydunn/golang-geo"
 	"github.com/manveru/faker"
 )
 
-func genXuserFaker(fake *faker.Faker, r *rand.Rand) userDB {
-	timeNow := getNowUnixTimestamp()
-	return userDB{
+func genXuserFaker(fake *faker.Faker, r *rand.Rand) config.UserDB {
+	timeNow := common.GetNowUnixTimestamp()
+	return config.UserDB{
 		Username:    fake.UserName(),
 		Email:       fake.Email(),
 		Password:    "salted",
@@ -33,8 +36,8 @@ func genXuserFaker(fake *faker.Faker, r *rand.Rand) userDB {
 	}
 }
 
-func genPostFaker(userID, placeID int64, faker *faker.Faker, r *rand.Rand) postAPI {
-	timeNow := getNowUnixTimestamp()
+func genPostFaker(userID, placeID int64, faker *faker.Faker, r *rand.Rand) config.PostAPI {
+	timeNow := common.GetNowUnixTimestamp()
 	postType := 0             // r.Intn(2)
 	originWidth := 0          // plz check current sample size
 	originHeight := 0         // plz check current sample size
@@ -43,24 +46,24 @@ func genPostFaker(userID, placeID int64, faker *faker.Faker, r *rand.Rand) postA
 	if categoryID == 0 {
 		sampleID = 1
 	}
-	switch postTypeMapID2Type[postType] {
-	case mediaFormatJPG:
+	switch config.PostTypeMapID2Type[postType] {
+	case config.MediaFormatJPG:
 		originWidth = 1920
 		originHeight = 1280
 		if categoryID != 0 {
 			originWidth = 1242
 			originHeight = 2004
 		}
-	case mediaFormatHLS:
+	case config.MediaFormatHLS:
 		originWidth = 1920
 		originHeight = 1080
 	}
-	post := postAPI{
-		User: userBasicAPI{
+	post := config.PostAPI{
+		User: config.UserBasicAPI{
 			UserID: userID,
 		},
 		Content: "test post",
-		Blob: blobAPI{
+		Blob: config.BlobAPI{
 			BlobID:       "sample/" + strconv.Itoa(categoryID) + "/" + strconv.Itoa(sampleID),
 			OriginWidth:  originWidth,
 			OriginHeight: originHeight,
@@ -69,7 +72,7 @@ func genPostFaker(userID, placeID int64, faker *faker.Faker, r *rand.Rand) postA
 		LikeCount:    0,
 		DislikeCount: 0,
 		CommentCount: 0,
-		Place:        placeAPI{PlaceID: placeID},
+		Place:        config.PlaceAPI{PlaceID: placeID},
 		CategoryID:   categoryID,
 		Public:       true,
 		Createtime:   timeNow,
@@ -78,21 +81,21 @@ func genPostFaker(userID, placeID int64, faker *faker.Faker, r *rand.Rand) postA
 	return post
 }
 
-func genPostReactionFaker(postID, userID int64, r *rand.Rand) reactionOnPostAPI {
-	return reactionOnPostAPI{
+func genPostReactionFaker(postID, userID int64, r *rand.Rand) config.ReactionOnPostAPI {
+	return config.ReactionOnPostAPI{
 		PostID:     postID,
-		User:       userBasicAPI{UserID: userID},
+		User:       config.UserBasicAPI{UserID: userID},
 		ReactionID: r.Intn(2),
-		Createtime: getNowUnixTimestamp(),
+		Createtime: common.GetNowUnixTimestamp(),
 	}
 }
 
-func genPostCommentFaker(postID, userID int64, faker *faker.Faker, r *rand.Rand) commentAPI {
-	timestamp := getNowUnixTimestamp()
-	return commentAPI{
+func genPostCommentFaker(postID, userID int64, faker *faker.Faker, r *rand.Rand) config.CommentAPI {
+	timestamp := common.GetNowUnixTimestamp()
+	return config.CommentAPI{
 		CommentID:    0,
 		PostID:       postID,
-		User:         userBasicAPI{UserID: userID},
+		User:         config.UserBasicAPI{UserID: userID},
 		Comment:      faker.Sentence(10, true),
 		LikeCount:    0,
 		DislikeCount: 0,
@@ -102,8 +105,8 @@ func genPostCommentFaker(postID, userID int64, faker *faker.Faker, r *rand.Rand)
 	}
 }
 
-func genPlaceFaker(cm *connMongo, geoPolygon *geo.Polygon, lat0, latR, lon0, lonR float64, r *rand.Rand) placeAPI {
-	place := placeAPI{
+func genPlaceFaker(cm *config.ConnMongo, geoPolygon *geo.Polygon, lat0, latR, lon0, lonR float64, r *rand.Rand) config.PlaceAPI {
+	place := config.PlaceAPI{
 		Name: "test",
 		Lat:  float64(lat0 + latR*r.Float64()),
 		Lon:  float64(lon0 + lonR*r.Float64()),
@@ -115,7 +118,7 @@ func genPlaceFaker(cm *connMongo, geoPolygon *geo.Polygon, lat0, latR, lon0, lon
 		place.Lat = float64(lat0 + latR*r.Float64())
 		place.Lon = float64(lon0 + lonR*r.Float64())
 	}
-	cities, _ := getCityByLocation(cm, place.Lat, place.Lon)
+	cities, _ := io.GetCityByLocation(cm, place.Lat, place.Lon)
 	if len(cities) > 0 {
 		place.CityID1 = cities[0].Properties.CityID1
 		place.CityID2 = cities[0].Properties.CityID2
@@ -127,8 +130,8 @@ func genPlaceFaker(cm *connMongo, geoPolygon *geo.Polygon, lat0, latR, lon0, lon
 	return place
 }
 
-func genPopularPostUpsert(c *connPostgres, cm *connMongo) {
-	users, err := getAllUserID(c)
+func genPopularPostUpsert(c *config.ConnPostgres, cm *config.ConnMongo) {
+	users, err := io.GetAllUserID(c)
 	if err != nil {
 		log.Println("user", err)
 	}
@@ -136,21 +139,21 @@ func genPopularPostUpsert(c *connPostgres, cm *connMongo) {
 	for i := 0; i < len(users); i++ {
 		usersID = append(usersID, users[i].UserID)
 	}
-	for categoryID := range categoryMapID2Name {
-		posts, err := getPostsByRecentNum(c, categoryID, numPopularPostPerRefresh)
+	for categoryID := range config.CategoryMapID2Name {
+		posts, err := io.GetPostsByRecentNum(c, categoryID, config.NumPopularPostPerRefresh)
 		if err != nil {
 			log.Println("post", err)
 		}
-		sort.Sort(postByPopular(posts))
+		sort.Sort(common.PostByPopular(posts))
 		// post_common
-		if err := upsertPopularPostOnPostCommon(cm, categoryID, posts); err != nil {
+		if err := io.UpsertPopularPostOnPostCommon(cm, categoryID, posts); err != nil {
 			log.Println(err)
 		}
 	}
 	log.Println("finish common posts")
 }
-func genSupPopularPostUpsert(c *connPostgres) {
-	users, err := getAllUserID(c)
+func genSupPopularPostUpsert(c *config.ConnPostgres) {
+	users, err := io.GetAllUserID(c)
 	if err != nil {
 		log.Println("user", err)
 	}
@@ -163,51 +166,51 @@ func genSupPopularPostUpsert(c *connPostgres) {
 		usersIDStr = append(usersIDStr, userIDStr)
 		hf[userIDStr] = "0"
 	}
-	// categorySupStr := strconv.Itoa(categorySup)
-	cm, err := connectMongoDB()
+	// categorySupStr := strconv.Itoa(config.CategorySup)
+	cm, err := io.ConnectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 	}
-	countries, err := getCountries(&cm)
+	countries, err := io.GetCountries(&cm)
 	if err != nil {
 		log.Println(err)
 	}
-	citiesAll := [][]cityAPI{}
-	for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
+	citiesAll := [][]config.CityAPI{}
+	for j := config.CityLevelRangeFirst; j <= config.CityLevelRangeLast; j++ {
 		level := strconv.Itoa(j)
-		cities, err := getCities(&cm, level)
+		cities, err := io.GetCities(&cm, level)
 		if err != nil {
 			log.Panicln(err)
 		}
 		citiesAll = append(citiesAll, cities)
 	}
-	cm.session.Close()
+	cm.Session.Close()
 	log.Println("city popular post")
 	for i := 0; i < len(countries); i++ {
-		posts, err := getPostsByRecentWithPlaceLikeNum(c, countries[i].CountryCode, categorySup, numPopularPostPerRefresh)
-		sort.Sort(postByPopular(posts))
+		posts, err := io.GetPostsByRecentWithPlaceLikeNum(c, countries[i].CountryCode, config.CategorySup, config.NumPopularPostPerRefresh)
+		sort.Sort(common.PostByPopular(posts))
 		// init post_user_read_index
 		// cr := connectRedis()
-		// hk := redisHashCountryPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":" + categorySupStr
+		// hk := config.RedisHashCountryPopularPostUserReadIndex + ":" + countries[i].CountryCode + ":" + categorySupStr
 		// err = cr.client.HMSet(hk, hf).Err()
 		// if err != nil {
 		// 	log.Println(err)
 		// }
 		// country.sup_popular_posts
-		c, err := connectMongoDB()
+		c, err := io.ConnectMongoDB()
 		if err != nil {
 			log.Println("mongo session", err)
 		}
-		collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+		collection := c.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 		selector := bson.M{"level": "0", "country_code": countries[i].CountryCode}
 		if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": posts, "post_count": len(posts)}}); err != nil {
 			log.Println("upsertPopularPostOnCountry", err)
 		}
 		if len(posts) > 0 {
 
-			for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
+			for j := config.CityLevelRangeFirst; j <= config.CityLevelRangeLast; j++ {
 				level := strconv.Itoa(j)
-				filteredCity := []cityAPI{}
+				filteredCity := []config.CityAPI{}
 				for k := 0; k < len(citiesAll[j-1]); k++ {
 					cityID := ""
 					switch j {
@@ -240,7 +243,7 @@ func genSupPopularPostUpsert(c *connPostgres) {
 					case 5:
 						fCityID = filteredCity[k].CityID5
 					}
-					filteredPosts := []postAPI{}
+					filteredPosts := []config.PostAPI{}
 					for l := 0; l < len(posts); l++ {
 						cityID := ""
 						switch j {
@@ -260,13 +263,13 @@ func genSupPopularPostUpsert(c *connPostgres) {
 						}
 					}
 					// init post_user_read_index
-					// hk := redisHashCityPopularPostUserReadIndex + ":" + fCityID + ":" + categorySupStr
+					// hk := config.RedisHashCityPopularPostUserReadIndex + ":" + fCityID + ":" + categorySupStr
 					// err = cr.client.HMSet(hk, hf).Err()
 					// if err != nil {
 					// 	log.Println(err)
 					// }
 					// city.sup_popular_posts
-					collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+					collection := c.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 					selector := bson.M{"level": level, "city_id_" + level: fCityID}
 					if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": filteredPosts, "post_count": len(filteredPosts)}}); err != nil {
 						log.Println("upsertPopularPostOnCity", err)
@@ -274,54 +277,54 @@ func genSupPopularPostUpsert(c *connPostgres) {
 				}
 			}
 		} else {
-			collection := c.session.DB(mongoDBXociety).C(mongoCollectionCity)
+			collection := c.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 			selector := bson.M{"country_code": countries[i].CountryCode}
 			if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"sup_popular_posts": 0, "post_count": 0}}); err != nil {
 				log.Println("upsertPopularPostOnCity", err)
 			}
 		}
-		c.session.Close()
+		c.Session.Close()
 		// cr.client.Close()
 		log.Println("finish " + countries[i].CountryName + "," + strconv.Itoa(len(posts)) + " posts")
 	}
 	log.Println("init post user read index, users", len(users))
 	// mongo version of post user read index
 	for u := 0; u < len(usersID); u++ {
-		rID := popularPostUserReadIndexAPI{
+		rID := config.PopularPostUserReadIndexAPI{
 			UserID:                     usersID[u],
 			CommonPopularPostIndex:     make(map[int]int),
 			CitySupPopularPostIndex:    make(map[string]int),
 			CountrySupPopularPostIndex: make(map[string]int),
 		}
-		c, err := connectMongoDB()
+		c, err := io.ConnectMongoDB()
 		if err != nil {
 			log.Println("mongo session", err)
 		}
-		collection := c.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+		collection := c.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
 		selector := bson.M{"user_id": rID.UserID}
 		if _, err := collection.Upsert(selector, bson.M{"user_id": rID.UserID}); err != nil {
 			log.Println("upser popular_post_user_read_index", err)
 		}
-		c.session.Close()
+		c.Session.Close()
 	}
 
-	rID := popularPostUserReadIndexAPI{
+	rID := config.PopularPostUserReadIndexAPI{
 		UserID:                     0,
 		CommonPopularPostIndex:     make(map[int]int),
 		CitySupPopularPostIndex:    make(map[string]int),
 		CountrySupPopularPostIndex: make(map[string]int),
 	}
-	cm, err = connectMongoDB()
+	cm, err = io.ConnectMongoDB()
 	if err != nil {
 		log.Println("mongo session", err)
 	}
-	for categoryID := range categoryMapID2Name {
+	for categoryID := range config.CategoryMapID2Name {
 		rID.CommonPopularPostIndex[categoryID] = 0
 	}
 	for i := 0; i < len(countries); i++ {
 		rID.CountrySupPopularPostIndex[countries[i].CountryCode] = 0
 	}
-	for j := cityLevelRangeFirst; j <= cityLevelRangeLast; j++ {
+	for j := config.CityLevelRangeFirst; j <= config.CityLevelRangeLast; j++ {
 		for k := 0; k < len(citiesAll[j-1]); k++ {
 			CityID := ""
 			switch j {
@@ -339,7 +342,7 @@ func genSupPopularPostUpsert(c *connPostgres) {
 			rID.CitySupPopularPostIndex[CityID] = 0
 		}
 	}
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
 	if _, err := collection.UpdateAll(bson.M{}, bson.M{"$set": bson.M{
 		"common_popular_post_index":      rID.CommonPopularPostIndex,
 		"city_sup_popular_post_index":    rID.CitySupPopularPostIndex,
@@ -347,6 +350,6 @@ func genSupPopularPostUpsert(c *connPostgres) {
 	}}); err != nil {
 		log.Println("upser popular_post_user_read_index", err)
 	}
-	cm.session.Close()
+	cm.Session.Close()
 	log.Println("finish sup city posts")
 }

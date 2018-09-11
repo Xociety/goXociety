@@ -1,4 +1,4 @@
-package main
+package io
 
 import (
 	"bufio"
@@ -30,7 +30,7 @@ func writeFile(filePath, content string) {
 func readFile(filePath string) (data []byte, err error) {
 	return ioutil.ReadFile(filePath)
 }
-func ioReaderFromFile(filePath string) (file io.Reader, err error) {
+func IoReaderFromFile(filePath string) (file io.Reader, err error) {
 	file, err = os.Open(filePath)
 	if err != nil {
 		return nil, err

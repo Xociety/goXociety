@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"crypto/sha256"
@@ -6,14 +6,16 @@ import (
 	"errors"
 	"reflect"
 	"time"
+
+	"github.com/chienfuchen32/goXociety/x/config"
 )
 
-func getNowUnixTimestamp() int {
+func GetNowUnixTimestamp() int {
 	return int(time.Now().Unix())
 }
 
-func getNowUnixWeekTimestamp() int {
-	return getNowUnixTimestamp() / sevenDaysInSecond
+func GetNowUnixWeekTimestamp() int {
+	return GetNowUnixTimestamp() / config.SevenDaysInSecond
 }
 
 func getSHA256Hash(input []byte) string {
@@ -22,7 +24,7 @@ func getSHA256Hash(input []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func convertIDAndValue(IDs []int, values []string, isReverse bool, forward map[int]string, reverse map[string]int) {
+func ConvertIDAndValue(IDs []int, values []string, isReverse bool, forward map[int]string, reverse map[string]int) {
 	if len(IDs) == len(values) {
 		for i := 0; i < len(IDs); i++ {
 			forward[IDs[i]] = values[i]
@@ -33,10 +35,10 @@ func convertIDAndValue(IDs []int, values []string, isReverse bool, forward map[i
 	}
 }
 
-func convertInterfaceSlice(slice interface{}) ([]interface{}, error) {
+func ConvertInterfaceSlice(slice interface{}) ([]interface{}, error) {
 	s := reflect.ValueOf(slice)
 	if s.Kind() != reflect.Slice {
-		return nil, errors.New("convertInterfaceSlice() given a non-slice type")
+		return nil, errors.New("ConvertInterfaceSlice() given a non-slice type")
 	}
 	ret := make([]interface{}, s.Len())
 	for i := 0; i < s.Len(); i++ {

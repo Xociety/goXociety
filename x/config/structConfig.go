@@ -1,6 +1,6 @@
-package main
+package config
 
-type config struct {
+type Config struct {
 	ServerAddrBind             string `json:"server_addr_bind"`
 	ServerPort                 int    `json:"server_port"`
 	ServerSecretFolderPath     string `json:"server_secret_folder_path"`

@@ -1,10 +1,12 @@
-package main
+package common
 
 import (
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/chienfuchen32/goXociety/x/config"
 )
 
 const punctuationHashtag = "#"
@@ -14,7 +16,7 @@ const punctuationTag = "@"
 const charNotValidHashtag = "`~$^+|><=" + "¦⹋±∓№×°⋯⧸⁄÷−"
 const replNotValidTag = "[^a-z0-9_]+"
 
-func checkMention(content string) (hashtags []string, tags []string) {
+func CheckMention(content string) (hashtags []string, tags []string) {
 	var regTag, _ = regexp.Compile(replNotValidTag)
 	rContent := []rune(content)
 	hashtag := ""
@@ -85,7 +87,7 @@ func checkMention(content string) (hashtags []string, tags []string) {
 	return
 }
 
-func parseHashtagOnPostSQL(postID int64, hashtagsID []int64) (sqlStrInsert, sqlStrDelete string, args []interface{}) {
+func ParseHashtagOnPostSQL(postID int64, hashtagsID []int64) (sqlStrInsert, sqlStrDelete string, args []interface{}) {
 	/*
 		in order to insert multiple hashtag on post in one sql command, this func parse the command and parameters
 		basic insert:
@@ -121,7 +123,7 @@ func parseHashtagOnPostSQL(postID int64, hashtagsID []int64) (sqlStrInsert, sqlS
 	sqlStrDelete += `);`
 	return
 }
-func parseTagOnPostInsertSQL(postID int64, tags []tagOnPostSetAPI) (sqlStr string, args []interface{}) {
+func ParseTagOnPostInsertSQL(postID int64, tags []config.TagOnPostSetAPI) (sqlStr string, args []interface{}) {
 	/*
 		in order to insert multiple hashtag on post in one sql command, this func parse the command and parameters
 		basic insert:
@@ -146,7 +148,7 @@ func parseTagOnPostInsertSQL(postID int64, tags []tagOnPostSetAPI) (sqlStr strin
 	`
 	args = append(args, postID)
 	indexArg := 2
-	timestamp := getNowUnixTimestamp()
+	timestamp := GetNowUnixTimestamp()
 	for i := 0; i < len(tags); i++ {
 		if i != 0 {
 			sqlStr += `, `

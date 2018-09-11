@@ -1,4 +1,4 @@
-package main
+package io
 
 import (
 	"log"
@@ -11,7 +11,7 @@ func TestMongoConnection(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
-	defer c.db.Close()
+	defer c.DB.Close()
 	cm, err := connectMongoDB()
 	if err != nil {
 		log.Println(err)
@@ -27,7 +27,7 @@ func TestPostgresConnection(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
-	defer c.db.Close()
+	defer c.DB.Close()
 	user, err := getUserByUserID(&c, 1)
 	log.Println(user, err)
 }

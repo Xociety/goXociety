@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"log"
@@ -84,8 +84,8 @@ func TestCheckMention(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run("checkMention", func(t *testing.T) {
-			hashtags, tags := checkMention(test.in.content)
+		t.Run("common.CheckMention", func(t *testing.T) {
+			hashtags, tags := common.CheckMention(test.in.content)
 			log.Println("want", test.want.hashtags, test.want.tags)
 			log.Println("out", hashtags, tags)
 			if len(hashtags) != len(test.want.hashtags) {

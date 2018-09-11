@@ -1,4 +1,4 @@
-package main
+package io
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestGooglePlaceAPI(t *testing.T) {
-	c, err := maps.NewClient(maps.WithAPIKey(googleMapKey))
+	c, err := maps.NewClient(maps.WithAPIKey(config.GoogleMapKey))
 	if err != nil {
 		log.Fatalln("client ", err)
 	}

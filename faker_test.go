@@ -13,6 +13,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/chienfuchen32/goXociety/x/common"
+	"github.com/chienfuchen32/goXociety/x/config"
+	"github.com/chienfuchen32/goXociety/x/io"
 	"github.com/go-redis/redis"
 	geo "github.com/kellydunn/golang-geo"
 	"github.com/manveru/faker"
@@ -54,24 +57,24 @@ func TestUploadImagesSample(t *testing.T) { // delete this in the future, this i
 	sampleCategoryAppendIndex(categorySample, "Sup", list, index)
 	// log.Println(categorySample)
 
-	client, err := storage.NewClient(context.Background(), clientOptionGoogleAPI)
-	defer client.Close()
+	Client, err := storage.NewClient(context.Background(), config.ClientOptionGoogleAPI)
+	defer Client.Close()
 	if err != nil {
-		log.Println("gcp sdk client", err)
+		log.Println("gcp sdk Client", err)
 	}
 	for k0, v0 := range categorySample.category {
 		for k1, v1 := range v0 {
 			for s := 1; s <= 7; s++ {
 				// local
-				ir, err := ioReaderFromFile("./development/upload/Pics/" + k0 + "/" + k1 + "/" + k1 + "/" + strconv.Itoa(s) + ".jpg")
+				ir, err := io.IoReaderFromFile("./development/upload/Pics/" + k0 + "/" + k1 + "/" + k1 + "/" + strconv.Itoa(s) + ".jpg")
 				if err != nil {
 					log.Println("err", err)
 					continue
 				}
 				// cloud storage
-				foldername := bucketImagesCloudStorage + "/sample/" + strconv.Itoa(v1) + "/" + strconv.Itoa(s) + "/"
+				foldername := config.BucketImagesCloudStorage + "/sample/" + strconv.Itoa(v1) + "/" + strconv.Itoa(s) + "/"
 				filename := "0.jpg"
-				if err := writeAndMakePublicCloudStorageGCP(client, globalConfig[env].GCPBucketRootCloudStorage, foldername+filename, ir); err != nil {
+				if err := io.WriteAndMakePublicCloudStorageGCP(Client, config.GlobalConfig[config.Env].GCPBucketRootCloudStorage, foldername+filename, ir); err != nil {
 					log.Println("upload failed: ", err)
 					continue
 				}
@@ -85,11 +88,11 @@ func TestFakeDataSample(t *testing.T) {
 		t.Skip("skip TestFakeData")
 	}
 	log.Println("start")
-	c, err := connectPostgres()
+	c, err := io.ConnectPostgres()
 	if err != nil {
 		log.Println(err)
 	}
-	defer c.db.Close()
+	defer c.DB.Close()
 	scale := 100
 	totalNumUser := 10 * scale
 	totalNumPost := 5 * scale
@@ -104,7 +107,7 @@ func TestFakeDataSample(t *testing.T) {
 	log.Printf("start random %d people", totalNumUser)
 	for i := 0; i < totalNumUser; i++ {
 		user := genXuserFaker(fake, r)
-		userID, err := userInsert(&c, user)
+		userID, err := io.UserInsert(&c, user)
 		if err == nil {
 			usersID = append(usersID, userID)
 		}
@@ -123,7 +126,7 @@ func TestFakeDataSample(t *testing.T) {
 			if followingUserID == follwerUserID || followingUserIDCheck[followingUserID] {
 				continue
 			}
-			if _, err := follow(&c, followingUserID, follwerUserID); err != nil {
+			if _, err := io.Follow(&c, followingUserID, follwerUserID); err != nil {
 				log.Println("follow", err)
 				continue
 			}
@@ -163,18 +166,18 @@ func TestFakeDataSample(t *testing.T) {
 	}
 	geoPolygon := geo.NewPolygon(geoPoints)
 	placesID := []int64{}
-	cm, err := connectMongoDB()
+	cm, err := io.ConnectMongoDB()
 	if err != nil {
 		log.Println(err)
 	}
 	for i := 0; i < totalNumPlace; i++ {
 		place := genPlaceFaker(&cm, geoPolygon, lat0, latR, lon0, lonR, r)
-		placeID, err := placeInsert(&c, place)
+		placeID, err := io.PlaceInsert(&c, place)
 		if err == nil {
 			placesID = append(placesID, placeID)
 		}
 	}
-	cm.session.Close()
+	cm.Session.Close()
 	// random post
 	log.Printf("start random total %d post", totalNumPost)
 	for i := 0; i < totalNumPost; i++ {
@@ -187,7 +190,7 @@ func TestFakeDataSample(t *testing.T) {
 			placeID = placesID[r.Intn(len(placesID))]
 		}
 		post := genPostFaker(userID, placeID, fake, r)
-		postID, err := postInsert(&c, post)
+		postID, err := io.PostInsert(&c, post)
 		if err != nil {
 			log.Println("post err", err)
 		}
@@ -196,7 +199,7 @@ func TestFakeDataSample(t *testing.T) {
 		for j := 0; j < totalNumPostReaction; j++ {
 			index := r.Intn(len(userIDsNewReaction))
 			reactionOnPost := genPostReactionFaker(postID, userIDsNewReaction[index], r)
-			if _, err = reactionOnPostSet(&c, reactionOnPost); err != nil {
+			if _, err = io.ReactionOnPostSet(&c, reactionOnPost); err != nil {
 				log.Println("reaction err", err)
 			}
 			userIDsNewReaction = append(userIDsNewReaction[:index], userIDsNewReaction[index+1:]...)
@@ -205,7 +208,7 @@ func TestFakeDataSample(t *testing.T) {
 		for j := 0; j < totalNumPostComment; j++ {
 			index := r.Intn(len(usersID))
 			commentOnPost := genPostCommentFaker(postID, usersID[index], fake, r)
-			if _, err = commentOnPostInsert(&c, commentOnPost); err != nil {
+			if _, err = io.CommentOnPostInsert(&c, commentOnPost); err != nil {
 				log.Println("comment err", err)
 			}
 		}
@@ -219,28 +222,28 @@ func TestPopularPostUpsert(t *testing.T) {
 	if os.Getenv("test_fakedata") != "true" || os.Getenv("test_fakedata") == "" {
 		t.Skip("skip TestSortPostPopular")
 	}
-	c, err := connectPostgres()
+	c, err := io.ConnectPostgres()
 	if err != nil {
 		log.Println(err)
 	}
-	defer c.db.Close()
-	cm, err := connectMongoDB()
+	defer c.DB.Close()
+	cm, err := io.ConnectMongoDB()
 	if err != nil {
 		log.Println(err)
 	}
-	defer cm.session.Close()
+	defer cm.Session.Close()
 	genPopularPostUpsert(&c, &cm)
 	genSupPopularPostUpsert(&c)
 }
 func TestRedisPopularPostUserReadIndex(t *testing.T) {
 	startTimeTotal := time.Now()
 	startTime := time.Now()
-	cr := connectRedis()
-	defer cr.client.Close()
+	cr := io.ConnectRedis()
+	defer cr.Client.Close()
 	log.Printf("connect total took %fs\n", time.Since(startTime).Seconds())
 	startTime = time.Now()
-	hk, hf := parseHashKeyFieldCommonPopularPostUserReadIndex(0, 1)
-	val, err := cr.client.HGet(hk, hf).Result()
+	hk, hf := common.ParseHashKeyFieldCommonPopularPostUserReadIndex(0, 1)
+	val, err := cr.Client.HGet(hk, hf).Result()
 	if err == redis.Nil {
 		log.Println("key does not exist")
 	} else if err != nil {
@@ -250,7 +253,7 @@ func TestRedisPopularPostUserReadIndex(t *testing.T) {
 	}
 	log.Printf("get total took %fs\n", time.Since(startTime).Seconds())
 	startTime = time.Now()
-	err = cr.client.HSet(hk, hf, 1).Err()
+	err = cr.Client.HSet(hk, hf, 1).Err()
 	if err != nil {
 		log.Println(err)
 	}
@@ -260,8 +263,8 @@ func TestRedisPopularPostUserReadIndex(t *testing.T) {
 
 func TestRedisBenchmark(t *testing.T) {
 	startTime := time.Now()
-	cr := connectRedis()
-	defer cr.client.Close()
+	cr := io.ConnectRedis()
+	defer cr.Client.Close()
 	var wg sync.WaitGroup
 	numReq := 1
 	wg.Add(numReq)
@@ -269,7 +272,7 @@ func TestRedisBenchmark(t *testing.T) {
 	for i := 0; i < numReq; i++ {
 		go func() {
 			defer wg.Done()
-			val, err := cr.client.HGet("user1", "3").Result()
+			val, err := cr.Client.HGet("user1", "3").Result()
 			if err == redis.Nil {
 				log.Println("key does not exist")
 			} else if err != nil {

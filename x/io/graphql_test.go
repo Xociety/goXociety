@@ -1,4 +1,4 @@
-package main
+package io
 
 import (
 	"bytes"
@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/chienfuchen32/goXociety/x/config"
 )
 
 var uriGraphqlTest string
@@ -20,7 +22,7 @@ var uriGraphqlTest string
 func init() {
 	// please make sure goXociety server is up
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	uriGraphqlTest = "https://localhost:" + strconv.Itoa(globalConfig[env].ServerPort) + graphqlRoute
+	uriGraphqlTest = "https://localhost:" + strconv.Itoa(config.GlobalConfig[config.Env].ServerPort) + config.GraphqlRoute
 }
 
 // query

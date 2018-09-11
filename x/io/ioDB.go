@@ -1,4 +1,4 @@
-package main
+package io
 
 import (
 	"crypto/tls"
@@ -9,47 +9,36 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/chienfuchen32/goXociety/x/common"
+	"github.com/chienfuchen32/goXociety/x/config"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/go-redis/redis"
-	_ "github.com/lib/pq"
 )
 
-// net
-type connPostgres struct {
-	db *sql.DB
-}
-
-type connMongo struct {
-	session *mgo.Session
-}
-type connRedis struct {
-	client *redis.Client
-}
-
-func connectPostgres() (connPostgres, error) {
+func ConnectPostgres() (config.ConnPostgres, error) {
 	var err error
-	c := connPostgres{}
-	c.db, err = sql.Open("postgres", postgresConStr)
+	c := config.ConnPostgres{}
+	c.DB, err = sql.Open("postgres", config.PostgresConStr)
 	if err != nil {
 		log.Println("postgres connect", err)
 		return c, err
 	}
 	return c, nil
 }
-func connectMongoDB() (connMongo, error) {
+func ConnectMongoDB() (config.ConnMongo, error) {
 	var err error
-	c := connMongo{}
-	switch env {
+	c := config.ConnMongo{}
+	switch config.Env {
 	case "development":
-		c.session, err = mgo.Dial(globalConfig[env].MongoConStr)
+		c.Session, err = mgo.Dial(config.GlobalConfig[config.Env].MongoConStr)
 	case "staging":
 		// https://godoc.org/github.com/globalsign/mgo#example-Dial--TlsConfig
-		clientCertPEM, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretCertFilename)
+		clientCertPEM, err := ioutil.ReadFile(config.GlobalConfig[config.Env].MongoSecretFolderPath + config.GlobalConfig[config.Env].MongoSecretCertFilename)
 		if err != nil {
 			return c, errors.New("mongo pem not found")
 		}
-		clientKeyPEM, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretKeyFilename)
+		clientKeyPEM, err := ioutil.ReadFile(config.GlobalConfig[config.Env].MongoSecretFolderPath + config.GlobalConfig[config.Env].MongoSecretKeyFilename)
 		if err != nil {
 			return c, errors.New("mongo pem not found")
 		}
@@ -62,22 +51,22 @@ func connectMongoDB() (connMongo, error) {
 			Certificates:       []tls.Certificate{clientCert},
 			InsecureSkipVerify: true,
 		}
-		c.session, err = mgo.DialWithInfo(&mgo.DialInfo{
-			Addrs: []string{globalConfig[env].MongoConStr},
+		c.Session, err = mgo.DialWithInfo(&mgo.DialInfo{
+			Addrs: []string{config.GlobalConfig[config.Env].MongoConStr},
 			DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
-				return tls.Dial("tcp", globalConfig[env].MongoConStr, tlsConfig)
+				return tls.Dial("tcp", config.GlobalConfig[config.Env].MongoConStr, tlsConfig)
 			},
-			Database: globalSecret.Mongo.MongoDatabase,
-			Username: globalSecret.Mongo.MongoUsername,
-			Password: globalSecret.Mongo.MongoPassword,
+			Database: config.GlobalSecret.Mongo.MongoDatabase,
+			Username: config.GlobalSecret.Mongo.MongoUsername,
+			Password: config.GlobalSecret.Mongo.MongoPassword,
 		})
 	case "production":
 		// https://godoc.org/github.com/globalsign/mgo#example-Dial--TlsConfig
-		clientCertPEM, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretCertFilename)
+		clientCertPEM, err := ioutil.ReadFile(config.GlobalConfig[config.Env].MongoSecretFolderPath + config.GlobalConfig[config.Env].MongoSecretCertFilename)
 		if err != nil {
 			return c, errors.New("mongo pem not found")
 		}
-		clientKeyPEM, err := ioutil.ReadFile(globalConfig[env].MongoSecretFolderPath + globalConfig[env].MongoSecretKeyFilename)
+		clientKeyPEM, err := ioutil.ReadFile(config.GlobalConfig[config.Env].MongoSecretFolderPath + config.GlobalConfig[config.Env].MongoSecretKeyFilename)
 		if err != nil {
 			return c, errors.New("mongo pem not found")
 		}
@@ -90,14 +79,14 @@ func connectMongoDB() (connMongo, error) {
 			Certificates:       []tls.Certificate{clientCert},
 			InsecureSkipVerify: true,
 		}
-		c.session, err = mgo.DialWithInfo(&mgo.DialInfo{
-			Addrs: []string{globalConfig[env].MongoConStr},
+		c.Session, err = mgo.DialWithInfo(&mgo.DialInfo{
+			Addrs: []string{config.GlobalConfig[config.Env].MongoConStr},
 			DialServer: func(addr *mgo.ServerAddr) (net.Conn, error) {
-				return tls.Dial("tcp", globalConfig[env].MongoConStr, tlsConfig)
+				return tls.Dial("tcp", config.GlobalConfig[config.Env].MongoConStr, tlsConfig)
 			},
-			Database: globalSecret.Mongo.MongoDatabase,
-			Username: globalSecret.Mongo.MongoUsername,
-			Password: globalSecret.Mongo.MongoPassword,
+			Database: config.GlobalSecret.Mongo.MongoDatabase,
+			Username: config.GlobalSecret.Mongo.MongoUsername,
+			Password: config.GlobalSecret.Mongo.MongoPassword,
 		})
 	}
 	if err != nil {
@@ -106,19 +95,19 @@ func connectMongoDB() (connMongo, error) {
 	}
 	return c, nil
 }
-func connectRedis() connRedis {
-	c := connRedis{}
-	c.client = redis.NewClient(&redis.Options{
-		Addr:     globalConfig[env].RedisConStr,
+func ConnectRedis() config.ConnRedis {
+	c := config.ConnRedis{}
+	c.Client = redis.NewClient(&redis.Options{
+		Addr:     config.GlobalConfig[config.Env].RedisConStr,
 		Password: "",
-		DB:       redisDBPopularPostUserReadIndex,
+		DB:       config.RedisDBPopularPostUserReadIndex,
 	})
 	return c
 }
 
 // auth
-func checkSession(c *connPostgres, userToken string) (user xuserAPI, err error) {
-	row := c.db.QueryRow(`
+func checkSession(c *config.ConnPostgres, userToken string) (user config.XuserAPI, err error) {
+	row := c.DB.QueryRow(`
 		SELECT 
 		user_id, username, email, name, phone, 
 		gender, bio, credit, photo_url, 
@@ -150,9 +139,9 @@ func checkSession(c *connPostgres, userToken string) (user xuserAPI, err error) 
 }
 
 // [query]
-func login(c *connPostgres, email, password string) (lc loginAPI, err error) {
+func login(c *config.ConnPostgres, email, password string) (lc config.LoginAPI, err error) {
 	sqlStr := `SELECT user_id FROM xuser WHERE email=$1 AND password=$2;`
-	row := c.db.QueryRow(sqlStr, email, password)
+	row := c.DB.QueryRow(sqlStr, email, password)
 	if err := row.Scan(
 		&lc.Token,
 	); err != nil {
@@ -163,20 +152,20 @@ func login(c *connPostgres, email, password string) (lc loginAPI, err error) {
 }
 
 // common
-func getCategories(c *connPostgres) (categories []categoryAPI, err error) {
+func GetCategories(c *config.ConnPostgres) (categories []config.CategoryAPI, err error) {
 	sqlStr := `
 		SELECT 
 		category_id, category_name
 		FROM category;
 	`
-	rows, err := c.db.Query(sqlStr)
+	rows, err := c.DB.Query(sqlStr)
 	if err != nil {
 		log.Println("getCategories", err)
 		return categories, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		category := categoryAPI{}
+		category := config.CategoryAPI{}
 		if err := rows.Scan(
 			&category.CategoryID,
 			&category.CategoryName,
@@ -192,20 +181,20 @@ func getCategories(c *connPostgres) (categories []categoryAPI, err error) {
 	}
 	return categories, nil
 }
-func getGender(c *connPostgres) (genderList []genderAPI, err error) {
+func GetGender(c *config.ConnPostgres) (genderList []config.GenderAPI, err error) {
 	sqlStr := `
 		SELECT 
 		gender_id, value
 		FROM gender;
 	`
-	rows, err := c.db.Query(sqlStr)
+	rows, err := c.DB.Query(sqlStr)
 	if err != nil {
 		log.Println("getGender", err)
 		return genderList, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		gender := genderAPI{}
+		gender := config.GenderAPI{}
 		if err := rows.Scan(
 			&gender.GenderID,
 			&gender.Value,
@@ -221,20 +210,20 @@ func getGender(c *connPostgres) (genderList []genderAPI, err error) {
 	}
 	return genderList, nil
 }
-func getLanguages(c *connPostgres) (languages []languageAPI, err error) {
+func GetLanguages(c *config.ConnPostgres) (languages []config.LanguageAPI, err error) {
 	sqlStr := `
 		SELECT 
 		language_id, display_language, value
 		FROM language;
 	`
-	rows, err := c.db.Query(sqlStr)
+	rows, err := c.DB.Query(sqlStr)
 	if err != nil {
 		log.Println("getLanguages", err)
 		return languages, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		language := languageAPI{}
+		language := config.LanguageAPI{}
 		if err := rows.Scan(
 			&language.LanguageID,
 			&language.DisplayLanguage,
@@ -251,20 +240,20 @@ func getLanguages(c *connPostgres) (languages []languageAPI, err error) {
 	}
 	return languages, nil
 }
-func getPostType(c *connPostgres) (postTypeList []postTypeAPI, err error) {
+func GetPostType(c *config.ConnPostgres) (postTypeList []config.PostTypeAPI, err error) {
 	sqlStr := `
 		SELECT 
 		post_type_id, value
 		FROM post_type;
 	`
-	rows, err := c.db.Query(sqlStr)
+	rows, err := c.DB.Query(sqlStr)
 	if err != nil {
 		log.Println("getPostType", err)
 		return postTypeList, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		postType := postTypeAPI{}
+		postType := config.PostTypeAPI{}
 		if err := rows.Scan(
 			&postType.PostTypeID,
 			&postType.Value,
@@ -273,10 +262,10 @@ func getPostType(c *connPostgres) (postTypeList []postTypeAPI, err error) {
 			return postTypeList, err
 		}
 		switch postType.Value {
-		case mediaFormatJPG:
-			postType.FileFormat = []string{mediaFormatJPG}
-		case mediaFormatHLS:
-			postType.FileFormat = []string{mediaFormatM3U8, mediaFormatTS}
+		case config.MediaFormatJPG:
+			postType.FileFormat = []string{config.MediaFormatJPG}
+		case config.MediaFormatHLS:
+			postType.FileFormat = []string{config.MediaFormatM3U8, config.MediaFormatTS}
 		}
 		postTypeList = append(postTypeList, postType)
 	}
@@ -286,20 +275,20 @@ func getPostType(c *connPostgres) (postTypeList []postTypeAPI, err error) {
 	}
 	return postTypeList, nil
 }
-func getReaction(c *connPostgres) (reactionList []reactionAPI, err error) {
+func GetReaction(c *config.ConnPostgres) (reactionList []config.ReactionAPI, err error) {
 	sqlStr := `
 		SELECT 
 		reaction_id, value
 		FROM reaction;
 	`
-	rows, err := c.db.Query(sqlStr)
+	rows, err := c.DB.Query(sqlStr)
 	if err != nil {
 		log.Println("getReaction", err)
 		return reactionList, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		reaction := reactionAPI{}
+		reaction := config.ReactionAPI{}
 		if err := rows.Scan(
 			&reaction.ReactionID,
 			&reaction.Value,
@@ -317,7 +306,7 @@ func getReaction(c *connPostgres) (reactionList []reactionAPI, err error) {
 }
 
 // user
-func getUserByUserID(c *connPostgres, userID int64) (user xuserAPI, err error) {
+func getUserByUserID(c *config.ConnPostgres, userID int64) (user config.XuserAPI, err error) {
 	sqlStr := `
 		SELECT 
 		user_id, username, email, name, phone, 
@@ -326,7 +315,7 @@ func getUserByUserID(c *connPostgres, userID int64) (user xuserAPI, err error) {
 		timezone, last_ip, createtime, updatetime 
 		FROM xuser WHERE user_id=$1;
 	`
-	row := c.db.QueryRow(sqlStr, userID)
+	row := c.DB.QueryRow(sqlStr, userID)
 	if err := row.Scan(
 		&user.UserID,
 		&user.Username,
@@ -349,7 +338,7 @@ func getUserByUserID(c *connPostgres, userID int64) (user xuserAPI, err error) {
 	}
 	return user, nil
 }
-func getUserByUsername(c *connPostgres, username string) (user xuserAPI, err error) {
+func getUserByUsername(c *config.ConnPostgres, username string) (user config.XuserAPI, err error) {
 	sqlStr := `
 		SELECT 
 		user_id, username, email, name, phone, 
@@ -358,7 +347,7 @@ func getUserByUsername(c *connPostgres, username string) (user xuserAPI, err err
 		timezone, last_ip, createtime, updatetime 
 		FROM xuser WHERE username=$1;
 	`
-	row := c.db.QueryRow(sqlStr, username)
+	row := c.DB.QueryRow(sqlStr, username)
 	if err := row.Scan(
 		&user.UserID,
 		&user.Username,
@@ -383,7 +372,7 @@ func getUserByUsername(c *connPostgres, username string) (user xuserAPI, err err
 }
 
 // follow
-func getUsersByFollowing(c *connPostgres, followerUserID int64, page int) (users []userFollowingAPI, err error) {
+func getUsersByFollowing(c *config.ConnPostgres, followerUserID int64, page int) (users []config.UserFollowingAPI, err error) {
 	sqlStr := `
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
@@ -391,14 +380,14 @@ func getUsersByFollowing(c *connPostgres, followerUserID int64, page int) (users
 		WHERE follow.follower_user_id=$1 AND follow.valid=true 
 		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, followerUserID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, followerUserID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getFollowingList1", err)
 		return users, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		user := userFollowingAPI{}
+		user := config.UserFollowingAPI{}
 		if err := rows.Scan(
 			&user.UserID,
 			&user.UserName,
@@ -416,7 +405,7 @@ func getUsersByFollowing(c *connPostgres, followerUserID int64, page int) (users
 	}
 	return users, nil
 }
-func getUsersByFollower(c *connPostgres, followerUserID int64, page int) (users []userFollowerAPI, err error) {
+func getUsersByFollower(c *config.ConnPostgres, followerUserID int64, page int) (users []config.UserFollowerAPI, err error) {
 	sqlStr := `
 		SELECT xuser.user_id, xuser.username, xuser.name, xuser.photo_url, follow.createtime
 		FROM follow 
@@ -424,14 +413,14 @@ func getUsersByFollower(c *connPostgres, followerUserID int64, page int) (users 
 		WHERE follow.following_user_id=$1 AND follow.valid=true 
 		ORDER BY follow.createtime DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, followerUserID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, followerUserID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getFollwerList1", err)
 		return users, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		user := userFollowerAPI{}
+		user := config.UserFollowerAPI{}
 		if err := rows.Scan(
 			&user.UserID,
 			&user.UserName,
@@ -449,10 +438,10 @@ func getUsersByFollower(c *connPostgres, followerUserID int64, page int) (users 
 	}
 	return users, nil
 }
-func checkUserIfFollowing(c *connPostgres, followingUserID, followerUserID int64) (isFollowing bool, err error) {
+func checkUserIfFollowing(c *config.ConnPostgres, followingUserID, followerUserID int64) (isFollowing bool, err error) {
 	count := 0
 	sqlStr := `SELECT COUNT(*) FROM follow WHERE following_user_id=$1 AND follower_user_id=$2;`
-	err = c.db.QueryRow(sqlStr, followingUserID, followerUserID).Scan(&count)
+	err = c.DB.QueryRow(sqlStr, followingUserID, followerUserID).Scan(&count)
 	if err != nil {
 		return count == 1, err
 	}
@@ -460,8 +449,8 @@ func checkUserIfFollowing(c *connPostgres, followingUserID, followerUserID int64
 }
 
 // country, city
-func getCountries(cm *connMongo) (countries []cityAPI, err error) {
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionCity)
+func GetCountries(cm *config.ConnMongo) (countries []config.CityAPI, err error) {
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 	q := bson.M{"level": "0"}
 	selector := bson.M{"country_code": 1, "country_name": 1}
 	if err := collection.Find(q).Select(selector).All(&countries); err != nil {
@@ -470,8 +459,8 @@ func getCountries(cm *connMongo) (countries []cityAPI, err error) {
 	}
 	return countries, nil
 }
-func getCountry(cm *connMongo, countryCode string) (country cityAPI, err error) {
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionCity)
+func GetCountry(cm *config.ConnMongo, countryCode string) (country config.CityAPI, err error) {
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 	q := bson.M{"level": "0", "country_code": countryCode}
 	selector := bson.M{"country_code": 1, "country_name": 1}
 	if err := collection.Find(q).Select(selector).One(&country); err != nil {
@@ -480,8 +469,8 @@ func getCountry(cm *connMongo, countryCode string) (country cityAPI, err error) 
 	}
 	return country, nil
 }
-func getCities(cm *connMongo, level string) (cities []cityAPI, err error) {
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionCity)
+func GetCities(cm *config.ConnMongo, level string) (cities []config.CityAPI, err error) {
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 	q := bson.M{"level": level}
 	if err := collection.Find(q).All(&cities); err != nil {
 		log.Println("getCities", err)
@@ -489,8 +478,8 @@ func getCities(cm *connMongo, level string) (cities []cityAPI, err error) {
 	}
 	return cities, nil
 }
-func getCity(cm *connMongo, level string, cityID string) (city cityAPI, err error) {
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionCity)
+func getCity(cm *config.ConnMongo, level string, cityID string) (city config.CityAPI, err error) {
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 	q := bson.M{"level": level, "city_id_" + level: cityID}
 	if err := collection.Find(q).One(&city); err != nil {
 		log.Println("getCity", err)
@@ -498,8 +487,8 @@ func getCity(cm *connMongo, level string, cityID string) (city cityAPI, err erro
 	}
 	return city, nil
 }
-func getCitiesLevelByCityIDLike(cm *connMongo, level string, cityID string) (cities []cityAPI, err error) {
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionCity)
+func getCitiesLevelByCityIDLike(cm *config.ConnMongo, level string, cityID string) (cities []config.CityAPI, err error) {
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 	q := bson.M{
 		"level":            level,
 		"city_id_" + level: bson.M{"$regex": bson.RegEx{Pattern: cityID, Options: ""}}}
@@ -509,9 +498,9 @@ func getCitiesLevelByCityIDLike(cm *connMongo, level string, cityID string) (cit
 	}
 	return cities, nil
 }
-func getCityByLocation(cm *connMongo, lat, lon float64) (cities []cityGeometryAPI, err error) {
-	numPerRequest := 5
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionCityGeometry)
+func GetCityByLocation(cm *config.ConnMongo, lat, lon float64) (cities []config.CityGeometryAPI, err error) {
+	NumPerRequest := 5
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCityGeometry)
 	s := bson.M{"properties": 1}
 	// geoIntersects
 	q := bson.M{
@@ -524,7 +513,7 @@ func getCityByLocation(cm *connMongo, lat, lon float64) (cities []cityGeometryAP
 			},
 		},
 	}
-	if err := collection.Find(q).Select(s).Limit(numPerRequest).All(&cities); err != nil {
+	if err := collection.Find(q).Select(s).Limit(NumPerRequest).All(&cities); err != nil {
 		log.Println("getCityByLocation", err)
 		return cities, err
 	}
@@ -537,11 +526,11 @@ func getCityByLocation(cm *connMongo, lat, lon float64) (cities []cityGeometryAP
 						"type":        "Point",
 						"coordinates": []float64{lon, lat},
 					},
-					"$maxDistance": mongoGeoNearSearchInKM,
+					"$maxDistance": config.MongoGeoNearSearchInKM,
 				},
 			},
 		}
-		if err := collection.Find(q).Select(s).Limit(numPerRequest).All(&cities); err != nil {
+		if err := collection.Find(q).Select(s).Limit(config.NumPerRequest).All(&cities); err != nil {
 			log.Println("getCityByLocation", err)
 			return cities, err
 		}
@@ -550,7 +539,7 @@ func getCityByLocation(cm *connMongo, lat, lon float64) (cities []cityGeometryAP
 }
 
 // place
-func getPlacesByPlacesGCP(c *connPostgres, placesGCP []placeAPI) (places []placeAPI, err error) {
+func getPlacesByPlacesGCP(c *config.ConnPostgres, placesGCP []config.PlaceAPI) (places []config.PlaceAPI, err error) {
 	name := []string{}
 	lat := []float64{}
 	lon := []float64{}
@@ -559,15 +548,15 @@ func getPlacesByPlacesGCP(c *connPostgres, placesGCP []placeAPI) (places []place
 		lat = append(lat, placesGCP[i].Lat)
 		lon = append(lon, placesGCP[i].Lon)
 	}
-	sqlStr, args := parsePlaceSelectAllSQL(name, lat, lon)
-	rows, err := c.db.Query(sqlStr, args...)
+	sqlStr, args := common.ParsePlaceSelectAllSQL(name, lat, lon)
+	rows, err := c.DB.Query(sqlStr, args...)
 	if err != nil {
 		log.Println("getPlacesByPlacesGCP", err)
 		return places, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		place := placeAPI{}
+		place := config.PlaceAPI{}
 		if err := rows.Scan(
 			&place.PlaceID,
 			&place.CountryCode,
@@ -593,8 +582,8 @@ func getPlacesByPlacesGCP(c *connPostgres, placesGCP []placeAPI) (places []place
 }
 
 // post
-func getPostsByRecent(c *connPostgres, userID int64, categoryID, page int) (posts []postAPI, err error) {
-	timestamp := getNowUnixTimestamp() - twoMonthsInSecond // sixHoursInSecond
+func getPostsByRecent(c *config.ConnPostgres, userID int64, categoryID, page int) (posts []config.PostAPI, err error) {
+	timestamp := common.GetNowUnixTimestamp() - config.TwoMonthsInSecond // config.SixHoursInSecond
 	sqlStr := `
 		SELECT 
 		post.post_id,
@@ -612,7 +601,7 @@ func getPostsByRecent(c *connPostgres, userID int64, categoryID, page int) (post
 		WHERE post.category_id=$1 AND post.createtime>=$2 
 		ORDER BY post.createtime DESC OFFSET $3 LIMIT $4;
 	`
-	rows, err := c.db.Query(sqlStr, categoryID, timestamp, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, categoryID, timestamp, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsRecent", err)
 		return posts, err
@@ -620,8 +609,8 @@ func getPostsByRecent(c *connPostgres, userID int64, categoryID, page int) (post
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
-		place := placeAPI{}
+		post := config.PostAPI{}
+		place := config.PlaceAPI{}
 		var placeID interface{}
 		if err := rows.Scan(
 			&post.PostID,
@@ -659,7 +648,7 @@ func getPostsByRecent(c *connPostgres, userID int64, categoryID, page int) (post
 			place.PlaceID = placeIDCheck
 		}
 		post.Place = place
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
 	}
@@ -678,9 +667,9 @@ func getPostsByRecent(c *connPostgres, userID int64, categoryID, page int) (post
 	}
 	return posts, err
 }
-func getPostsByRecentNum(c *connPostgres, categoryID, numPost int) (posts []postAPI, err error) {
+func GetPostsByRecentNum(c *config.ConnPostgres, categoryID, numPost int) (posts []config.PostAPI, err error) {
 	// combine this with func getPostsByRecent
-	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
+	timestamp := common.GetNowUnixTimestamp() - config.TwoMonthsInSecond
 	sqlStr := `
 		SELECT 
 		post.post_id,
@@ -698,15 +687,15 @@ func getPostsByRecentNum(c *connPostgres, categoryID, numPost int) (posts []post
 		WHERE post.category_id=$1 AND post.createtime>=$2 
 		ORDER BY post.createtime DESC OFFSET $3 LIMIT $4;
 	`
-	rows, err := c.db.Query(sqlStr, categoryID, timestamp, 0, numPost)
+	rows, err := c.DB.Query(sqlStr, categoryID, timestamp, 0, numPost)
 	if err != nil {
 		log.Println("getPostsByRecentNum", err)
 		return posts, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		post := postAPI{}
-		place := placeAPI{}
+		post := config.PostAPI{}
+		place := config.PlaceAPI{}
 		var placeID interface{}
 		if err := rows.Scan(
 			&post.PostID,
@@ -744,7 +733,7 @@ func getPostsByRecentNum(c *connPostgres, categoryID, numPost int) (posts []post
 			place.PlaceID = placeIDCheck
 		}
 		post.Place = place
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
@@ -753,10 +742,10 @@ func getPostsByRecentNum(c *connPostgres, categoryID, numPost int) (posts []post
 	}
 	return posts, nil
 }
-func getPostsByRecentWithCountry(c *connPostgres, userID int64, countryCode string, categoryID, page int) (posts []postAPI, err error) {
-	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
-	if categoryID == categorySup {
-		timestamp = getNowUnixTimestamp() - twentyFourHoursInSecond
+func getPostsByRecentWithCountry(c *config.ConnPostgres, userID int64, countryCode string, categoryID, page int) (posts []config.PostAPI, err error) {
+	timestamp := common.GetNowUnixTimestamp() - config.TwoMonthsInSecond
+	if categoryID == config.CategorySup {
+		timestamp = common.GetNowUnixTimestamp() - config.TwentyFourHoursInSecond
 	}
 	sqlStr := `
 		SELECT 
@@ -776,7 +765,7 @@ func getPostsByRecentWithCountry(c *connPostgres, userID int64, countryCode stri
 		ORDER BY post.createtime
 		DESC OFFSET $4 LIMIT $5;
 	`
-	rows, err := c.db.Query(sqlStr, categoryID, countryCode, timestamp, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, categoryID, countryCode, timestamp, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsByRecentWithCountryCode", err)
 		return posts, err
@@ -784,8 +773,8 @@ func getPostsByRecentWithCountry(c *connPostgres, userID int64, countryCode stri
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
-		place := placeAPI{}
+		post := config.PostAPI{}
+		place := config.PlaceAPI{}
 		var placeID interface{}
 		if err := rows.Scan(
 			&post.PostID,
@@ -823,7 +812,7 @@ func getPostsByRecentWithCountry(c *connPostgres, userID int64, countryCode stri
 			place.PlaceID = placeIDCheck
 		}
 		post.Place = place
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
 	}
@@ -842,10 +831,10 @@ func getPostsByRecentWithCountry(c *connPostgres, userID int64, countryCode stri
 	}
 	return posts, nil
 }
-func getPostsByRecentWithCity(c *connPostgres, userID int64, level, cityID string, categoryID, page int) (posts []postAPI, err error) {
-	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
-	if categoryID == categorySup {
-		timestamp = getNowUnixTimestamp() - twentyFourHoursInSecond
+func getPostsByRecentWithCity(c *config.ConnPostgres, userID int64, level, cityID string, categoryID, page int) (posts []config.PostAPI, err error) {
+	timestamp := common.GetNowUnixTimestamp() - config.TwoMonthsInSecond
+	if categoryID == config.CategorySup {
+		timestamp = common.GetNowUnixTimestamp() - config.TwentyFourHoursInSecond
 	}
 	sqlStr := `
 		SELECT 
@@ -866,7 +855,7 @@ func getPostsByRecentWithCity(c *connPostgres, userID int64, level, cityID strin
 		DESC OFFSET $4 LIMIT $5;
 	`
 	// log.Println(sqlStr)
-	rows, err := c.db.Query(sqlStr, categoryID, cityID, timestamp, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, categoryID, cityID, timestamp, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsByRecentWithCity", err)
 		return posts, err
@@ -874,8 +863,8 @@ func getPostsByRecentWithCity(c *connPostgres, userID int64, level, cityID strin
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
-		place := placeAPI{}
+		post := config.PostAPI{}
+		place := config.PlaceAPI{}
 		var placeID interface{}
 		if err := rows.Scan(
 			&post.PostID,
@@ -913,7 +902,7 @@ func getPostsByRecentWithCity(c *connPostgres, userID int64, level, cityID strin
 			place.PlaceID = placeIDCheck
 		}
 		post.Place = place
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
 	}
@@ -932,11 +921,11 @@ func getPostsByRecentWithCity(c *connPostgres, userID int64, level, cityID strin
 	}
 	return posts, nil
 }
-func getPostsByRecentWithPlaceLikeNum(c *connPostgres, countryCode string, categoryID, numPost int) (posts []postAPI, err error) {
+func GetPostsByRecentWithPlaceLikeNum(c *config.ConnPostgres, countryCode string, categoryID, numPost int) (posts []config.PostAPI, err error) {
 	// combine this with func getPostsByRecentWithPlaceLikeNum
-	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
-	if categoryID == categorySup && env != "development" {
-		timestamp = getNowUnixTimestamp() - twentyFourHoursInSecond
+	timestamp := common.GetNowUnixTimestamp() - config.TwoMonthsInSecond
+	if categoryID == config.CategorySup && config.Env != "development" {
+		timestamp = common.GetNowUnixTimestamp() - config.TwentyFourHoursInSecond
 	}
 	sqlStr := `
 		SELECT 
@@ -958,15 +947,15 @@ func getPostsByRecentWithPlaceLikeNum(c *connPostgres, countryCode string, categ
 		post.createtime >= $3
 		ORDER BY post.createtime DESC OFFSET $4 LIMIT $5;
 	`
-	rows, err := c.db.Query(sqlStr, categoryID, countryCode, timestamp, 0, numPost)
+	rows, err := c.DB.Query(sqlStr, categoryID, countryCode, timestamp, 0, numPost)
 	if err != nil {
 		log.Println("getPostsByRecentWithPlaceLikeNum", err)
 		return posts, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		post := postAPI{}
-		place := placeAPI{}
+		post := config.PostAPI{}
+		place := config.PlaceAPI{}
 		var placeID interface{}
 		if err := rows.Scan(
 			&post.PostID,
@@ -1004,7 +993,7 @@ func getPostsByRecentWithPlaceLikeNum(c *connPostgres, countryCode string, categ
 			place.PlaceID = placeIDCheck
 		}
 		post.Place = place
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 	}
 	if err := rows.Err(); err != nil {
@@ -1013,8 +1002,8 @@ func getPostsByRecentWithPlaceLikeNum(c *connPostgres, countryCode string, categ
 	}
 	return posts, nil
 }
-func getPostsByFollowingUsers(c *connPostgres, userID int64, page int) (posts []postAPI, err error) { // not done yet
-	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
+func getPostsByFollowingUsers(c *config.ConnPostgres, userID int64, page int) (posts []config.PostAPI, err error) { // not done yet
+	timestamp := common.GetNowUnixTimestamp() - config.TwoMonthsInSecond
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -1034,7 +1023,7 @@ func getPostsByFollowingUsers(c *connPostgres, userID int64, page int) (posts []
 		ORDER BY post.createtime
 		DESC OFFSET $3 LIMIT $4;
 	`
-	rows, err := c.db.Query(sqlStr, userID, timestamp, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, userID, timestamp, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsFollowing", err)
 		return posts, err
@@ -1042,8 +1031,8 @@ func getPostsByFollowingUsers(c *connPostgres, userID int64, page int) (posts []
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
-		place := placeAPI{}
+		post := config.PostAPI{}
+		place := config.PlaceAPI{}
 		var placeID interface{}
 		if err := rows.Scan(
 			&post.PostID,
@@ -1081,7 +1070,7 @@ func getPostsByFollowingUsers(c *connPostgres, userID int64, page int) (posts []
 			place.PlaceID = placeIDCheck
 		}
 		post.Place = place
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
 	}
@@ -1100,8 +1089,8 @@ func getPostsByFollowingUsers(c *connPostgres, userID int64, page int) (posts []
 	}
 	return posts, nil
 }
-func getPostsByFollowingUsersWithCountry(c *connPostgres, userID int64, countryCode string, categoryID, page int) (posts []postAPI, err error) { // not done yet
-	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
+func getPostsByFollowingUsersWithCountry(c *config.ConnPostgres, userID int64, countryCode string, categoryID, page int) (posts []config.PostAPI, err error) { // not done yet
+	timestamp := common.GetNowUnixTimestamp() - config.TwoMonthsInSecond
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -1122,7 +1111,7 @@ func getPostsByFollowingUsersWithCountry(c *connPostgres, userID int64, countryC
 		ORDER BY post.createtime
 		DESC OFFSET $5 LIMIT $6;
 	`
-	rows, err := c.db.Query(sqlStr, userID, timestamp, categoryID, countryCode, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, userID, timestamp, categoryID, countryCode, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsByFollowingUsersWithCountry", err)
 		return posts, err
@@ -1130,8 +1119,8 @@ func getPostsByFollowingUsersWithCountry(c *connPostgres, userID int64, countryC
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
-		place := placeAPI{}
+		post := config.PostAPI{}
+		place := config.PlaceAPI{}
 		var placeID interface{}
 		if err := rows.Scan(
 			&post.PostID,
@@ -1169,7 +1158,7 @@ func getPostsByFollowingUsersWithCountry(c *connPostgres, userID int64, countryC
 			place.PlaceID = placeIDCheck
 		}
 		post.Place = place
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
 	}
@@ -1188,8 +1177,8 @@ func getPostsByFollowingUsersWithCountry(c *connPostgres, userID int64, countryC
 	}
 	return posts, nil
 }
-func getPostsByFollowingUsersWithCity(c *connPostgres, userID int64, level, cityID string, categoryID, page int) (posts []postAPI, err error) { // not done yet
-	timestamp := getNowUnixTimestamp() - twoMonthsInSecond
+func getPostsByFollowingUsersWithCity(c *config.ConnPostgres, userID int64, level, cityID string, categoryID, page int) (posts []config.PostAPI, err error) { // not done yet
+	timestamp := common.GetNowUnixTimestamp() - config.TwoMonthsInSecond
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -1210,7 +1199,7 @@ func getPostsByFollowingUsersWithCity(c *connPostgres, userID int64, level, city
 		ORDER BY post.createtime
 		DESC OFFSET $4 LIMIT $5;
 	`
-	rows, err := c.db.Query(sqlStr, userID, timestamp, categoryID, cityID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, userID, timestamp, categoryID, cityID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsByFollowingUsersWithCity", err)
 		return posts, err
@@ -1218,8 +1207,8 @@ func getPostsByFollowingUsersWithCity(c *connPostgres, userID int64, level, city
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
-		place := placeAPI{}
+		post := config.PostAPI{}
+		place := config.PlaceAPI{}
 		var placeID interface{}
 		if err := rows.Scan(
 			&post.PostID,
@@ -1257,7 +1246,7 @@ func getPostsByFollowingUsersWithCity(c *connPostgres, userID int64, level, city
 			place.PlaceID = placeIDCheck
 		}
 		post.Place = place
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
 	}
@@ -1276,7 +1265,7 @@ func getPostsByFollowingUsersWithCity(c *connPostgres, userID int64, level, city
 	}
 	return posts, nil
 }
-func getPostsByUser(c *connPostgres, userID int64, page int) (posts []postAPI, err error) { // not done yet
+func getPostsByUser(c *config.ConnPostgres, userID int64, page int) (posts []config.PostAPI, err error) { // not done yet
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -1295,7 +1284,7 @@ func getPostsByUser(c *connPostgres, userID int64, page int) (posts []postAPI, e
 		ORDER BY post.createtime
 		DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, userID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, userID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsUser", err)
 		return posts, err
@@ -1303,8 +1292,8 @@ func getPostsByUser(c *connPostgres, userID int64, page int) (posts []postAPI, e
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
-		place := placeAPI{}
+		post := config.PostAPI{}
+		place := config.PlaceAPI{}
 		var placeID interface{}
 		if err := rows.Scan(
 			&post.PostID,
@@ -1342,7 +1331,7 @@ func getPostsByUser(c *connPostgres, userID int64, page int) (posts []postAPI, e
 			place.PlaceID = placeIDCheck
 		}
 		post.Place = place
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
 	}
@@ -1361,14 +1350,14 @@ func getPostsByUser(c *connPostgres, userID int64, page int) (posts []postAPI, e
 	}
 	return posts, nil
 }
-func getPostByPostIDUserID(c *connPostgres, postID, userID int64) (count int, err error) {
+func getPostByPostIDUserID(c *config.ConnPostgres, postID, userID int64) (count int, err error) {
 	sqlStr := `
 		SELECT 
 		COUNT(*)
 		FROM post
 		WHERE post_id = $1 AND user_id= $2;
 	`
-	row := c.db.QueryRow(sqlStr, postID, userID)
+	row := c.DB.QueryRow(sqlStr, postID, userID)
 	err = row.Scan(&count)
 	if err != nil {
 		log.Println("getPostByPostIDUserID", err)
@@ -1376,10 +1365,10 @@ func getPostByPostIDUserID(c *connPostgres, postID, userID int64) (count int, er
 	}
 	return count, err
 }
-func getPostsByPlaceID(c *connPostgres, userID int64, placeID int64, page int) (posts []postAPI, err error) {
+func getPostsByPlaceID(c *config.ConnPostgres, userID int64, placeID int64, page int) (posts []config.PostAPI, err error) {
 	sqlStr := `SELECT lat, lon, name FROM place WHERE place_id=$1;`
-	place := placeAPI{PlaceID: placeID}
-	row := c.db.QueryRow(sqlStr, placeID)
+	place := config.PlaceAPI{PlaceID: placeID}
+	row := c.DB.QueryRow(sqlStr, placeID)
 	if err := row.Scan(
 		&place.Lat,
 		&place.Lon,
@@ -1401,7 +1390,7 @@ func getPostsByPlaceID(c *connPostgres, userID int64, placeID int64, page int) (
 		ORDER BY post.createtime
 		DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, placeID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, placeID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsByPlaceID", err)
 		return posts, err
@@ -1409,7 +1398,7 @@ func getPostsByPlaceID(c *connPostgres, userID int64, placeID int64, page int) (
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
+		post := config.PostAPI{}
 		if err := rows.Scan(
 			&post.PostID,
 			&post.User.UserID,
@@ -1431,7 +1420,7 @@ func getPostsByPlaceID(c *connPostgres, userID int64, placeID int64, page int) (
 			log.Println(err)
 			return posts, err
 		}
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		post.Place = place
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
@@ -1451,24 +1440,24 @@ func getPostsByPlaceID(c *connPostgres, userID int64, placeID int64, page int) (
 	}
 	return posts, nil
 }
-func getPostsByPopular(c *connPostgres, cm *connMongo, userID int64, categoryID, page int) (posts []postAPI, err error) { // not done yet
+func getPostsByPopular(c *config.ConnPostgres, cm *config.ConnMongo, userID int64, categoryID, page int) (posts []config.PostAPI, err error) { // not done yet
 	// read_index
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
-	ppuri := popularPostUserReadIndexAPI{}
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
+	ppuri := config.PopularPostUserReadIndexAPI{}
 	q := bson.M{"user_id": userID}
 	collection.Find(q).One(&ppuri)
 	popularPostUserReadIndex := ppuri.CommonPopularPostIndex[categoryID]
 	// read
-	weekTimestamp := getNowUnixWeekTimestamp()
+	weekTimestamp := common.GetNowUnixWeekTimestamp()
 	// ** you can wrap func as a transaction
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
 	q = bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp}
-	r := postUserReadAPI{}
+	r := config.PostUserReadAPI{}
 	collection.Find(q).One(&r)
 	// popular_common
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostCommon)
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostCommon)
 	q = bson.M{"category_id": categoryID}
-	p := postCommonAPI{}
+	p := config.PostCommonAPI{}
 	if err := collection.Find(q).One(&p); err != nil {
 		log.Println("getPostsByPopular2", err)
 		return posts, err
@@ -1476,7 +1465,7 @@ func getPostsByPopular(c *connPostgres, cm *connMongo, userID int64, categoryID,
 	count := 0
 	postsID := []int64{}
 	for i := popularPostUserReadIndex; i < len(p.PopularPosts); i++ {
-		if count >= numPerRequest {
+		if count >= config.NumPerRequest {
 			break
 		}
 		if r.PopularPosts[p.PopularPosts[i].PostID] == 0 {
@@ -1496,24 +1485,24 @@ func getPostsByPopular(c *connPostgres, cm *connMongo, userID int64, categoryID,
 	}
 	return posts, nil
 }
-func getSupPostsByPopularWithCountry(c *connPostgres, cm *connMongo, userID int64, countryCode string, page int) (posts []postAPI, err error) { // not done yet
+func getSupPostsByPopularWithCountry(c *config.ConnPostgres, cm *config.ConnMongo, userID int64, countryCode string, page int) (posts []config.PostAPI, err error) { // not done yet
 	// read_index
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
-	ppuri := popularPostUserReadIndexAPI{}
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
+	ppuri := config.PopularPostUserReadIndexAPI{}
 	q := bson.M{"user_id": userID}
 	collection.Find(q).One(&ppuri)
 	popularPostUserReadIndex := ppuri.CountrySupPopularPostIndex[countryCode]
 	// read
-	weekTimestamp := getNowUnixWeekTimestamp()
+	weekTimestamp := common.GetNowUnixWeekTimestamp()
 	// ** you can wrap func as a transaction
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	q = bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": weekTimestamp}
-	r := postUserReadAPI{}
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
+	q = bson.M{"user_id": userID, "category_id": config.CategorySup, "week_timestamp": weekTimestamp}
+	r := config.PostUserReadAPI{}
 	collection.Find(q).One(&r)
 	// sup popular post on country
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionCity)
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 	q = bson.M{"level": "0", "country_code": countryCode}
-	p := cityAPI{}
+	p := config.CityAPI{}
 	if err := collection.Find(q).One(&p); err != nil {
 		log.Println("getPostsBySupPopularWithCountry2", err)
 		return posts, err
@@ -1521,7 +1510,7 @@ func getSupPostsByPopularWithCountry(c *connPostgres, cm *connMongo, userID int6
 	count := 0
 	postsID := []int64{}
 	for i := popularPostUserReadIndex; i < len(p.SupPopularPosts); i++ {
-		if count >= numPerRequest {
+		if count >= config.NumPerRequest {
 			break
 		}
 		if r.PopularPosts[p.SupPopularPosts[i].PostID] == 0 {
@@ -1541,24 +1530,24 @@ func getSupPostsByPopularWithCountry(c *connPostgres, cm *connMongo, userID int6
 	}
 	return posts, nil
 }
-func getSupPostsByPopularWithCity(c *connPostgres, cm *connMongo, userID int64, level, cityID string, page int) (posts []postAPI, err error) { // not done yet
+func getSupPostsByPopularWithCity(c *config.ConnPostgres, cm *config.ConnMongo, userID int64, level, cityID string, page int) (posts []config.PostAPI, err error) { // not done yet
 	// read_index
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
-	ppuri := popularPostUserReadIndexAPI{}
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
+	ppuri := config.PopularPostUserReadIndexAPI{}
 	q := bson.M{"user_id": userID}
 	collection.Find(q).One(&ppuri)
 	popularPostUserReadIndex := ppuri.CitySupPopularPostIndex[cityID]
 	// read
-	weekTimestamp := getNowUnixWeekTimestamp()
+	weekTimestamp := common.GetNowUnixWeekTimestamp()
 	// ** you can wrap func as a transaction
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	q = bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": weekTimestamp}
-	r := postUserReadAPI{}
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
+	q = bson.M{"user_id": userID, "category_id": config.CategorySup, "week_timestamp": weekTimestamp}
+	r := config.PostUserReadAPI{}
 	collection.Find(q).One(&r)
 	// sup popular post on city
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionCity)
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
 	q = bson.M{"level": level, "city_id_" + level: cityID}
-	p := cityAPI{}
+	p := config.CityAPI{}
 	if err := collection.Find(q).One(&p); err != nil {
 		log.Println("getPostsBySupPopularWithCity", err)
 		return posts, err
@@ -1566,7 +1555,7 @@ func getSupPostsByPopularWithCity(c *connPostgres, cm *connMongo, userID int64, 
 	count := 0
 	postsID := []int64{}
 	for i := popularPostUserReadIndex; i < len(p.SupPopularPosts); i++ {
-		if count >= numPerRequest {
+		if count >= config.NumPerRequest {
 			break
 		}
 		if r.PopularPosts[p.SupPopularPosts[i].PostID] == 0 {
@@ -1586,7 +1575,7 @@ func getSupPostsByPopularWithCity(c *connPostgres, cm *connMongo, userID int64, 
 	}
 	return posts, nil
 }
-func getPostsByHashtag(c *connPostgres, userID int64, hashtagID int64, page int) (posts []postAPI, err error) { // not done yet
+func getPostsByHashtag(c *config.ConnPostgres, userID int64, hashtagID int64, page int) (posts []config.PostAPI, err error) { // not done yet
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -1601,7 +1590,7 @@ func getPostsByHashtag(c *connPostgres, userID int64, hashtagID int64, page int)
 		ORDER BY post.createtime
 		DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, hashtagID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, hashtagID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsByHashtag", err)
 		return posts, err
@@ -1609,7 +1598,7 @@ func getPostsByHashtag(c *connPostgres, userID int64, hashtagID int64, page int)
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
+		post := config.PostAPI{}
 		if err := rows.Scan(
 			&post.PostID,
 			&post.User.UserID,
@@ -1631,7 +1620,7 @@ func getPostsByHashtag(c *connPostgres, userID int64, hashtagID int64, page int)
 			log.Println(err)
 			return posts, err
 		}
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
 	}
@@ -1650,7 +1639,7 @@ func getPostsByHashtag(c *connPostgres, userID int64, hashtagID int64, page int)
 	}
 	return posts, nil
 }
-func getPostsByTag(c *connPostgres, userID int64, page int) (posts []postAPI, err error) {
+func getPostsByTag(c *config.ConnPostgres, userID int64, page int) (posts []config.PostAPI, err error) {
 	sqlStr := `
 		SELECT 
 		post.post_id, 
@@ -1665,7 +1654,7 @@ func getPostsByTag(c *connPostgres, userID int64, page int) (posts []postAPI, er
 		ORDER BY post.createtime
 		DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, userID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, userID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getPostsByTag", err)
 		return posts, err
@@ -1673,7 +1662,7 @@ func getPostsByTag(c *connPostgres, userID int64, page int) (posts []postAPI, er
 	defer rows.Close()
 	postsID := []int64{}
 	for rows.Next() {
-		post := postAPI{}
+		post := config.PostAPI{}
 		if err := rows.Scan(
 			&post.PostID,
 			&post.User.UserID,
@@ -1695,7 +1684,7 @@ func getPostsByTag(c *connPostgres, userID int64, page int) (posts []postAPI, er
 			log.Println(err)
 			return posts, err
 		}
-		post.Blob.BlobID = makeBlobURL(post)
+		post.Blob.BlobID = MakeBlobURL(post)
 		posts = append(posts, post)
 		postsID = append(postsID, post.PostID)
 	}
@@ -1714,7 +1703,7 @@ func getPostsByTag(c *connPostgres, userID int64, page int) (posts []postAPI, er
 	}
 	return posts, nil
 }
-func getPostReactionMap(c *connPostgres, userID int64, postsID []int64) (postsIDChecked map[int64]int, err error) {
+func getPostReactionMap(c *config.ConnPostgres, userID int64, postsID []int64) (postsIDChecked map[int64]int, err error) {
 	postsIDChecked = make(map[int64]int) // -1 ~ reaction type
 	sqlStr := `
 		SELECT post_id, reaction_id
@@ -1733,7 +1722,7 @@ func getPostReactionMap(c *connPostgres, userID int64, postsID []int64) (postsID
 		}
 	}
 	sqlStr += `);`
-	rows, err := c.db.Query(sqlStr, args...)
+	rows, err := c.DB.Query(sqlStr, args...)
 	if err != nil {
 		log.Println("getPostReactionList", err)
 		return postsIDChecked, err
@@ -1759,7 +1748,7 @@ func getPostReactionMap(c *connPostgres, userID int64, postsID []int64) (postsID
 }
 
 // hashtags
-func getHashtags(c *connPostgres, value string, page int) (hashtags []hashtagAPI, err error) {
+func getHashtags(c *config.ConnPostgres, value string, page int) (hashtags []config.HashtagAPI, err error) {
 	sqlStr := `
 		SELECT 
 		hashtag_id, value, count
@@ -1768,14 +1757,14 @@ func getHashtags(c *connPostgres, value string, page int) (hashtags []hashtagAPI
 		ORDER BY hashtag.count
 		DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, value+"%", page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, value+"%", page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getHashtags", err)
 		return hashtags, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		hashtag := hashtagAPI{}
+		hashtag := config.HashtagAPI{}
 		if err := rows.Scan(
 			&hashtag.HashtagID,
 			&hashtag.Value,
@@ -1795,7 +1784,7 @@ func getHashtags(c *connPostgres, value string, page int) (hashtags []hashtagAPI
 }
 
 // tags
-func getAllTagsByPost(c *connPostgres, postID int64) (tags []tagOnPostAPI, err error) {
+func getAllTagsByPost(c *config.ConnPostgres, postID int64) (tags []config.TagOnPostAPI, err error) {
 	sqlStr := `
 		SELECT 
 		post_tag_xuser.post_id,
@@ -1807,14 +1796,14 @@ func getAllTagsByPost(c *connPostgres, postID int64) (tags []tagOnPostAPI, err e
 		JOIN xuser ON xuser.user_id = post_tag_xuser.user_id
 		WHERE post_tag_xuser.post_id = $1 AND post_tag_xuser.valid = true;
 	`
-	rows, err := c.db.Query(sqlStr, postID)
+	rows, err := c.DB.Query(sqlStr, postID)
 	if err != nil {
 		log.Println("getAllTagsByPost", err)
 		return tags, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		tag := tagOnPostAPI{}
+		tag := config.TagOnPostAPI{}
 		if err := rows.Scan(
 			&tag.PostID,
 			&tag.User.UserID,
@@ -1840,7 +1829,7 @@ func getAllTagsByPost(c *connPostgres, postID int64) (tags []tagOnPostAPI, err e
 }
 
 // comment
-func getCommentsOnPost(c *connPostgres, postID int64, page int) (comments []commentAPI, err error) {
+func getCommentsOnPost(c *config.ConnPostgres, postID int64, page int) (comments []config.CommentAPI, err error) {
 	sqlStr := `
 		SELECT 
 		comment.comment_id, 
@@ -1852,13 +1841,13 @@ func getCommentsOnPost(c *connPostgres, postID int64, page int) (comments []comm
 		WHERE post_id=$1 
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, postID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, postID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getCommentsPost", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		comment := commentAPI{}
+		comment := config.CommentAPI{}
 		comment.PostID = postID
 		if err := rows.Scan(
 			&comment.CommentID,
@@ -1883,7 +1872,7 @@ func getCommentsOnPost(c *connPostgres, postID int64, page int) (comments []comm
 }
 
 // reply
-func getRepliesOnComment(c *connPostgres, commentID int64, page int) (replies []replyAPI, err error) {
+func getRepliesOnComment(c *config.ConnPostgres, commentID int64, page int) (replies []config.ReplyAPI, err error) {
 	sqlStr := `
 		SELECT 
 		reply.reply_id, 
@@ -1895,13 +1884,13 @@ func getRepliesOnComment(c *connPostgres, commentID int64, page int) (replies []
 		WHERE comment_id=$1 
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, commentID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, commentID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getRepliesOnComment", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		reply := replyAPI{}
+		reply := config.ReplyAPI{}
 		reply.CommentID = commentID
 		if err := rows.Scan(
 			&reply.ReplyID,
@@ -1925,7 +1914,7 @@ func getRepliesOnComment(c *connPostgres, commentID int64, page int) (replies []
 }
 
 // reaction
-func getReactionsOnPost(c *connPostgres, postID int64, page int) (reactionsOnPost []reactionOnPostAPI, err error) {
+func getReactionsOnPost(c *config.ConnPostgres, postID int64, page int) (reactionsOnPost []config.ReactionOnPostAPI, err error) {
 	sqlStr := `
 		SELECT 
 		post_reaction.post_id, 
@@ -1935,13 +1924,13 @@ func getReactionsOnPost(c *connPostgres, postID int64, page int) (reactionsOnPos
 		WHERE post_id=$1
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, postID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, postID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getReactionsOnPost", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		reactionOnPost := reactionOnPostAPI{}
+		reactionOnPost := config.ReactionOnPostAPI{}
 		if err := rows.Scan(
 			&reactionOnPost.PostID,
 			&reactionOnPost.User.UserID,
@@ -1959,7 +1948,7 @@ func getReactionsOnPost(c *connPostgres, postID int64, page int) (reactionsOnPos
 	}
 	return reactionsOnPost, nil
 }
-func getReactionsOnComment(c *connPostgres, commentID int64, page int) (reactionsOnComment []reactionOnCommentAPI, err error) {
+func getReactionsOnComment(c *config.ConnPostgres, commentID int64, page int) (reactionsOnComment []config.ReactionOnCommentAPI, err error) {
 	sqlStr := `
 		SELECT 
 		comment_reaction.comment_id, 
@@ -1969,13 +1958,13 @@ func getReactionsOnComment(c *connPostgres, commentID int64, page int) (reaction
 		WHERE comment_id=$1
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, commentID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, commentID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getReactionsOnComment", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		reactionOnComment := reactionOnCommentAPI{}
+		reactionOnComment := config.ReactionOnCommentAPI{}
 		if err := rows.Scan(
 			&reactionOnComment.CommentID,
 			&reactionOnComment.User.UserID,
@@ -1993,7 +1982,7 @@ func getReactionsOnComment(c *connPostgres, commentID int64, page int) (reaction
 	}
 	return reactionsOnComment, nil
 }
-func getReactionsOnReply(c *connPostgres, replyID int64, page int) (reactionsOnReply []reactionOnReplyAPI, err error) {
+func getReactionsOnReply(c *config.ConnPostgres, replyID int64, page int) (reactionsOnReply []config.ReactionOnReplyAPI, err error) {
 	sqlStr := `
 		SELECT 
 		reply_reaction.reply_id, 
@@ -2003,13 +1992,13 @@ func getReactionsOnReply(c *connPostgres, replyID int64, page int) (reactionsOnR
 		WHERE reply_id=$1
 		ORDER BY createtime DESC OFFSET $2 LIMIT $3;
 	`
-	rows, err := c.db.Query(sqlStr, replyID, page*numPerRequest, numPerRequest)
+	rows, err := c.DB.Query(sqlStr, replyID, page*config.NumPerRequest, config.NumPerRequest)
 	if err != nil {
 		log.Println("getReactionsOnReply", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		reactionOnReply := reactionOnReplyAPI{}
+		reactionOnReply := config.ReactionOnReplyAPI{}
 		if err := rows.Scan(
 			&reactionOnReply.ReplyID,
 			&reactionOnReply.User.UserID,
@@ -2029,7 +2018,7 @@ func getReactionsOnReply(c *connPostgres, replyID int64, page int) (reactionsOnR
 }
 
 // [mutation]
-func userInsert(c *connPostgres, user userDB) (userID int64, err error) {
+func UserInsert(c *config.ConnPostgres, user config.UserDB) (userID int64, err error) {
 	sqlStr := `
 		INSERT INTO xuser 
 		(
@@ -2040,7 +2029,7 @@ func userInsert(c *connPostgres, user userDB) (userID int64, err error) {
 		) VALUES 
 		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING user_id;
 	`
-	err = c.db.QueryRow(sqlStr,
+	err = c.DB.QueryRow(sqlStr,
 		user.Username,
 		user.Email,
 		user.Password,
@@ -2065,14 +2054,14 @@ func userInsert(c *connPostgres, user userDB) (userID int64, err error) {
 }
 
 // follow
-func follow(c *connPostgres, followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
-	timestamp := getNowUnixTimestamp()
+func Follow(c *config.ConnPostgres, followingUserID, followerUserID int64) (us config.UpdateStatusAPI, err error) {
+	timestamp := common.GetNowUnixTimestamp()
 	sqlStr := `
 		INSERT INTO follow 
 		(following_user_id, follower_user_id, valid, createtime, updatetime) 
 		values($1,$2,$3,$4,$5) returning createtime;
 	`
-	res, err := c.db.Exec(sqlStr, followingUserID, followerUserID, true, timestamp, timestamp)
+	res, err := c.DB.Exec(sqlStr, followingUserID, followerUserID, true, timestamp, timestamp)
 	if err != nil {
 		return us, errors.New("you've followed this user")
 	}
@@ -2083,12 +2072,12 @@ func follow(c *connPostgres, followingUserID, followerUserID int64) (us updateSt
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func unfollow(c *connPostgres, followingUserID, followerUserID int64) (us updateStatusAPI, err error) {
+func unfollow(c *config.ConnPostgres, followingUserID, followerUserID int64) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		DELETE FROM follow 
 		WHERE following_user_id=$1 AND follower_user_id=$2;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		followingUserID, followerUserID)
 	if err != nil {
 		return us, err
@@ -2102,13 +2091,13 @@ func unfollow(c *connPostgres, followingUserID, followerUserID int64) (us update
 }
 
 // place
-func placeInsert(c *connPostgres, place placeAPI) (placeID int64, err error) {
+func PlaceInsert(c *config.ConnPostgres, place config.PlaceAPI) (placeID int64, err error) {
 	sqlStr := `
 		INSERT INTO place 
 		(country_code, city_id_1, city_id_2, city_id_3, city_id_4, city_id_5, lat, lon, name) 
 		values($1,$2,$3,$4,$5,$6,$7,$8,$9) returning place_id;
 	`
-	err = c.db.QueryRow(sqlStr,
+	err = c.DB.QueryRow(sqlStr,
 		place.CountryCode,
 		place.CityID1,
 		place.CityID2,
@@ -2127,7 +2116,7 @@ func placeInsert(c *connPostgres, place placeAPI) (placeID int64, err error) {
 }
 
 // post
-func postInsert(c *connPostgres, post postAPI) (postID int64, err error) {
+func PostInsert(c *config.ConnPostgres, post config.PostAPI) (postID int64, err error) {
 	sqlStr := `
 		INSERT INTO post 
 		(
@@ -2141,7 +2130,7 @@ func postInsert(c *connPostgres, post postAPI) (postID int64, err error) {
 	if post.Place.PlaceID > 0 {
 		placeID = post.Place.PlaceID
 	}
-	err = c.db.QueryRow(sqlStr,
+	err = c.DB.QueryRow(sqlStr,
 		post.User.UserID,
 		post.Content,
 		post.Blob.BlobID,
@@ -2163,7 +2152,7 @@ func postInsert(c *connPostgres, post postAPI) (postID int64, err error) {
 	}
 	return postID, err
 }
-func postUpdate(c *connPostgres, post postAPI) (us updateStatusAPI, err error) {
+func postUpdate(c *config.ConnPostgres, post config.PostAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		UPDATE post 
 		SET content=$1, place_id=$2,
@@ -2174,7 +2163,7 @@ func postUpdate(c *connPostgres, post postAPI) (us updateStatusAPI, err error) {
 	if post.Place.PlaceID > 0 {
 		placeID = post.Place.PlaceID
 	}
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		post.Content, placeID,
 		post.CategoryID, post.Updatetime,
 		post.PostID, post.User.UserID)
@@ -2188,12 +2177,12 @@ func postUpdate(c *connPostgres, post postAPI) (us updateStatusAPI, err error) {
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func postDelete(c *connPostgres, post postAPI) (us updateStatusAPI, err error) {
+func postDelete(c *config.ConnPostgres, post config.PostAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		DELETE FROM post
 		WHERE post_id=$1 AND user_id=$2;
 	`
-	res, err := c.db.Exec(sqlStr, post.PostID, post.User.UserID)
+	res, err := c.DB.Exec(sqlStr, post.PostID, post.User.UserID)
 	if err != nil {
 		return us, err
 	}
@@ -2204,20 +2193,20 @@ func postDelete(c *connPostgres, post postAPI) (us updateStatusAPI, err error) {
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func postPopularRead(cm *connMongo, categoryID int, indexRead int, userID int64) (posts []postAPI, err error) {
+func postPopularRead(cm *config.ConnMongo, categoryID int, indexRead int, userID int64) (posts []config.PostAPI, err error) {
 	// read_index
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
-	ppuri := popularPostUserReadIndexAPI{}
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
+	ppuri := config.PopularPostUserReadIndexAPI{}
 	q := bson.M{"user_id": userID}
 	collection.Find(q).One(&ppuri)
 	popularPostUserReadIndex := ppuri.CommonPopularPostIndex[categoryID]
 	// read
-	weekTimestamp := getNowUnixWeekTimestamp()
+	weekTimestamp := common.GetNowUnixWeekTimestamp()
 	postsRead := make(map[int64]int)
 	// ** you can wrap func as a transaction
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
-		u := postUserReadAPI{}
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
+	for t := weekTimestamp; t > weekTimestamp-2*config.SevenDaysInSecond; t -= config.SevenDaysInSecond {
+		u := config.PostUserReadAPI{}
 		q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}
 		if err := collection.Find(q).One(&u); err == nil {
 			for k, v := range u.PopularPosts {
@@ -2226,14 +2215,14 @@ func postPopularRead(cm *connMongo, categoryID int, indexRead int, userID int64)
 		}
 	}
 	// post_common
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostCommon)
-	u := postCommonAPI{}
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostCommon)
+	u := config.PostCommonAPI{}
 	q = bson.M{"category_id": categoryID}
 	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postPopularRead", err)
 		return posts, err
 	}
-	timestamp := getNowUnixTimestamp()
+	timestamp := common.GetNowUnixTimestamp()
 	postsReadNew := make(map[int64]int)
 	count := 0
 	if indexRead >= 0 {
@@ -2246,10 +2235,10 @@ func postPopularRead(cm *connMongo, categoryID int, indexRead int, userID int64)
 		}
 	}
 	if len(postsReadNew) > 0 {
-		collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+		collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
 		if _, err := collection.Upsert(
 			bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": weekTimestamp},
-			bson.M{"$set": parsePopularPostReadObjectMongo(postsReadNew)}); err != nil {
+			bson.M{"$set": common.ParsePopularPostReadObjectMongo(postsReadNew)}); err != nil {
 			log.Println("upsert", err)
 		}
 	}
@@ -2257,7 +2246,7 @@ func postPopularRead(cm *connMongo, categoryID int, indexRead int, userID int64)
 		postsRead[k] = v
 	}
 	for i := popularPostUserReadIndex + indexRead + 1; i < len(u.PopularPosts); i++ {
-		if count > numPerRequest {
+		if count > config.NumPerRequest {
 			break
 		}
 		if postsRead[u.PopularPosts[i].PostID] == 0 {
@@ -2266,7 +2255,7 @@ func postPopularRead(cm *connMongo, categoryID int, indexRead int, userID int64)
 		}
 	}
 	if count > 0 {
-		collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+		collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
 		if _, err := collection.Upsert(
 			bson.M{"user_id": userID},
 			bson.M{"$set": bson.M{
@@ -2277,21 +2266,21 @@ func postPopularRead(cm *connMongo, categoryID int, indexRead int, userID int64)
 	}
 	return posts, nil
 }
-func supPostPopularReadCountry(cm *connMongo, countryCode string, indexRead int, userID int64) (posts []postAPI, err error) {
+func supPostPopularReadCountry(cm *config.ConnMongo, countryCode string, indexRead int, userID int64) (posts []config.PostAPI, err error) {
 	// read_index
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
-	ppuri := popularPostUserReadIndexAPI{}
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
+	ppuri := config.PopularPostUserReadIndexAPI{}
 	q := bson.M{"user_id": userID}
 	collection.Find(q).One(&ppuri)
 	popularPostUserReadIndex := ppuri.CountrySupPopularPostIndex[countryCode]
 	// read
-	weekTimestamp := getNowUnixWeekTimestamp()
+	weekTimestamp := common.GetNowUnixWeekTimestamp()
 	postsRead := make(map[int64]int)
 	// ** you can wrap func as a transaction
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
-		u := postUserReadAPI{}
-		q := bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": t}
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
+	for t := weekTimestamp; t > weekTimestamp-2*config.SevenDaysInSecond; t -= config.SevenDaysInSecond {
+		u := config.PostUserReadAPI{}
+		q := bson.M{"user_id": userID, "category_id": config.CategorySup, "week_timestamp": t}
 		if err := collection.Find(q).One(&u); err == nil {
 			for k, v := range u.PopularPosts {
 				postsRead[k] = v
@@ -2299,14 +2288,14 @@ func supPostPopularReadCountry(cm *connMongo, countryCode string, indexRead int,
 		}
 	}
 	// post_common
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionCity)
-	u := cityAPI{}
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
+	u := config.CityAPI{}
 	q = bson.M{"level": "0", "country_code": countryCode}
 	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postSupPopularReadCountry", err)
 		return posts, err
 	}
-	timestamp := getNowUnixTimestamp()
+	timestamp := common.GetNowUnixTimestamp()
 	postsReadNew := make(map[int64]int)
 	count := 0
 	if indexRead >= 0 {
@@ -2319,10 +2308,10 @@ func supPostPopularReadCountry(cm *connMongo, countryCode string, indexRead int,
 		}
 	}
 	if len(postsReadNew) > 0 {
-		collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+		collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
 		if _, err := collection.Upsert(
-			bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": weekTimestamp},
-			bson.M{"$set": parsePopularPostReadObjectMongo(postsReadNew)}); err != nil {
+			bson.M{"user_id": userID, "category_id": config.CategorySup, "week_timestamp": weekTimestamp},
+			bson.M{"$set": common.ParsePopularPostReadObjectMongo(postsReadNew)}); err != nil {
 			log.Println("upsert", err)
 		}
 	}
@@ -2330,7 +2319,7 @@ func supPostPopularReadCountry(cm *connMongo, countryCode string, indexRead int,
 		postsRead[k] = v
 	}
 	for i := popularPostUserReadIndex + indexRead + 1; i < len(u.SupPopularPosts); i++ {
-		if count > numPerRequest {
+		if count > config.NumPerRequest {
 			break
 		}
 		if postsRead[u.SupPopularPosts[i].PostID] == 0 {
@@ -2339,7 +2328,7 @@ func supPostPopularReadCountry(cm *connMongo, countryCode string, indexRead int,
 		}
 	}
 	if count > 0 {
-		collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+		collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
 		if _, err := collection.Upsert(
 			bson.M{"user_id": userID},
 			bson.M{"$set": bson.M{
@@ -2350,21 +2339,21 @@ func supPostPopularReadCountry(cm *connMongo, countryCode string, indexRead int,
 	}
 	return posts, nil
 }
-func supPostPopularReadCity(cm *connMongo, level, cityID string, indexRead int, userID int64) (posts []postAPI, err error) {
+func supPostPopularReadCity(cm *config.ConnMongo, level, cityID string, indexRead int, userID int64) (posts []config.PostAPI, err error) {
 	// read_index
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
-	ppuri := popularPostUserReadIndexAPI{}
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
+	ppuri := config.PopularPostUserReadIndexAPI{}
 	q := bson.M{"user_id": userID}
 	collection.Find(q).One(&ppuri)
 	popularPostUserReadIndex := ppuri.CitySupPopularPostIndex[cityID]
 	// read
-	weekTimestamp := getNowUnixWeekTimestamp()
+	weekTimestamp := common.GetNowUnixWeekTimestamp()
 	postsRead := make(map[int64]int)
 	// ** you can wrap func as a transaction
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
-		u := postUserReadAPI{}
-		q := bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": t}
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
+	for t := weekTimestamp; t > weekTimestamp-2*config.SevenDaysInSecond; t -= config.SevenDaysInSecond {
+		u := config.PostUserReadAPI{}
+		q := bson.M{"user_id": userID, "category_id": config.CategorySup, "week_timestamp": t}
 		if err := collection.Find(q).One(&u); err == nil {
 			for k, v := range u.PopularPosts {
 				postsRead[k] = v
@@ -2372,14 +2361,14 @@ func supPostPopularReadCity(cm *connMongo, level, cityID string, indexRead int, 
 		}
 	}
 	// post_common
-	collection = cm.session.DB(mongoDBXociety).C(mongoCollectionCity)
-	u := cityAPI{}
+	collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionCity)
+	u := config.CityAPI{}
 	q = bson.M{"level": level, "city_id_" + level: cityID}
 	if err := collection.Find(q).One(&u); err != nil {
 		log.Println("postPopularRead", err)
 		return posts, err
 	}
-	timestamp := getNowUnixTimestamp()
+	timestamp := common.GetNowUnixTimestamp()
 	postsReadNew := make(map[int64]int)
 	count := 0
 	if indexRead >= 0 {
@@ -2392,10 +2381,10 @@ func supPostPopularReadCity(cm *connMongo, level, cityID string, indexRead int, 
 		}
 	}
 	if len(postsReadNew) > 0 {
-		collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
+		collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
 		if _, err := collection.Upsert(
-			bson.M{"user_id": userID, "category_id": categorySup, "week_timestamp": weekTimestamp},
-			bson.M{"$set": parsePopularPostReadObjectMongo(postsReadNew)}); err != nil {
+			bson.M{"user_id": userID, "category_id": config.CategorySup, "week_timestamp": weekTimestamp},
+			bson.M{"$set": common.ParsePopularPostReadObjectMongo(postsReadNew)}); err != nil {
 			log.Println("upsert", err)
 		}
 	}
@@ -2403,7 +2392,7 @@ func supPostPopularReadCity(cm *connMongo, level, cityID string, indexRead int, 
 		postsRead[k] = v
 	}
 	for i := popularPostUserReadIndex + indexRead + 1; i < len(u.SupPopularPosts); i++ {
-		if count > numPerRequest {
+		if count > config.NumPerRequest {
 			break
 		}
 		if postsRead[u.SupPopularPosts[i].PostID] == 0 {
@@ -2412,7 +2401,7 @@ func supPostPopularReadCity(cm *connMongo, level, cityID string, indexRead int, 
 		}
 	}
 	if count > 0 {
-		collection = cm.session.DB(mongoDBXociety).C(mongoCollectionPopularPostUserReadIndex)
+		collection = cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPopularPostUserReadIndex)
 		if _, err := collection.Upsert(
 			bson.M{"user_id": userID},
 			bson.M{"$set": bson.M{
@@ -2425,13 +2414,13 @@ func supPostPopularReadCity(cm *connMongo, level, cityID string, indexRead int, 
 }
 
 // hashtags
-func hashtagInsert(c *connPostgres, hashtags []string) (hashtagsID []int64, err error) {
+func hashtagInsert(c *config.ConnPostgres, hashtags []string) (hashtagsID []int64, err error) {
 	for i := 0; i < len(hashtags); i++ {
 		hashtagID := int64(0)
 		sqlStr := `
 			UPDATE hashtag SET count = hashtag.count + 1 WHERE hashtag.value=$1 RETURNING hashtag_id
 		`
-		_ = c.db.QueryRow(sqlStr,
+		_ = c.DB.QueryRow(sqlStr,
 			hashtags[i],
 		).Scan(&hashtagID)
 		// if err != nil {
@@ -2441,7 +2430,7 @@ func hashtagInsert(c *connPostgres, hashtags []string) (hashtagsID []int64, err 
 			sqlStr = `
 				INSERT INTO hashtag (value, count) VALUES($1, 1) RETURNING hashtag_id
 			`
-			err = c.db.QueryRow(sqlStr,
+			err = c.DB.QueryRow(sqlStr,
 				hashtags[i],
 			).Scan(&hashtagID)
 			if err != nil {
@@ -2452,9 +2441,9 @@ func hashtagInsert(c *connPostgres, hashtags []string) (hashtagsID []int64, err 
 	}
 	return hashtagsID, err
 }
-func hashtagOnPostSet(c *connPostgres, postID int64, hashtagsID []int64) (us updateStatusAPI, err error) {
-	sqlStrInsert, sqlStrDelete, args := parseHashtagOnPostSQL(postID, hashtagsID)
-	res, err := c.db.Exec(sqlStrInsert, args...)
+func hashtagOnPostSet(c *config.ConnPostgres, postID int64, hashtagsID []int64) (us config.UpdateStatusAPI, err error) {
+	sqlStrInsert, sqlStrDelete, args := common.ParseHashtagOnPostSQL(postID, hashtagsID)
+	res, err := c.DB.Exec(sqlStrInsert, args...)
 	if err != nil {
 		return us, err
 	}
@@ -2464,7 +2453,7 @@ func hashtagOnPostSet(c *connPostgres, postID int64, hashtagsID []int64) (us upd
 	}
 	us.RowsAffected = int(count)
 	// delete not current use
-	_, err = c.db.Exec(sqlStrDelete, args...)
+	_, err = c.DB.Exec(sqlStrDelete, args...)
 	if err != nil {
 		return us, err
 	}
@@ -2474,8 +2463,8 @@ func hashtagOnPostSet(c *connPostgres, postID int64, hashtagsID []int64) (us upd
 // ** you can wrap func as a transaction
 
 // post_tags
-func tagOnPostUpdate(c *connPostgres, postID int64, tag tagOnPostSetAPI) (us updateStatusAPI, err error) {
-	timestamp := getNowUnixTimestamp()
+func tagOnPostUpdate(c *config.ConnPostgres, postID int64, tag config.TagOnPostSetAPI) (us config.UpdateStatusAPI, err error) {
+	timestamp := common.GetNowUnixTimestamp()
 	sqlStr := `
 		UPDATE post_tag_xuser 
 		SET
@@ -2483,7 +2472,7 @@ func tagOnPostUpdate(c *connPostgres, postID int64, tag tagOnPostSetAPI) (us upd
 		updatetime=$3
 		WHERE post_id=$4 AND user_id=$5;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		tag.X, tag.Y,
 		timestamp,
 		postID, tag.UserID,
@@ -2505,7 +2494,7 @@ func tagOnPostUpdate(c *connPostgres, postID int64, tag tagOnPostSetAPI) (us upd
 			)
 			VALUES ($1,$2,$3,$4,$5,$6,$7);
 		`
-		res, err := c.db.Exec(sqlStr,
+		res, err := c.DB.Exec(sqlStr,
 			postID, tag.UserID,
 			tag.X, tag.Y,
 			false,
@@ -2522,12 +2511,12 @@ func tagOnPostUpdate(c *connPostgres, postID int64, tag tagOnPostSetAPI) (us upd
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func tagsOnPostSet(c *connPostgres, postID int64, tags []tagOnPostSetAPI) (us updateStatusAPI, err error) {
+func tagsOnPostSet(c *config.ConnPostgres, postID int64, tags []config.TagOnPostSetAPI) (us config.UpdateStatusAPI, err error) {
 	if len(tags) == 0 {
 		return us, nil
 	}
-	sqlStr, args := parseTagOnPostInsertSQL(postID, tags)
-	res, err := c.db.Exec(sqlStr, args...)
+	sqlStr, args := common.ParseTagOnPostInsertSQL(postID, tags)
+	res, err := c.DB.Exec(sqlStr, args...)
 	if err != nil {
 		return us, err
 	}
@@ -2538,14 +2527,14 @@ func tagsOnPostSet(c *connPostgres, postID int64, tags []tagOnPostSetAPI) (us up
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func tagOnPostConfirm(c *connPostgres, postID, userID int64) (us updateStatusAPI, err error) {
+func tagOnPostConfirm(c *config.ConnPostgres, postID, userID int64) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		UPDATE post_tag_xuser 
 		SET
 		valid=$1 
 		WHERE post_id=$2 AND user_id=$3;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		true,
 		postID, userID,
 	)
@@ -2559,12 +2548,12 @@ func tagOnPostConfirm(c *connPostgres, postID, userID int64) (us updateStatusAPI
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func tagOnPostDelete(c *connPostgres, postID, userID int64) (us updateStatusAPI, err error) {
+func tagOnPostDelete(c *config.ConnPostgres, postID, userID int64) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		DELETE FROM post_tag_xuser 
 		WHERE post_id=$1 AND user_id=$2;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		postID, userID)
 	if err != nil {
 		return us, err
@@ -2578,7 +2567,7 @@ func tagOnPostDelete(c *connPostgres, postID, userID int64) (us updateStatusAPI,
 }
 
 // comment
-func commentOnPostInsert(c *connPostgres, comment commentAPI) (commentID int64, err error) {
+func CommentOnPostInsert(c *config.ConnPostgres, comment config.CommentAPI) (commentID int64, err error) {
 	sqlStr := `
 		INSERT INTO comment 
 		(
@@ -2588,7 +2577,7 @@ func commentOnPostInsert(c *connPostgres, comment commentAPI) (commentID int64, 
 		) VALUES 
 		($1, $2, $3, $4, $5, $6, $7, $8) RETURNING comment_id;
 	`
-	err = c.db.QueryRow(sqlStr,
+	err = c.DB.QueryRow(sqlStr,
 		comment.PostID,
 		comment.User.UserID,
 		comment.Comment,
@@ -2608,19 +2597,19 @@ func commentOnPostInsert(c *connPostgres, comment commentAPI) (commentID int64, 
 		(SELECT COUNT(*) FROM comment
 		WHERE comment.post_id = post.post_id AND comment.post_id = $1) WHERE post_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, comment.PostID)
+	_, err = c.DB.Exec(sqlStr, comment.PostID)
 	if err != nil {
 		return commentID, err
 	}
 	return commentID, nil
 }
-func commentOnPostUpdate(c *connPostgres, comment commentAPI) (us updateStatusAPI, err error) {
+func commentOnPostUpdate(c *config.ConnPostgres, comment config.CommentAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		UPDATE comment 
 		SET comment=$1, updatetime=$2
 		WHERE comment_id=$3 AND user_id=$4;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		comment.Comment, comment.Updatetime,
 		comment.CommentID, comment.User.UserID,
 	)
@@ -2634,12 +2623,12 @@ func commentOnPostUpdate(c *connPostgres, comment commentAPI) (us updateStatusAP
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func commentOnPostDelete(c *connPostgres, comment commentAPI) (us updateStatusAPI, err error) {
+func commentOnPostDelete(c *config.ConnPostgres, comment config.CommentAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		DELETE FROM comment 
 		WHERE comment_id=$1 AND user_id=$2;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		comment.CommentID, comment.User.UserID)
 	if err != nil {
 		return us, err
@@ -2656,7 +2645,7 @@ func commentOnPostDelete(c *connPostgres, comment commentAPI) (us updateStatusAP
 		(SELECT COUNT(*) FROM comment
 		WHERE comment.post_id = post.post_id AND comment.post_id = $1) WHERE post_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, comment.PostID)
+	_, err = c.DB.Exec(sqlStr, comment.PostID)
 	if err != nil {
 		return us, err
 	}
@@ -2664,7 +2653,7 @@ func commentOnPostDelete(c *connPostgres, comment commentAPI) (us updateStatusAP
 }
 
 // reply
-func replyOnCommentInsert(c *connPostgres, reply replyAPI) (replyID int64, err error) {
+func replyOnCommentInsert(c *config.ConnPostgres, reply config.ReplyAPI) (replyID int64, err error) {
 	sqlStr := `
 		INSERT INTO reply 
 		(
@@ -2674,7 +2663,7 @@ func replyOnCommentInsert(c *connPostgres, reply replyAPI) (replyID int64, err e
 		) VALUES 
 		($1, $2, $3, $4, $5, $6, $7) RETURNING reply_id;
 	`
-	err = c.db.QueryRow(sqlStr,
+	err = c.DB.QueryRow(sqlStr,
 		reply.CommentID,
 		reply.User.UserID,
 		reply.Reply,
@@ -2693,19 +2682,19 @@ func replyOnCommentInsert(c *connPostgres, reply replyAPI) (replyID int64, err e
 		(SELECT COUNT(*) FROM reply
 		WHERE reply.comment_id = comment.comment_id AND comment.comment_id = $1) WHERE comment_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, reply.CommentID)
+	_, err = c.DB.Exec(sqlStr, reply.CommentID)
 	if err != nil {
 		return replyID, err
 	}
 	return replyID, nil
 }
-func replyOnCommentUpdate(c *connPostgres, reply replyAPI) (us updateStatusAPI, err error) {
+func replyOnCommentUpdate(c *config.ConnPostgres, reply config.ReplyAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		UPDATE reply 
 		SET reply=$1, updatetime=$2
 		WHERE reply_id=$3 AND user_id=$4;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		reply.Reply, reply.Updatetime,
 		reply.ReplyID, reply.User.UserID,
 	)
@@ -2719,12 +2708,12 @@ func replyOnCommentUpdate(c *connPostgres, reply replyAPI) (us updateStatusAPI, 
 	us.RowsAffected = int(count)
 	return us, nil
 }
-func replyOnCommentDelete(c *connPostgres, reply replyAPI) (us updateStatusAPI, err error) {
+func replyOnCommentDelete(c *config.ConnPostgres, reply config.ReplyAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		DELETE FROM reply 
 		WHERE reply_id=$1 AND user_id=$2;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		reply.ReplyID, reply.User.UserID)
 	if err != nil {
 		return us, err
@@ -2741,7 +2730,7 @@ func replyOnCommentDelete(c *connPostgres, reply replyAPI) (us updateStatusAPI, 
 		(SELECT COUNT(*) FROM reply
 		WHERE reply.comment_id = comment.comment_id AND comment.comment_id = $1) WHERE comment_id = $1;
 	`
-	_, err = c.db.Exec(sqlStr, reply.CommentID)
+	_, err = c.DB.Exec(sqlStr, reply.CommentID)
 	if err != nil {
 		return us, err
 	}
@@ -2749,7 +2738,7 @@ func replyOnCommentDelete(c *connPostgres, reply replyAPI) (us updateStatusAPI, 
 }
 
 // reaction
-func reactionOnPostSet(c *connPostgres, reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
+func ReactionOnPostSet(c *config.ConnPostgres, reactionOnPost config.ReactionOnPostAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		INSERT INTO post_reaction (
 			post_id,user_id,reaction_id,createtime
@@ -2758,7 +2747,7 @@ func reactionOnPostSet(c *connPostgres, reactionOnPost reactionOnPostAPI) (us up
 		ON CONFLICT ON CONSTRAINT post_reaction_post_user_unique DO 
 		UPDATE SET post_id=$1, user_id=$2, reaction_id=$3, createtime=$4;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		reactionOnPost.PostID, reactionOnPost.User.UserID, reactionOnPost.ReactionID, reactionOnPost.Createtime)
 	if err != nil {
 		return us, err
@@ -2769,19 +2758,19 @@ func reactionOnPostSet(c *connPostgres, reactionOnPost reactionOnPostAPI) (us up
 	}
 	us.RowsAffected = int(count)
 	// update post.like_count || post.dislike_count
-	sqlStr = parseReactionCountSQL("post_reaction", "reaction_id", "post", "post_id")
-	_, err = c.db.Exec(sqlStr, reactionOnPost.PostID)
+	sqlStr = common.ParseReactionCountSQL("post_reaction", "reaction_id", "post", "post_id")
+	_, err = c.DB.Exec(sqlStr, reactionOnPost.PostID)
 	if err != nil {
 		return us, err
 	}
 	return us, nil
 }
-func reactionOnPostDelete(c *connPostgres, reactionOnPost reactionOnPostAPI) (us updateStatusAPI, err error) {
+func reactionOnPostDelete(c *config.ConnPostgres, reactionOnPost config.ReactionOnPostAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		DELETE FROM post_reaction 
 		WHERE post_id=$1 AND user_id=$2;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		reactionOnPost.PostID, reactionOnPost.User.UserID)
 	if err != nil {
 		return us, err
@@ -2792,15 +2781,15 @@ func reactionOnPostDelete(c *connPostgres, reactionOnPost reactionOnPostAPI) (us
 	}
 	us.RowsAffected = int(count)
 	// update post.like_count || post.dislike_count
-	sqlStr = parseReactionCountSQL("post_reaction", "reaction_id", "post", "post_id")
-	_, err = c.db.Exec(sqlStr, reactionOnPost.PostID)
+	sqlStr = common.ParseReactionCountSQL("post_reaction", "reaction_id", "post", "post_id")
+	_, err = c.DB.Exec(sqlStr, reactionOnPost.PostID)
 	if err != nil {
 		return us, err
 	}
 	return us, nil
 }
 
-func reactionOnCommentSet(c *connPostgres, reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
+func reactionOnCommentSet(c *config.ConnPostgres, reactionOnComment config.ReactionOnCommentAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		INSERT INTO comment_reaction (
 			comment_id,user_id,reaction_id,createtime
@@ -2809,7 +2798,7 @@ func reactionOnCommentSet(c *connPostgres, reactionOnComment reactionOnCommentAP
 		ON CONFLICT ON CONSTRAINT comment_reaction_comment_user_unique DO 
 		UPDATE SET comment_id=$1, user_id=$2, reaction_id=$3, createtime=$4;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		reactionOnComment.CommentID, reactionOnComment.User.UserID, reactionOnComment.ReactionID, reactionOnComment.Createtime)
 	if err != nil {
 		return us, err
@@ -2820,19 +2809,19 @@ func reactionOnCommentSet(c *connPostgres, reactionOnComment reactionOnCommentAP
 	}
 	us.RowsAffected = int(count)
 	// update comment.like_count || comment.dislike_count
-	sqlStr = parseReactionCountSQL("comment_reaction", "reaction_id", "comment", "comment_id")
-	_, err = c.db.Exec(sqlStr, reactionOnComment.CommentID)
+	sqlStr = common.ParseReactionCountSQL("comment_reaction", "reaction_id", "comment", "comment_id")
+	_, err = c.DB.Exec(sqlStr, reactionOnComment.CommentID)
 	if err != nil {
 		return us, err
 	}
 	return us, nil
 }
-func reactionOnCommentDelete(c *connPostgres, reactionOnComment reactionOnCommentAPI) (us updateStatusAPI, err error) {
+func reactionOnCommentDelete(c *config.ConnPostgres, reactionOnComment config.ReactionOnCommentAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		DELETE FROM comment_reaction 
 		WHERE comment_id=$1 AND user_id=$2;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		reactionOnComment.CommentID, reactionOnComment.User.UserID)
 	if err != nil {
 		return us, err
@@ -2843,15 +2832,15 @@ func reactionOnCommentDelete(c *connPostgres, reactionOnComment reactionOnCommen
 	}
 	us.RowsAffected = int(count)
 	// update comment.like_count || comment.dislike_count
-	sqlStr = parseReactionCountSQL("comment_reaction", "reaction_id", "comment", "comment_id")
-	_, err = c.db.Exec(sqlStr, reactionOnComment.CommentID)
+	sqlStr = common.ParseReactionCountSQL("comment_reaction", "reaction_id", "comment", "comment_id")
+	_, err = c.DB.Exec(sqlStr, reactionOnComment.CommentID)
 	if err != nil {
 		return us, err
 	}
 	return us, nil
 }
 
-func reactionOnReplySet(c *connPostgres, reactionOnReply reactionOnReplyAPI) (us updateStatusAPI, err error) {
+func reactionOnReplySet(c *config.ConnPostgres, reactionOnReply config.ReactionOnReplyAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		INSERT INTO reply_reaction (
 			reply_id,user_id,reaction_id,createtime
@@ -2860,7 +2849,7 @@ func reactionOnReplySet(c *connPostgres, reactionOnReply reactionOnReplyAPI) (us
 		ON CONFLICT ON CONSTRAINT reply_reaction_reply_user_unique DO 
 		UPDATE SET reply_id=$1, user_id=$2, reaction_id=$3, createtime=$4;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		reactionOnReply.ReplyID, reactionOnReply.User.UserID, reactionOnReply.ReactionID, reactionOnReply.Createtime)
 	if err != nil {
 		return us, err
@@ -2871,19 +2860,19 @@ func reactionOnReplySet(c *connPostgres, reactionOnReply reactionOnReplyAPI) (us
 	}
 	us.RowsAffected = int(count)
 	// update reply.like_count || reply.dislike_count
-	sqlStr = parseReactionCountSQL("reply_reaction", "reaction_id", "reply", "reply_id")
-	_, err = c.db.Exec(sqlStr, reactionOnReply.ReplyID)
+	sqlStr = common.ParseReactionCountSQL("reply_reaction", "reaction_id", "reply", "reply_id")
+	_, err = c.DB.Exec(sqlStr, reactionOnReply.ReplyID)
 	if err != nil {
 		return us, err
 	}
 	return us, nil
 }
-func reactionOnReplyDelete(c *connPostgres, reactionOnReply reactionOnReplyAPI) (us updateStatusAPI, err error) {
+func reactionOnReplyDelete(c *config.ConnPostgres, reactionOnReply config.ReactionOnReplyAPI) (us config.UpdateStatusAPI, err error) {
 	sqlStr := `
 		DELETE FROM reply_reaction 
 		WHERE reply_id=$1 AND user_id=$2;
 	`
-	res, err := c.db.Exec(sqlStr,
+	res, err := c.DB.Exec(sqlStr,
 		reactionOnReply.ReplyID, reactionOnReply.User.UserID)
 	if err != nil {
 		return us, err
@@ -2894,8 +2883,8 @@ func reactionOnReplyDelete(c *connPostgres, reactionOnReply reactionOnReplyAPI) 
 	}
 	us.RowsAffected = int(count)
 	// update reply.like_count || reply.dislike_count
-	sqlStr = parseReactionCountSQL("reply_reaction", "reaction_id", "reply", "reply_id")
-	_, err = c.db.Exec(sqlStr, reactionOnReply.ReplyID)
+	sqlStr = common.ParseReactionCountSQL("reply_reaction", "reaction_id", "reply", "reply_id")
+	_, err = c.DB.Exec(sqlStr, reactionOnReply.ReplyID)
 	if err != nil {
 		return us, err
 	}
@@ -2903,21 +2892,21 @@ func reactionOnReplyDelete(c *connPostgres, reactionOnReply reactionOnReplyAPI) 
 }
 
 // cronjob
-func getAllUserID(c *connPostgres) (users []xuserAPI, err error) {
+func GetAllUserID(c *config.ConnPostgres) (users []config.XuserAPI, err error) {
 	sqlStr := `
 		SELECT 
 		user_id 
 		FROM xuser
 		ORDER BY createtime ASC;
 	`
-	rows, err := c.db.Query(sqlStr)
+	rows, err := c.DB.Query(sqlStr)
 	if err != nil {
-		log.Println("getAllUserID", err)
+		log.Println("GetAllUserID", err)
 		return users, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		user := xuserAPI{}
+		user := config.XuserAPI{}
 		if err := rows.Scan(
 			&user.UserID,
 		); err != nil {
@@ -2931,11 +2920,11 @@ func getAllUserID(c *connPostgres) (users []xuserAPI, err error) {
 	}
 	return users, nil
 }
-func getPostsReadByUser(cm *connMongo, categoryID, weekTimestamp int, userID int64) (posts map[int64]int, err error) {
+func getPostsReadByUser(cm *config.ConnMongo, categoryID, weekTimestamp int, userID int64) (posts map[int64]int, err error) {
 	posts = make(map[int64]int)
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionPostUserRead)
-	for t := weekTimestamp; t > weekTimestamp-2*sevenDaysInSecond; t -= sevenDaysInSecond {
-		u := postUserReadAPI{}
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostUserRead)
+	for t := weekTimestamp; t > weekTimestamp-2*config.SevenDaysInSecond; t -= config.SevenDaysInSecond {
+		u := config.PostUserReadAPI{}
 		q := bson.M{"user_id": userID, "category_id": categoryID, "week_timestamp": t}
 		if err := collection.Find(q).One(&u); err == nil {
 			for k, v := range u.PopularPosts { // to merge different week
@@ -2946,11 +2935,11 @@ func getPostsReadByUser(cm *connMongo, categoryID, weekTimestamp int, userID int
 	return posts, nil
 }
 
-func upsertPopularPostOnPostCommon(cm *connMongo, categoryID int, posts []postAPI) (err error) {
-	collection := cm.session.DB(mongoDBXociety).C(mongoCollectionPostCommon)
+func UpsertPopularPostOnPostCommon(cm *config.ConnMongo, categoryID int, posts []config.PostAPI) (err error) {
+	collection := cm.Session.DB(config.MongoDBXociety).C(config.MongoCollectionPostCommon)
 	selector := bson.M{"category_id": categoryID}
 	if _, err := collection.Upsert(selector, bson.M{"$set": bson.M{"popular_posts": posts}}); err != nil {
-		log.Println("upsertPopularPostOnPostCommon", err)
+		log.Println("UpsertPopularPostOnPostCommon", err)
 		return err
 	}
 	return nil

@@ -1,19 +1,19 @@
-package main
+package config
 
 import "github.com/globalsign/mgo/bson"
 
 // common
-type updateStatusAPI struct {
+type UpdateStatusAPI struct {
 	RowsAffected int `json:"rows_affected"`
 }
 
 // login
-type loginAPI struct {
+type LoginAPI struct {
 	Token string `json:"token"`
 }
 
 // user
-type xuserAPI struct {
+type XuserAPI struct {
 	UserID      int64  `json:"user_id"`
 	Username    string `json:"username"`
 	Email       string `json:"email"`
@@ -32,14 +32,14 @@ type xuserAPI struct {
 }
 
 // follow
-type userFollowingAPI struct {
+type UserFollowingAPI struct {
 	UserID        int64  `json:"user_id"`
 	UserName      string `json:"user_name"`
 	Name          string `json:"name"`
 	PhotoURL      string `json:"photo_url"`
 	FollowingTime int    `json:"following_time"`
 }
-type userFollowerAPI struct {
+type UserFollowerAPI struct {
 	UserID        int64  `json:"user_id"`
 	UserName      string `json:"user_name"`
 	Name          string `json:"name"`
@@ -48,7 +48,7 @@ type userFollowerAPI struct {
 }
 
 // city
-type propertiesCityAPI struct {
+type PropertiesCityAPI struct {
 	CountryName string `json:"country_name,omitempty" bson:"country_name,omitempty"`
 	Name1       string `json:"name_1,omitempty" bson:"name_1,omitempty"`
 	Name2       string `json:"name_2,omitempty" bson:"name_2,omitempty"`
@@ -67,10 +67,10 @@ type propertiesCityAPI struct {
 	Type4       string `json:"type_4,omitempty" bson:"type_4,omitempty"`
 	Type5       string `json:"type_5,omitempty" bson:"type_5,omitempty"`
 }
-type cityGeometryAPI struct {
-	Properties propertiesCityAPI `json:"properties" bson:"properties"`
+type CityGeometryAPI struct {
+	Properties PropertiesCityAPI `json:"properties" bson:"properties"`
 }
-type cityAPI struct {
+type CityAPI struct {
 	Level           string    `json:"level" bson:"level"`
 	CountryCode     string    `json:"country_code" bson:"country_code"`
 	CountryName     string    `json:"country_name" bson:"country_name"`
@@ -82,15 +82,15 @@ type cityAPI struct {
 	Name            string    `json:"name" bson:"name"`
 	Type            string    `json:"type" bson:"type"`
 	PostCount       int       `json:"post_count" bson:"post_count"`
-	SupPopularPosts []postAPI `json:"sup_popular_posts" bson:"sup_popular_posts"`
+	SupPopularPosts []PostAPI `json:"sup_popular_posts" bson:"sup_popular_posts"`
 }
 
 // place
-type placesLookupAPI struct {
-	Place         []placeAPI `json:"place"`
+type PlacesLookupAPI struct {
+	Place         []PlaceAPI `json:"place"`
 	NextPageToken string     `json:"next_page_token"`
 }
-type placeAPI struct {
+type PlaceAPI struct {
 	PlaceID     int64   `json:"place_id" bson:"place_id"`
 	CountryCode string  `json:"country_code" bson:"country_code"`
 	CityID1     string  `json:"city_id_1" bson:"city_id_1"`
@@ -104,47 +104,47 @@ type placeAPI struct {
 }
 
 // post
-type userBasicAPI struct {
+type UserBasicAPI struct {
 	UserID   int64  `json:"user_id" bson:"user_id"`
 	Username string `json:"username" bson:"username"`
 	Name     string `json:"name" bson:"name"`
 	PhotoURL string `json:"photo_url" bson:"photo_url"`
 }
-type blobAPI struct {
+type BlobAPI struct {
 	BlobID       string `json:"blob_id" bson:"blob_id"`
 	OriginWidth  int    `json:"origin_width" bson:"origin_width"`
 	OriginHeight int    `json:"origin_height" bson:"origin_height"`
 }
-type postAPI struct {
+type PostAPI struct {
 	PostID              int64        `json:"post_id" bson:"post_id"`
-	User                userBasicAPI `json:"user" bson:"user"`
+	User                UserBasicAPI `json:"user" bson:"user"`
 	Content             string       `json:"content" bson:"content"`
-	Blob                blobAPI      `json:"blob" bson:"blob"`
+	Blob                BlobAPI      `json:"blob" bson:"blob"`
 	Type                int          `json:"type" bson:"type"`
 	LikeCount           int64        `json:"like_count" bson:"like_count"`
 	DislikeCount        int64        `json:"dislike_count" bson:"dislike_count"`
 	ReactionByQueryUser int          `json:"reaction_by_query_user" bson:"reaction_by_query_user"`
 	CommentCount        int64        `json:"comment_count" bson:"comment_count"`
 	CategoryID          int          `json:"category_id" bson:"category_id"`
-	Place               placeAPI     `json:"place" bson:"place"`
+	Place               PlaceAPI     `json:"place" bson:"place"`
 	Public              bool         `json:"public" bson:"public"`
 	Createtime          int          `json:"createtime" bson:"createtime"`
 	Updatetime          int          `json:"updatetime" bson:"updatetime"`
 }
 
 // hashtag
-type hashtagAPI struct {
+type HashtagAPI struct {
 	HashtagID int64  `json:"hashtag_id"`
 	Value     string `json:"value"`
 	Count     int64  `json:"count"`
 }
-type hashtagOnPostAPI struct {
+type HashtagOnPostAPI struct {
 	PostID    int64 `json:"post_id"`
 	HashtagID int64 `json:"hashtag_id"`
 }
 
 // tag
-type tagOnPostSetAPI struct {
+type TagOnPostSetAPI struct {
 	PostID     int64 `json:"post_id"`
 	UserID     int64 `json:"user_id"`
 	X          int   `json:"x"`
@@ -153,9 +153,9 @@ type tagOnPostSetAPI struct {
 	Createtime int   `json:"createtime"`
 	Updatetime int   `json:"updatetime"`
 }
-type tagOnPostAPI struct {
+type TagOnPostAPI struct {
 	PostID     int64        `json:"post_id"`
-	User       userBasicAPI `json:"user"`
+	User       UserBasicAPI `json:"user"`
 	X          int          `json:"x"`
 	Y          int          `json:"y"`
 	Valid      bool         `json:"valid"`
@@ -164,10 +164,10 @@ type tagOnPostAPI struct {
 }
 
 // comment
-type commentAPI struct {
+type CommentAPI struct {
 	CommentID    int64        `json:"comment_id"`
 	PostID       int64        `json:"post_id"`
-	User         userBasicAPI `json:"user"`
+	User         UserBasicAPI `json:"user"`
 	Comment      string       `json:"comment"`
 	LikeCount    int64        `json:"like_count"`
 	DislikeCount int64        `json:"dislike_count"`
@@ -177,10 +177,10 @@ type commentAPI struct {
 }
 
 // reply
-type replyAPI struct {
+type ReplyAPI struct {
 	ReplyID      int64        `json:"reply_id"`
 	CommentID    int64        `json:"comment_id"`
-	User         userBasicAPI `json:"user"`
+	User         UserBasicAPI `json:"user"`
 	Reply        string       `json:"reply"`
 	LikeCount    int64        `json:"like_count"`
 	DislikeCount int64        `json:"dislike_count"`
@@ -189,58 +189,58 @@ type replyAPI struct {
 }
 
 // reaction
-type reactionOnPostAPI struct {
+type ReactionOnPostAPI struct {
 	PostID     int64        `json:"post_id"`
-	User       userBasicAPI `json:"user"`
+	User       UserBasicAPI `json:"user"`
 	ReactionID int          `json:"reaction_id"`
 	Createtime int          `json:"createtime"`
 }
-type reactionOnCommentAPI struct {
+type ReactionOnCommentAPI struct {
 	CommentID  int64        `json:"comment_id"`
-	User       userBasicAPI `json:"user"`
+	User       UserBasicAPI `json:"user"`
 	ReactionID int          `json:"reaction_id"`
 	Createtime int          `json:"createtime"`
 }
-type reactionOnReplyAPI struct {
+type ReactionOnReplyAPI struct {
 	ReplyID    int64        `json:"reply_id"`
-	User       userBasicAPI `json:"user"`
+	User       UserBasicAPI `json:"user"`
 	ReactionID int          `json:"reaction_id"`
 	Createtime int          `json:"createtime"`
 }
 
 // common
-type languageAPI struct {
+type LanguageAPI struct {
 	LanguageID      int    `json:"language_id"`
 	DisplayLanguage string `json:"display_language"`
 	Value           string `json:"value"`
 }
-type genderAPI struct {
+type GenderAPI struct {
 	GenderID int    `json:"gender_id"`
 	Value    string `json:"value"`
 }
-type reactionAPI struct {
+type ReactionAPI struct {
 	ReactionID int    `json:"reaction_id"`
 	Value      string `json:"value"`
 }
-type postTypeAPI struct {
+type PostTypeAPI struct {
 	PostTypeID int      `json:"post_type_id"`
 	Value      string   `json:"value"`
 	FileFormat []string `json:"file_format"`
 }
-type categoryAPI struct {
+type CategoryAPI struct {
 	CategoryID   int    `json:"category_id"`
 	CategoryName string `json:"category_name"`
 }
 
 // cronjob
 
-type postCommonAPI struct {
+type PostCommonAPI struct {
 	ID           bson.ObjectId `bson:"_id"`
 	CategoryID   int           `bson:"category_id"`
-	PopularPosts []postAPI     `bson:"popular_posts"`
+	PopularPosts []PostAPI     `bson:"popular_posts"`
 }
 
-type postUserReadAPI struct {
+type PostUserReadAPI struct {
 	ID            bson.ObjectId `bson:"_id"`
 	UserID        int64         `bson:"user_id"`
 	CategoryID    int           `bson:"category_id"`
@@ -248,7 +248,7 @@ type postUserReadAPI struct {
 	PopularPosts  map[int64]int `bson:"popular_posts"` // k: PostID, v: timestamp
 }
 
-type popularPostUserReadIndexAPI struct {
+type PopularPostUserReadIndexAPI struct {
 	UserID                     int64          `json:"user_id" bson:"user_id"`
 	CommonPopularPostIndex     map[int]int    `json:"common_popular_post_index" bson:"common_popular_post_index"`           // category_id: index
 	CitySupPopularPostIndex    map[string]int `json:"city_sup_popular_post_index" bson:"city_sup_popular_post_index"`       // city_id: index

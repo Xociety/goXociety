@@ -1,20 +1,20 @@
-package main
+package config
 
-type secret struct {
-	Postgres secretPostgres
-	Mongo    secretMongo
+type Secret struct {
+	Postgres SecretPostgres
+	Mongo    SecretMongo
 }
 
-type secretPostgres struct {
+type SecretPostgres struct {
 	PostgresAuthStr string `json:"postgres_auth_str"`
 }
 
-type secretMongo struct {
+type SecretMongo struct {
 	MongoUsername string `json:"mongo_username"`
 	MongoPassword string `json:"mongo_password"`
 	MongoDatabase string `json:"mongo_database"`
 }
 
-type secretMap struct {
+type SecretMap struct {
 	Key string `json:"key"`
 }

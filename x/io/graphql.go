@@ -1,4 +1,4 @@
-package main
+package io
 
 import (
 	"encoding/json"
@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/chienfuchen32/goXociety/x/common"
+	"github.com/chienfuchen32/goXociety/x/config"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 )
@@ -140,7 +142,7 @@ var tagOnPostGraphqlScalar = graphql.NewScalar(graphql.ScalarConfig{
 	ParseLiteral: func(valueAST ast.Value) interface{} {
 		switch valueAST := valueAST.(type) {
 		case *ast.StringValue:
-			objectValue := tagOnPostSetAPI{}
+			objectValue := config.TagOnPostSetAPI{}
 			if err := json.Unmarshal([]byte(valueAST.Value), &objectValue); err == nil {
 				return objectValue
 			}
@@ -156,7 +158,7 @@ var tagsOnPostGraphqlScalar = graphql.NewScalar(graphql.ScalarConfig{
 	ParseLiteral: func(valueAST ast.Value) interface{} {
 		switch valueAST := valueAST.(type) {
 		case *ast.StringValue:
-			objectValue := []tagOnPostSetAPI{}
+			objectValue := []config.TagOnPostSetAPI{}
 			if err := json.Unmarshal([]byte(valueAST.Value), &objectValue); err == nil {
 				return objectValue
 			}
@@ -578,8 +580,8 @@ var replyReactionGraphqlType = graphql.NewList(
 )
 
 // funcs
-func parseAuth(c *connPostgres, p graphql.ResolveParams) (user xuserAPI, err error) {
-	userToken, isOK := p.Context.Value(contextUserToken).(string)
+func parseAuth(c *config.ConnPostgres, p graphql.ResolveParams) (user config.XuserAPI, err error) {
+	userToken, isOK := p.Context.Value(config.ContextUserToken).(string)
 	if !isOK {
 		return user, errors.New("user-token format")
 	}
@@ -589,7 +591,7 @@ func parseAuth(c *connPostgres, p graphql.ResolveParams) (user xuserAPI, err err
 	}
 	return user, nil
 }
-func parsePost(p graphql.ResolveParams, postID, userID int64, postType, originWidth, originHeight int) (post postAPI, err error) {
+func parsePost(p graphql.ResolveParams, postID, userID int64, postType, originWidth, originHeight int) (post config.PostAPI, err error) {
 	content, isOK := p.Args["content"].(string)
 	if !isOK {
 		return post, errors.New("content format")
@@ -602,7 +604,7 @@ func parsePost(p graphql.ResolveParams, postID, userID int64, postType, originWi
 	if !isOK {
 		return post, errors.New("place_id format")
 	}
-	timestamp := getNowUnixTimestamp()
+	timestamp := common.GetNowUnixTimestamp()
 	post.PostID = postID
 	post.User.UserID = userID
 	post.Content = content
@@ -620,18 +622,18 @@ func parsePost(p graphql.ResolveParams, postID, userID int64, postType, originWi
 	post.Updatetime = timestamp
 	return post, nil
 }
-func checkPost(post postAPI) error {
-	if post.Place.PlaceID == 0 && post.CategoryID == categorySup {
-		return errors.New(categoryMapID2Name[categorySup] + " must with place")
+func checkPost(post config.PostAPI) error {
+	if post.Place.PlaceID == 0 && post.CategoryID == config.CategorySup {
+		return errors.New(config.CategoryMapID2Name[config.CategorySup] + " must with place")
 	}
 	return nil
 }
-func parseComment(p graphql.ResolveParams, commentID, postID, userID int64) (c commentAPI, err error) {
+func parseComment(p graphql.ResolveParams, commentID, postID, userID int64) (c config.CommentAPI, err error) {
 	comment, isOK := p.Args["comment"].(string)
 	if !isOK {
 		return c, errors.New("comment format")
 	}
-	timestamp := getNowUnixTimestamp()
+	timestamp := common.GetNowUnixTimestamp()
 	c.CommentID = commentID
 	c.PostID = postID
 	c.User.UserID = userID
@@ -643,12 +645,12 @@ func parseComment(p graphql.ResolveParams, commentID, postID, userID int64) (c c
 	c.Updatetime = timestamp
 	return c, nil
 }
-func parseReply(p graphql.ResolveParams, replyID, commentID, userID int64) (r replyAPI, err error) {
+func parseReply(p graphql.ResolveParams, replyID, commentID, userID int64) (r config.ReplyAPI, err error) {
 	reply, isOK := p.Args["reply"].(string)
 	if !isOK {
 		return r, errors.New("reply format")
 	}
-	timestamp := getNowUnixTimestamp()
+	timestamp := common.GetNowUnixTimestamp()
 	r.ReplyID = replyID
 	r.CommentID = commentID
 	r.User.UserID = userID
@@ -661,7 +663,7 @@ func parseReply(p graphql.ResolveParams, replyID, commentID, userID int64) (r re
 }
 
 // schema
-var graphqlSchema, _ = graphql.NewSchema(
+var GraphqlSchema, _ = graphql.NewSchema(
 	graphql.SchemaConfig{
 		Query:    graphqlQueryType,
 		Mutation: graphqlMutationType,
@@ -675,12 +677,12 @@ var graphqlQueryType = graphql.NewObject(
 			"country": &graphql.Field{
 				Type: countryBasicGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					cm, err := connectMongoDB()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
-					ct, err := getCountries(&cm)
+					defer cm.Session.Close()
+					ct, err := GetCountries(&cm)
 					return ct, err
 				},
 				Description: "",
@@ -688,35 +690,35 @@ var graphqlQueryType = graphql.NewObject(
 			"language": &graphql.Field{
 				Type: languageGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					return languageConfigAPI, nil
+					return config.LanguageConfigAPI, nil
 				},
 				Description: "",
 			},
 			"gender": &graphql.Field{
 				Type: genderGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					return genderConfigAPI, nil
+					return config.GenderConfigAPI, nil
 				},
 				Description: "",
 			},
 			"reaction": &graphql.Field{
 				Type: reactionGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					return reactionConfigAPI, nil
+					return config.ReactionConfigAPI, nil
 				},
 				Description: "",
 			},
 			"post_type": &graphql.Field{
 				Type: postTypeGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					return postTypeConfigAPI, nil
+					return config.PostTypeConfigAPI, nil
 				},
 				Description: "",
 			},
 			"category": &graphql.Field{
 				Type: categoryGraphqlType,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					return categoryConfigAPI, nil
+					return config.CategoryConfigAPI, nil
 				},
 				Description: "",
 			},
@@ -733,11 +735,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					email, isOK := p.Args["email"].(string)
 					if !isOK {
 						return nil, nil
@@ -763,11 +765,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					userID, isOK := p.Args["user_id"].(int64)
 					if !isOK {
 						return nil, errors.New("user_id format")
@@ -786,11 +788,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					username, isOK := p.Args["username"].(string)
 					if !isOK {
 						return nil, errors.New("username format")
@@ -809,11 +811,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -836,11 +838,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -863,11 +865,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -890,11 +892,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					postID, isOK := p.Args["post_id"].(int64)
 					if !isOK {
 						return nil, errors.New("post_id format")
@@ -918,11 +920,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					cm, err := connectMongoDB()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					lat, isOK := p.Args["lat"].(float64)
 					if !isOK {
 						return nil, errors.New("lat format")
@@ -931,7 +933,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("lon format")
 					}
-					cities, err := getCityByLocation(&cm, lat, lon)
+					cities, err := GetCityByLocation(&cm, lat, lon)
 					return cities, err
 				},
 				Description: "get city where location locate at or nearby",
@@ -945,16 +947,16 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					cm, err := connectMongoDB()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					countryCode, isOK := p.Args["country_code"].(string)
 					if !isOK {
 						return nil, errors.New("country_code format")
 					}
-					country, err := getCountry(&cm, countryCode)
+					country, err := GetCountry(&cm, countryCode)
 					return country, err
 				},
 				Description: "get country post count",
@@ -972,16 +974,16 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					cm, err := connectMongoDB()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					level, isOK := p.Args["level"].(int)
 					if !isOK {
 						return nil, errors.New("level format")
 					}
-					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
+					if level < config.CityLevelRangeFirst || level > config.CityLevelRangeLast {
 						return nil, errors.New("level format")
 					}
 					cityID, isOK := p.Args["city_id"].(string)
@@ -1015,11 +1017,11 @@ var graphqlQueryType = graphql.NewObject(
 					// place type field provide by google place api?
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					lat, isOK := p.Args["lat"].(float64)
 					if !isOK {
 						return nil, errors.New("lat format")
@@ -1041,7 +1043,7 @@ var graphqlQueryType = graphql.NewObject(
 					if err != nil {
 						return nil, err
 					}
-					placesDB := []placeAPI{}
+					placesDB := []config.PlaceAPI{}
 					if len(placesGCP) != 0 {
 						// check place name, lat, lon in db
 						// limited number by gcp
@@ -1051,7 +1053,7 @@ var graphqlQueryType = graphql.NewObject(
 						}
 					}
 					// combine places then return
-					places := []placeAPI{}
+					places := []config.PlaceAPI{}
 					for i := 0; i < len(placesGCP); i++ {
 						place := placesGCP[i]
 						for j := 0; j < len(placesDB); j++ {
@@ -1064,7 +1066,7 @@ var graphqlQueryType = graphql.NewObject(
 						}
 						places = append(places, place)
 					}
-					return placesLookupAPI{places, nextPageToken}, err
+					return config.PlacesLookupAPI{places, nextPageToken}, err
 				},
 				Description: "get location info by lat, lon, name",
 			},
@@ -1081,11 +1083,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					name, isOK := p.Args["name"].(string)
 					if !isOK {
 						return nil, errors.New("name format")
@@ -1098,7 +1100,7 @@ var graphqlQueryType = graphql.NewObject(
 					if err != nil {
 						return nil, err
 					}
-					placesDB := []placeAPI{}
+					placesDB := []config.PlaceAPI{}
 					if len(placesGCP) != 0 {
 						// check place name, lat, lon in db
 						// limited number by gcp
@@ -1108,7 +1110,7 @@ var graphqlQueryType = graphql.NewObject(
 						}
 					}
 					// combine places then return
-					places := []placeAPI{}
+					places := []config.PlaceAPI{}
 					for i := 0; i < len(placesGCP); i++ {
 						place := placesGCP[i]
 						for j := 0; j < len(placesDB); j++ {
@@ -1121,7 +1123,7 @@ var graphqlQueryType = graphql.NewObject(
 						}
 						places = append(places, place)
 					}
-					return placesLookupAPI{places, nextPageToken}, err
+					return config.PlacesLookupAPI{places, nextPageToken}, err
 				},
 				Description: "get location info by name",
 			},
@@ -1135,11 +1137,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1171,11 +1173,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1219,11 +1221,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1232,7 +1234,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("level format")
 					}
-					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
+					if level < config.CityLevelRangeFirst || level > config.CityLevelRangeLast {
 						return nil, errors.New("level format")
 					}
 					cityID, isOK := p.Args["city_id"].(string)
@@ -1266,11 +1268,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					userID, isOK := p.Args["user_id"].(int64)
 					if !isOK {
 						return nil, errors.New("user_id format")
@@ -1298,11 +1300,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1333,17 +1335,17 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
 					}
 					categoryIDs := []int{}
-					interfaceSlice, err := convertInterfaceSlice(p.Args["category_ids"])
+					interfaceSlice, err := common.ConvertInterfaceSlice(p.Args["category_ids"])
 					if err != nil {
 						return nil, errors.New("category_ids format")
 					}
@@ -1357,7 +1359,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("page format")
 					}
-					posts := []postAPI{}
+					posts := []config.PostAPI{}
 					for i := 0; i < len(categoryIDs); i++ {
 						postsCategory, err := getPostsByRecent(&c, user.UserID, categoryIDs[i], page)
 						if err == nil {
@@ -1385,11 +1387,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1433,11 +1435,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1450,7 +1452,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("level format")
 					}
-					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
+					if level < config.CityLevelRangeFirst || level > config.CityLevelRangeLast {
 						return nil, errors.New("level format")
 					}
 					cityID, isOK := p.Args["city_id"].(string)
@@ -1481,16 +1483,16 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					startTime := time.Now()
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
-					cm, err := connectMongoDB()
+					defer c.DB.Close()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1524,22 +1526,22 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					startTime := time.Now()
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
-					cm, err := connectMongoDB()
+					defer c.DB.Close()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
 					}
 					categoryIDs := []int{}
-					interfaceSlice, err := convertInterfaceSlice(p.Args["category_ids"])
+					interfaceSlice, err := common.ConvertInterfaceSlice(p.Args["category_ids"])
 					if err != nil {
 						return nil, errors.New("category_ids format")
 					}
@@ -1554,7 +1556,7 @@ var graphqlQueryType = graphql.NewObject(
 						return nil, errors.New("page format")
 					}
 					// block check
-					posts := []postAPI{}
+					posts := []config.PostAPI{}
 					for i := 0; i < len(categoryIDs); i++ {
 						postsCategory, err := getPostsByPopular(&c, &cm, user.UserID, categoryIDs[i], page)
 						if err == nil {
@@ -1580,16 +1582,16 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					startTime := time.Now()
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
-					cm, err := connectMongoDB()
+					defer c.DB.Close()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1627,16 +1629,16 @@ var graphqlQueryType = graphql.NewObject(
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					startTime := time.Now()
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
-					cm, err := connectMongoDB()
+					defer c.DB.Close()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1645,7 +1647,7 @@ var graphqlQueryType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("level format")
 					}
-					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
+					if level < config.CityLevelRangeFirst || level > config.CityLevelRangeLast {
 						return nil, errors.New("level format")
 					}
 					cityID, isOK := p.Args["city_id"].(string)
@@ -1676,11 +1678,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1712,11 +1714,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					userID, isOK := p.Args["user_id"].(int64)
 					if !isOK {
 						return nil, errors.New("user_id format")
@@ -1744,11 +1746,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1780,11 +1782,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					value, isOK := p.Args["value"].(string)
 					if !isOK {
 						return nil, errors.New("value format")
@@ -1811,11 +1813,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					postID, isOK := p.Args["post_id"].(int64)
 					if !isOK {
 						return nil, errors.New("post_id format")
@@ -1842,11 +1844,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					commentID, isOK := p.Args["comment_id"].(int64)
 					if !isOK {
 						return nil, errors.New("comment_id format")
@@ -1873,11 +1875,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					replyID, isOK := p.Args["reply_id"].(int64)
 					if !isOK {
 						return nil, errors.New("reply_id format")
@@ -1904,11 +1906,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					postID, isOK := p.Args["post_id"].(int64)
 					if !isOK {
 						return nil, errors.New("post_id format")
@@ -1935,11 +1937,11 @@ var graphqlQueryType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					commentID, isOK := p.Args["comment_id"].(int64)
 					if !isOK {
 						return nil, errors.New("post_id format")
@@ -1968,11 +1970,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -1982,7 +1984,7 @@ var graphqlMutationType = graphql.NewObject(
 						return nil, errors.New("user_id format")
 					}
 					// follow count limit?
-					us, err := follow(&c, userID, user.UserID)
+					us, err := Follow(&c, userID, user.UserID)
 					return us, err
 				},
 				Description: "follow user",
@@ -1996,11 +1998,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2031,16 +2033,16 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
-					cm, err := connectMongoDB()
+					defer c.DB.Close()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					lat, isOK := p.Args["lat"].(float64)
 					if !isOK {
 						return nil, errors.New("lat format")
@@ -2055,9 +2057,9 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					// format check
 					// source check
-					place := placeAPI{Lat: lat, Lon: lon, Name: name}
+					place := config.PlaceAPI{Lat: lat, Lon: lon, Name: name}
 					// city lookup
-					cities, err := getCityByLocation(&cm, lat, lon)
+					cities, err := GetCityByLocation(&cm, lat, lon)
 					if err != nil {
 						return nil, err
 					}
@@ -2070,7 +2072,7 @@ var graphqlMutationType = graphql.NewObject(
 						place.CityID5 = cities[0].Properties.CityID5
 					}
 					// place_insert
-					place.PlaceID, err = placeInsert(&c, place)
+					place.PlaceID, err = PlaceInsert(&c, place)
 					return place, err
 				},
 				Description: "insert place data into database, please send data which api query place provide",
@@ -2113,22 +2115,22 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					startTime := time.Now()
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
 					}
-					file, isOK := p.Context.Value(contextKeyFile).(io.Reader)
+					file, isOK := p.Context.Value(config.ContextKeyFile).(io.Reader)
 					if !isOK {
 						return nil, errors.New("file format")
 					}
 					// post parameter check
 					postType, isOK := p.Args["type"].(int)
-					if !isOK || postTypeMapID2Type[postType] == "" {
+					if !isOK || config.PostTypeMapID2Type[postType] == "" {
 						return nil, errors.New("type format")
 					}
 					originWidth, isOK := p.Args["origin_width"].(int)
@@ -2139,10 +2141,10 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("origin_height format")
 					}
-					tags, isOK := p.Args["tags"].([]tagOnPostSetAPI)
-					if !isOK {
-						return nil, errors.New("tags format")
-					}
+					// tags, isOK := p.Args["tags"].([]config.TagOnPostSetAPI)
+					// if !isOK {
+					// 	return nil, errors.New("tags format")
+					// }
 					post, err := parsePost(p, 0, user.UserID, postType, originWidth, originHeight)
 					if err != nil {
 						return post, err
@@ -2155,23 +2157,23 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return nil, err
 					}
-					post.PostID, err = postInsert(&c, post)
-					if err != nil {
-						return post, err
-					}
-					// hashtag check[max, rule]
-					hashtags, _ := checkMention(post.Content)
-					if len(hashtags) > 0 {
-						hashtagsID, err := hashtagInsert(&c, hashtags)
-						if err != nil {
-							return post, err
-						}
-						if post.PostID != 0 {
-							_, err = hashtagOnPostSet(&c, post.PostID, hashtagsID)
-						}
-					}
+					// post.PostID, err = PostInsert(&c, post)
+					// if err != nil {
+					// 	return post, err
+					// }
+					// // hashtag check[max, rule]
+					// hashtags, _ := common.CheckMention(post.Content)
+					// if len(hashtags) > 0 {
+					// 	hashtagsID, err := hashtagInsert(&c, hashtags)
+					// 	if err != nil {
+					// 		return post, err
+					// 	}
+					// 	if post.PostID != 0 {
+					// 		_, err = hashtagOnPostSet(&c, post.PostID, hashtagsID)
+					// 	}
+					// }
 					// tag check[max] notification
-					_, err = tagsOnPostSet(&c, post.PostID, tags)
+					// _, err = tagsOnPostSet(&c, post.PostID, tags)
 					log.Printf("post now total took %fs\n", time.Since(startTime).Seconds())
 					return post, err
 				},
@@ -2207,11 +2209,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2238,7 +2240,7 @@ var graphqlMutationType = graphql.NewObject(
 					}
 					if isUpdateContent { // prevent unnecessary process
 						// hashtag check[max, rule]
-						hashtags, _ := checkMention(post.Content)
+						hashtags, _ := common.CheckMention(post.Content)
 						if len(hashtags) > 0 {
 							hashtagsID, err := hashtagInsert(&c, hashtags)
 							if err != nil {
@@ -2262,11 +2264,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2289,11 +2291,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2320,16 +2322,16 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					postID, isOK := p.Args["post_id"].(int64)
 					if !isOK {
 						return nil, errors.New("post_id format")
 					}
-					tag, isOK := p.Args["tag"].(tagOnPostSetAPI)
+					tag, isOK := p.Args["tag"].(config.TagOnPostSetAPI)
 					if !isOK {
 						return nil, errors.New("tag format")
 					}
@@ -2348,11 +2350,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2361,7 +2363,7 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("post_id format")
 					}
-					post := postAPI{PostID: postID, User: userBasicAPI{UserID: user.UserID}}
+					post := config.PostAPI{PostID: postID, User: config.UserBasicAPI{UserID: user.UserID}}
 					us, err := postDelete(&c, post)
 					return us, err
 				},
@@ -2381,16 +2383,16 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					startTime := time.Now()
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
-					cm, err := connectMongoDB()
+					defer c.DB.Close()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2426,16 +2428,16 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					startTime := time.Now()
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
-					cm, err := connectMongoDB()
+					defer c.DB.Close()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2475,16 +2477,16 @@ var graphqlMutationType = graphql.NewObject(
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					startTime := time.Now()
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
-					cm, err := connectMongoDB()
+					defer c.DB.Close()
+					cm, err := ConnectMongoDB()
 					if err != nil {
 						log.Fatalln(err)
 					}
-					defer cm.session.Close()
+					defer cm.Session.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2493,7 +2495,7 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("level format")
 					}
-					if level < cityLevelRangeFirst || level > cityLevelRangeLast {
+					if level < config.CityLevelRangeFirst || level > config.CityLevelRangeLast {
 						return nil, errors.New("level format")
 					}
 					cityID, isOK := p.Args["city_id"].(string)
@@ -2526,11 +2528,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2543,16 +2545,16 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("reaction_id format")
 					}
-					if reactionsMapID2Description[reactionID] == "" {
+					if config.ReactionsMapID2Description[reactionID] == "" {
 						return nil, errors.New("reaction_id format")
 					}
-					reactionOnPost := reactionOnPostAPI{
+					reactionOnPost := config.ReactionOnPostAPI{
 						PostID:     postID,
-						User:       userBasicAPI{UserID: user.UserID},
+						User:       config.UserBasicAPI{UserID: user.UserID},
 						ReactionID: reactionID,
-						Createtime: getNowUnixTimestamp(),
+						Createtime: common.GetNowUnixTimestamp(),
 					}
-					us, err := reactionOnPostSet(&c, reactionOnPost)
+					us, err := ReactionOnPostSet(&c, reactionOnPost)
 					return us, err
 				},
 				Description: "set reaction on post",
@@ -2566,11 +2568,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2579,9 +2581,9 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("post_id format")
 					}
-					reactionOnPost := reactionOnPostAPI{
+					reactionOnPost := config.ReactionOnPostAPI{
 						PostID: postID,
-						User:   userBasicAPI{UserID: user.UserID},
+						User:   config.UserBasicAPI{UserID: user.UserID},
 					}
 					us, err := reactionOnPostDelete(&c, reactionOnPost)
 					return us, err
@@ -2601,11 +2603,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2618,14 +2620,14 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("reaction_id format")
 					}
-					if reactionsMapID2Description[reactionID] == "" {
+					if config.ReactionsMapID2Description[reactionID] == "" {
 						return nil, errors.New("reaction_id format")
 					}
-					reactionOnComment := reactionOnCommentAPI{
+					reactionOnComment := config.ReactionOnCommentAPI{
 						CommentID:  commentID,
-						User:       userBasicAPI{UserID: user.UserID},
+						User:       config.UserBasicAPI{UserID: user.UserID},
 						ReactionID: reactionID,
-						Createtime: getNowUnixTimestamp(),
+						Createtime: common.GetNowUnixTimestamp(),
 					}
 					us, err := reactionOnCommentSet(&c, reactionOnComment)
 					return us, err
@@ -2641,11 +2643,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2654,9 +2656,9 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("comment_id format")
 					}
-					reactionOnComment := reactionOnCommentAPI{
+					reactionOnComment := config.ReactionOnCommentAPI{
 						CommentID: commentID,
-						User:      userBasicAPI{UserID: user.UserID},
+						User:      config.UserBasicAPI{UserID: user.UserID},
 					}
 					us, err := reactionOnCommentDelete(&c, reactionOnComment)
 					return us, err
@@ -2676,11 +2678,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2693,14 +2695,14 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("reaction_id format")
 					}
-					if reactionsMapID2Description[reactionID] == "" {
+					if config.ReactionsMapID2Description[reactionID] == "" {
 						return nil, errors.New("reaction_id format")
 					}
-					reactionOnReply := reactionOnReplyAPI{
+					reactionOnReply := config.ReactionOnReplyAPI{
 						ReplyID:    replyID,
-						User:       userBasicAPI{UserID: user.UserID},
+						User:       config.UserBasicAPI{UserID: user.UserID},
 						ReactionID: reactionID,
-						Createtime: getNowUnixTimestamp(),
+						Createtime: common.GetNowUnixTimestamp(),
 					}
 					us, err := reactionOnReplySet(&c, reactionOnReply)
 					return us, err
@@ -2716,11 +2718,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2729,9 +2731,9 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("reply_id format")
 					}
-					reactionOnReply := reactionOnReplyAPI{
+					reactionOnReply := config.ReactionOnReplyAPI{
 						ReplyID: replyID,
-						User:    userBasicAPI{UserID: user.UserID},
+						User:    config.UserBasicAPI{UserID: user.UserID},
 					}
 					us, err := reactionOnReplyDelete(&c, reactionOnReply)
 					return us, err
@@ -2751,11 +2753,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2768,7 +2770,7 @@ var graphqlMutationType = graphql.NewObject(
 					if err != nil {
 						return comment, err
 					}
-					comment.CommentID, err = commentOnPostInsert(&c, comment)
+					comment.CommentID, err = CommentOnPostInsert(&c, comment)
 					return comment, err
 				},
 				Description: "insert a comment on post",
@@ -2786,11 +2788,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2817,11 +2819,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2830,9 +2832,9 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("comment_id format")
 					}
-					comment := commentAPI{
+					comment := config.CommentAPI{
 						CommentID: commentID,
-						User:      userBasicAPI{UserID: user.UserID},
+						User:      config.UserBasicAPI{UserID: user.UserID},
 					}
 					us, err := commentOnPostDelete(&c, comment)
 					return us, err
@@ -2852,11 +2854,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2887,11 +2889,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2918,11 +2920,11 @@ var graphqlMutationType = graphql.NewObject(
 					},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					c, err := connectPostgres()
+					c, err := ConnectPostgres()
 					if err != nil {
 						return nil, err
 					}
-					defer c.db.Close()
+					defer c.DB.Close()
 					user, err := parseAuth(&c, p)
 					if err != nil {
 						return nil, err
@@ -2931,9 +2933,9 @@ var graphqlMutationType = graphql.NewObject(
 					if !isOK {
 						return nil, errors.New("reply_id format")
 					}
-					reply := replyAPI{
+					reply := config.ReplyAPI{
 						ReplyID: replyID,
-						User:    userBasicAPI{UserID: user.UserID},
+						User:    config.UserBasicAPI{UserID: user.UserID},
 					}
 					us, err := replyOnCommentDelete(&c, reply)
 					return us, err
